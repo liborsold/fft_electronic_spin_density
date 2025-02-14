@@ -60,7 +60,7 @@ else:
 def _debug(*args):
     global DEBUGMODE
     if DEBUGMODE:
-        print " ".join(map(str, args))
+        print(" ".join(map(str, args)))
 
 class CubeFile(object):
     """
