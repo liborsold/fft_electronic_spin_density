@@ -11,7 +11,7 @@ from scipy.constants import physical_constants
 fin_cube = './cube_files/Mn2GeO4_rho_sz.cube'
 
 
-def main():
+def main(verbose=True):
     # cube[0] is the scalar field numpy array
     cube = read_cube(fin_cube)
 
@@ -26,44 +26,44 @@ def main():
 
     # ================== UNITS ==================
 
+    # unit conversion: see http://publish.illinois.edu/yubo-paul-yang/tutorials/quantum-espresso/understand-fast-fourier-transform/
+    #    and   https://en.wikipedia.org/wiki/Reciprocal_lattice (formulas for reciprocal lattice vectors in 3D)
+
     #--- REAL SPACE ---
-    # get real-space grid spacing in Angstrom
+    # real-space grid spacing in Angstrom
     da = np.array(list(cube[1]['xvec'])) * physical_constants['Bohr radius'][0] * 1e10  # Angstrom
     db = np.array(list(cube[1]['yvec'])) * physical_constants['Bohr radius'][0] * 1e10  # Angstrom
     dc = np.array(list(cube[1]['zvec'])) * physical_constants['Bohr radius'][0] * 1e10  # Angstrom
 
-    # get lattice vectors
+    # real-space lattice vectors (nx, ny, nz are the number of grid points in each direction - the dimensions of the cube numpy array)
     a =  da * nx # Angstrom
     b =  db * ny # Angstrom
     c =  dc * nz # Angstrom
 
-    # stack into single matrix - should match the lattice parameters in scf.in file
-    A_latt = np.vstack((a, b, c))
-    print('A_latt', A_latt)
+    # volume of the unit cell
+    V = np.dot(a, np.cross(b, c))  # Angstrom^3
+
+    # lattice parameter matrix (Angstrom) - should match the lattice parameters in scf.in file - first row is a, second row is b, third row is c
+    A = np.vstack((a, b, c))
 
     #--- RECIPROCAL SPACE ---
-    # get reciprocal spacings
-    dka = 2 * np.pi / a # 1/Angstrom
-    dkb = 2 * np.pi / b # 1/Angstrom
-    dkc = 2 * np.pi / c # 1/Angstrom
 
     # get reciprocal lattice vectors
-    ka = dka * nx # 1/Angstrom
-    kb = dkb * ny # 1/Angstrom
-    kc = dkc * nz # 1/Angstrom
+    ka = 2 * np.pi * np.cross(b,c) / V  # 1/Angstrom
+    kb = 2 * np.pi * np.cross(c,a) / V  # 1/Angstrom
+    kc = 2 * np.pi * np.cross(a,b) / V  # 1/Angstrom
 
-    # stack into single matrix
-    B_latt = np.vstack((ka, kb, kc))
-    print('B_latt', B_latt)
+    # reciprocal spacings
+    dka = ka / nx  # 1/Angstrom
+    dkb = kb / ny  # 1/Angstrom
+    dkc = kc / nz  # 1/Angstrom
 
+    # reciprocal lattice parameter matrix (1/Angstrom) - first row is ka, second row is kb, third row is kc
+    B = np.vstack((ka, kb, kc))
 
-    # unit conversion: see http://publish.illinois.edu/yubo-paul-yang/tutorials/quantum-espresso/understand-fast-fourier-transform/:
-    #    In condensed matter, consider a 1D box of length L. For an FFT grid of size N, the real space spacing is dx = L/N. The reciprocal space box length is 2πN/L, so the spacing is dk = 2π/L.
-    # -> dka = 2*pi / a_latt = 2*pi / (da * nx)
-
-    exit()
-
-    print('cube[0] numpy array shape', cube[0].shape)
+    if verbose:
+        print('A (Angstrom)\n', A)
+        print('\nB (1/Angstrom)\n', B)
 
     # plot_cube_file(cube)
 
