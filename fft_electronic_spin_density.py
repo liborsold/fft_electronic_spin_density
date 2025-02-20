@@ -27,6 +27,8 @@ class Density:
         # cube[0] is the scalar field numpy array
         cube_data = read_cube(fin_cube)
 
+        cube_data = self.coordinate_permutation(cube_data, permutation=[2,1,0])
+
         # cube[1] contains dictionary with metadata - keys are 'org', 'xvec', 'yvec', 'zvec', 'atoms'
         # get unit cell size: 'xvec' gives 
         #    the >>spacing<< between grid points 
@@ -75,13 +77,11 @@ class Density:
         c_idx_mesh_flat = c_idx_mesh.flatten()
 
         # check that we can reshape back to the original shape
-        a_idx_mesh_reshaped = a_idx_mesh_flat.reshape((self.na, self.nb, self.nc))
-        assert np.allclose(a_idx_mesh, a_idx_mesh_reshaped), 'Meshed arrays are not the same after flattening and reshaping back again!'
+        # a_idx_mesh_reshaped = a_idx_mesh_flat.reshape((self.na, self.nb, self.nc))
+        # assert np.allclose(a_idx_mesh, a_idx_mesh_reshaped), 'Meshed arrays are not the same after flattening and reshaping back again!'
 
         # concatenate the flattened arrays
         r_rec_mesh_flat = np.vstack((a_idx_mesh_flat, b_idx_mesh_flat, c_idx_mesh_flat)).T
-        print(r_rec_mesh_flat.shape)
-        print(r_rec_mesh_flat)
 
         # convert to cartesian coordinates
         r_cart_mesh_flat = r_rec_mesh_flat @ self.A
@@ -90,7 +90,6 @@ class Density:
         self.x_cart_mesh = r_cart_mesh_flat[:, 0].reshape((self.na, self.nb, self.nc))
         self.y_cart_mesh = r_cart_mesh_flat[:, 1].reshape((self.na, self.nb, self.nc))
         self.z_cart_mesh = r_cart_mesh_flat[:, 2].reshape((self.na, self.nb, self.nc))
-        
 
         #--- RECIPROCAL SPACE ---
 
@@ -115,6 +114,29 @@ class Density:
         # need to convert also units of the scalar field >>contained<< in the numpy array
         # spin density in units of Bohr magnetons per Angstrom^3 ??
 
+
+    def coordinate_permutation(self, cube_data, permutation=[2,1,0]):
+        """Swap in a cyclic way (x,y,z) -> (y,z,x) -> (z,x,y) depending on number of steps (1 or 2).
+
+        Args:
+            cube_data (_type_): _description_
+            steps (int, optional): _description_. Defaults to 1.
+        """
+        array = cube_data[0]
+        xvec = cube_data[1]['xvec']
+        yvec = cube_data[1]['yvec']
+        zvec = cube_data[1]['zvec']
+
+        array = np.moveaxis(array, [0, 1, 2], permutation)
+        
+        xyz_vec = list(np.array([xvec, yvec, zvec], dtype=object)[permutation])
+    
+        cube_data[1]['xvec'] = xyz_vec[0]
+        cube_data[1]['yvec'] = xyz_vec[1]
+        cube_data[1]['zvec'] = xyz_vec[2]
+
+        return (array, cube_data[1])
+        
 
     def plot_cube_file_outer_surface(self, fout_name='rho_sz.png'):
         # plot numpy array as a scalar field
@@ -144,27 +166,41 @@ class Density:
             c_idx_arr (list, optional): _description_. Defaults to [0,1,-1].
             fout_name (str, optional): _description_. Defaults to 'rho_sz.png'.
         """
+        scale_down_data = 0.0001
+
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
 
         # Create a 3D grid
         X = self.x_cart_mesh[:,:,0]
         Y = self.y_cart_mesh[:,:,0]
-        z_cart = np.arange(self.nc)/self.nc * self.c[2] 
+        z_cart = np.arange(self.nc)/self.nc * self.c[2]
+
+        z_max_abs = np.max(np.abs(self.array))*scale_down_data
 
         # Plot the scalar field
         for c_idx in c_idx_arr:
-            plot = ax.contourf(X, Y, self.array[:, :, c_idx], cmap='viridis', zdir='z', offset=z_cart[c_idx])
-        
-        margin = 0.05
-        plt.xlim(0, np.max(self.x_cart_mesh*(1+margin)))
-        plt.ylim(0, np.max(self.y_cart_mesh*(1+margin)))
-        ax.set_zlim(0, np.max(self.z_cart_mesh)*(1+margin))
+            z_curr = z_cart[c_idx]
+            Z_arr = self.array[:, :, c_idx]
+            levels = np.linspace(np.min(Z_arr), np.max(Z_arr), 100)*scale_down_data
+            plot = ax.contourf(X, Y, z_curr+Z_arr*scale_down_data, cmap='coolwarm', zdir='z', levels=z_curr+levels, vmin=z_curr-z_max_abs, vmax=z_curr+z_max_abs)
 
-        ax.set_aspect('equal', adjustable='box')
+        # get the colorbar and adjust its limits
+        cbar = plt.colorbar(plot)
+        # cbar.set_clim(-z_max_abs, z_max_abs)
+        # plt.colorbar(plot)
+
+        # color
+        
+        # margin = 0.05
+        # plt.xlim(0, np.max(self.x_cart_mesh*(1+margin)))
+        # plt.ylim(0, np.max(self.y_cart_mesh*(1+margin)))
+        # ax.set_zlim(0, np.max(self.z_cart_mesh))
+
+        # ax.set_aspect('equal', adjustable='box')
         # plot colorbar the colorbar
-        plt.colorbar(plot)
-        plt.tight_layout()
+
+        # plt.tight_layout()
         plt.savefig(fout_name)
         plt.close()
 
@@ -183,11 +219,11 @@ class Density:
         # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         # find a momentum along z !!! 
         # along a for now change <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        kc_array_max = abs(self.ka[2])
+        kc_array_max = abs(self.kc[2])
         print(f'- by the way, kz_target must be between 0.00 and {kc_array_max:.6f} 1/Angstrom')
         if kz_target > kc_array_max:
             raise ValueError(f'kz_target must be between 0.00 and {kc_array_max:.6f} 1/Angstrom')
-        kc_array = np.linspace(0, kc_array_max, self.na)
+        kc_array = np.linspace(0, kc_array_max, self.nc)
         i_kz = np.argmin(np.abs(kc_array - kz_target))
         return i_kz
 
@@ -205,6 +241,7 @@ class Density:
         take_idx.remove(k1_idx)
         take_idx.remove(k2_idx)
         take_idx = take_idx[0]
+        print('take_idx', take_idx)
 
         # PREPARE 2D array 
         #    - sum?
@@ -258,9 +295,6 @@ class Density:
         plt.ylabel(r"$k_y$ ($\mathrm{\AA}^{-1}$)", fontsize=12)
         plt.title("F")
 
-        ax.set_xlim(-1000, 1000)
-        ax.set_ylim(-1000, 1000)
-
         plt.axis('equal')  # Keep aspect ratio
         plt.tight_layout()
         plt.savefig(fout_name, dpi=400)
@@ -271,22 +305,19 @@ class Density:
 if __name__ == '__main__':
 
     density = Density(verbose=True)
-    density.plot_cube_file(c_idx_arr=np.arange(0, density.nc, density.nc//8), fout_name=f'./rho_sz_exploded.png')
 
+    for i in np.arange(0, density.nc, 4):
+        c_idx_array = np.array([i, 124]) #,11,12])+25 #np.arange(0, density.nc, density.nc//4)
+        density.plot_cube_file(c_idx_arr=c_idx_array, fout_name=f'./rho_sz_exploded_{i}.png')
     exit()
-
     density.FFT(verbose=True)
-    
-    k1_idx = 1
-    k2_idx = 2
 
     # kz = 30
     # i_kz = density.get_i_kz(kz_target=kz)
     # density.plot_2D_fft(i_kz=i_kz, k1_idx=k1_idx, k2_idx=k2_idx, fout_name=f'./test_fft.png')
 
-    for i_kz in range(0, density.na):
-        density.plot_2D_fft(i_kz=i_kz, k1_idx=k1_idx, k2_idx=k2_idx, fout_name=f'./Mn2GeO4_kz_tomography/log_scale/F_abs_squared_log-scale_kz_at_index_{i_kz}.png')
-
+    for i_kz in range(0, density.nc):
+        density.plot_2D_fft(i_kz=i_kz, fout_name=f'./Mn2GeO4_kz_tomography/log_scale/F_abs_squared_log-scale_kz_at_index_{i_kz}.png')
 
     # twoD_data = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
     # plot_2D_fft(twoD_data)
