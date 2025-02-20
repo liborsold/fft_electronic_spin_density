@@ -13,7 +13,7 @@ fin_cube = './cube_files/Mn2GeO4_rho_1024.cube'
 
 class Density:
 
-    def __init__(self, kz_target=5, verbose=True, plot_real_space_spin_density=False):
+    def __init__(self, verbose=True):
         """_summary_
 
         Args:
@@ -36,7 +36,7 @@ class Density:
         
         # numpy array dimensions
         self.array = cube_data[0]
-        self.nx, self.ny, self.nz = self.array.shape
+        self.na, self.nb, self.nc = self.array.shape
 
 
         # ================== UNITS ==================
@@ -51,15 +51,46 @@ class Density:
         self.dc = np.array(list(cube_data[1]['zvec'])) * physical_constants['Bohr radius'][0] * 1e10  # Angstrom
 
         # real-space lattice vectors (nx, ny, nz are the number of grid points in each direction - the dimensions of the cube numpy array)
-        self.a =  self.da * self.nx # Angstrom
-        self.b =  self.db * self.ny # Angstrom
-        self.c =  self.dc * self.nz # Angstrom
+        self.a =  self.da * self.na # Angstrom
+        self.b =  self.db * self.nb # Angstrom
+        self.c =  self.dc * self.nc # Angstrom
 
         # volume of the unit cell
         self.V = np.dot(self.a, np.cross(self.b, self.c))  # Angstrom^3
 
         # lattice parameter matrix (Angstrom) - should match the lattice parameters in scf.in file - first row is a, second row is b, third row is c
         self.A = np.vstack((self.a, self.b, self.c))
+
+        # make a grid in x,y,z cartesian coordinates of the real-space grid points
+        a_idx = np.arange(self.na) / self.na
+        b_idx = np.arange(self.nb) / self.nb
+        c_idx = np.arange(self.nc) / self.nc
+
+        # mesh arrays are 3D arrays
+        a_idx_mesh, b_idx_mesh, c_idx_mesh = np.meshgrid(a_idx, b_idx, c_idx, indexing='ij')
+        
+        # flatten them into (nx*ny*nz, 3) array of reciprocal coordinates
+        a_idx_mesh_flat = a_idx_mesh.flatten()
+        b_idx_mesh_flat = b_idx_mesh.flatten()
+        c_idx_mesh_flat = c_idx_mesh.flatten()
+
+        # check that we can reshape back to the original shape
+        a_idx_mesh_reshaped = a_idx_mesh_flat.reshape((self.na, self.nb, self.nc))
+        assert np.allclose(a_idx_mesh, a_idx_mesh_reshaped), 'Meshed arrays are not the same after flattening and reshaping back again!'
+
+        # concatenate the flattened arrays
+        r_rec_mesh_flat = np.vstack((a_idx_mesh_flat, b_idx_mesh_flat, c_idx_mesh_flat)).T
+        print(r_rec_mesh_flat.shape)
+        print(r_rec_mesh_flat)
+
+        # convert to cartesian coordinates
+        r_cart_mesh_flat = r_rec_mesh_flat @ self.A
+
+        # cartesian coordinates 3D mesh arrays - ready for plotting (in Angstrom)
+        self.x_cart_mesh = r_cart_mesh_flat[:, 0].reshape((self.na, self.nb, self.nc))
+        self.y_cart_mesh = r_cart_mesh_flat[:, 1].reshape((self.na, self.nb, self.nc))
+        self.z_cart_mesh = r_cart_mesh_flat[:, 2].reshape((self.na, self.nb, self.nc))
+        
 
         #--- RECIPROCAL SPACE ---
 
@@ -69,9 +100,9 @@ class Density:
         self.dkc = 2 * np.pi * np.cross(self.a,self.b) / self.V  # 1/Angstrom
 
         # reciprocal vectors
-        self.ka = self.dka * self.nx  # 1/Angstrom
-        self.kb = self.dkb * self.ny  # 1/Angstrom
-        self.kc = self.dkc * self.nz  # 1/Angstrom
+        self.ka = self.dka * self.na  # 1/Angstrom
+        self.kb = self.dkb * self.nb  # 1/Angstrom
+        self.kc = self.dkc * self.nc  # 1/Angstrom
 
         # reciprocal lattice parameter matrix (1/Angstrom) - first row is ka, second row is kb, third row is kc
         self.B = np.vstack((self.ka, self.kb, self.kc))
@@ -85,56 +116,15 @@ class Density:
         # spin density in units of Bohr magnetons per Angstrom^3 ??
 
 
-        # ================== FFT ==================
-
-        # norm='backward' means no prefactor applied
-        self.F = fft.fftshift(fft.fftn(self.array, norm='backward'))
-        self.F_abs_sq = np.square(np.abs(self.F))
-
-
-        # ================== PLOTTING ==================
-
-        # ----------------- REAL SPACE -----------------
-        if plot_real_space_spin_density:
-            self.plot_cube_file(cube_data)
-
-
-        # ----------------- RECIPROCAL SPACE -----------------
-        # sum all projections into plane (defined by a vector normal to the plane)
-        # n_vec_plane = np.array([0, 0, 1])
-
-        #    SIMPLE FIRST: just assume c is along z and sum along c axis
-        # sum along c
-        # !!!!! stupid coordinate system of MnGeO4 -- need to sum along x axis
-
-        # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        # !!!!!!!!!!!!!!!!!!!!!!!1 sum along z for the next
-        # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        # find a momentum along z !!! 
-        # along a for now change <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        kc_array_max = abs(self.ka[2])
-        print(f'kz_target must be between 0.00 and {kc_array_max:.6f} 1/Angstrom')
-        if kz_target > kc_array_max:
-            raise ValueError(f'kz_target must be between 0.00 and {kc_array_max:.6f} 1/Angstrom')
-        kc_array = np.linspace(0, kc_array_max, self.nx)
-        i_kz = np.argmin(np.abs(kc_array - kz_target))
-
-        # F_abs_sq_sum_a = np.sum(F_abs_sq, axis=0)
-        
-        for i_kz in range(0, self.nx):
-            F_abs_sq_sum_a = self.F_abs_sq[i_kz, :, :]
-            self.plot_2D_fft(F_abs_sq_sum_a, k1=self.kb, k2=self.kc, fout_name=f'./Mn2GeO4_kz_tomography/log_scale/F_abs_squared_log-scale_kz_at_index_{i_kz}.png')
-
-
-    def plot_cube_file(self, fout_name='rho_sz.png'):
+    def plot_cube_file_outer_surface(self, fout_name='rho_sz.png'):
         # plot numpy array as a scalar field
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
 
         # Create a 3D grid
-        x = np.arange(self.nx)
-        y = np.arange(self.ny)
-        z = np.arange(self.nz)
+        x = np.arange(self.na)
+        y = np.arange(self.nb)
+        z = np.arange(self.nc)
         X, Y, Z = np.meshgrid(x, y, z)
 
         # Plot the scalar field
@@ -147,35 +137,102 @@ class Density:
         plt.close()
 
 
-    def plot_2D_fft(self, scalar_2D_array, k1=[1,0,0], k2=[-0.5,1,0], fout_name='colormap_2D_out.png', verbose=True):
+    def plot_cube_file(self, c_idx_arr=[0,1,-1], fout_name='rho_sz.png'):
+        """For an array of inices, plot a 2D map as contourf at that z index of the 3D scalar field into a 3D plot at the height given by the z value.
 
-        i_relevant = 0
-        j_relevant = 1
+        Args:
+            c_idx_arr (list, optional): _description_. Defaults to [0,1,-1].
+            fout_name (str, optional): _description_. Defaults to 'rho_sz.png'.
+        """
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
 
+        # Create a 3D grid
+        X = self.x_cart_mesh[:,:,0]
+        Y = self.y_cart_mesh[:,:,0]
+        z_cart = np.arange(self.nc)/self.nc * self.c[2] 
+
+        # Plot the scalar field
+        for c_idx in c_idx_arr:
+            plot = ax.contourf(X, Y, self.array[:, :, c_idx], cmap='viridis', zdir='z', offset=z_cart[c_idx])
+        
+        margin = 0.05
+        plt.xlim(0, np.max(self.x_cart_mesh*(1+margin)))
+        plt.ylim(0, np.max(self.y_cart_mesh*(1+margin)))
+        ax.set_zlim(0, np.max(self.z_cart_mesh)*(1+margin))
+
+        ax.set_aspect('equal', adjustable='box')
+        # plot colorbar the colorbar
+        plt.colorbar(plot)
+        plt.tight_layout()
+        plt.savefig(fout_name)
+        plt.close()
+
+    def FFT(self, verbose=True):
+        # norm='backward' means no prefactor applied
+        self.F = fft.fftshift(fft.fftn(self.array, norm='backward'))
+        self.F_abs_sq = np.square(np.abs(self.F))
+
+    def get_i_kz(self, kz_target):
+                #    SIMPLE FIRST: just assume c is along z and sum along c axis
+        # sum along c
+        # !!!!! stupid coordinate system of MnGeO4 -- need to sum along x axis
+
+        # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        # !!!!!!!!!!!!!!!!!!!!!!!1 sum along z for the next
+        # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        # find a momentum along z !!! 
+        # along a for now change <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        kc_array_max = abs(self.ka[2])
+        print(f'- by the way, kz_target must be between 0.00 and {kc_array_max:.6f} 1/Angstrom')
+        if kz_target > kc_array_max:
+            raise ValueError(f'kz_target must be between 0.00 and {kc_array_max:.6f} 1/Angstrom')
+        kc_array = np.linspace(0, kc_array_max, self.na)
+        i_kz = np.argmin(np.abs(kc_array - kz_target))
+        return i_kz
+
+
+    def plot_2D_fft(self, i_kz, k1_idx=0, k2_idx=1, fout_name='colormap_2D_out.png', verbose=True):
+
+        # ----------------- RECIPROCAL SPACE PLOTTING -----------------
+        # sum all projections into plane (defined by a vector normal to the plane)
+        # n_vec_plane = np.array([0, 0, 1])
+
+        n1 = np.array((self.na, self.nb, self.nc))[k1_idx]
+        n2 = np.array((self.na, self.nb, self.nc))[k2_idx]
+
+        take_idx = [0, 1, 2]
+        take_idx.remove(k1_idx)
+        take_idx.remove(k2_idx)
+        take_idx = take_idx[0]
+
+        # PREPARE 2D array 
+        #    - sum?
+        # F_abs_sq_sum_a = np.sum(F_abs_sq, axis=take_idx)
+
+        #    - cut
+        F_abs_sq_cut = self.F_abs_sq.take(i_kz, axis=take_idx)
 
         fig = plt.figure(figsize=(6, 6))
         ax = fig.add_subplot(111)
 
-        k1 = np.array(k1)
-        k2 = np.array(k2)
-
-        na = scalar_2D_array.shape[0]
-        nb = scalar_2D_array.shape[1]
+        k1 = [self.ka, self.kb, self.kc][k1_idx]
+        k2 = [self.ka, self.kb, self.kc][k2_idx]
 
         if verbose:
             print(k1, k2)
-            print(scalar_2D_array.shape)
+            print(self.array.shape)
 
         # 2D grid with correct units but no dimensionality
-        i_vals = (np.arange(na)-na//2) / na
-        j_vals = (np.arange(nb)-nb//2) / nb
+        i_vals = (np.arange(n1)-n1//2) / n1
+        j_vals = (np.arange(n2)-n2//2) / n2
         I, J = np.meshgrid(i_vals, j_vals, indexing='ij')
 
         # Compute the actual coordinates in 2D space
-        X = I * k1[i_relevant] + J * k2[i_relevant]
-        Y = I * k1[j_relevant] + J * k2[j_relevant]    
+        X = I * k1[0] + J * k2[0]
+        Y = I * k1[1] + J * k2[1]  
 
-        plt.pcolormesh(X, Y, np.log(np.abs(scalar_2D_array)), shading='auto', cmap='viridis', )
+        plt.pcolormesh(X, Y, np.log(np.abs(F_abs_sq_cut)), shading='auto', cmap='viridis', )
 
         # colorbar
         plt.colorbar(label="log(|F|^2)_xy")
@@ -201,17 +258,35 @@ class Density:
         plt.ylabel(r"$k_y$ ($\mathrm{\AA}^{-1}$)", fontsize=12)
         plt.title("F")
 
+        ax.set_xlim(-1000, 1000)
+        ax.set_ylim(-1000, 1000)
+
         plt.axis('equal')  # Keep aspect ratio
         plt.tight_layout()
         plt.savefig(fout_name, dpi=400)
         plt.close()
 
 
+
 if __name__ == '__main__':
 
-    kz = 3
+    density = Density(verbose=True)
+    density.plot_cube_file(c_idx_arr=np.arange(0, density.nc, density.nc//8), fout_name=f'./rho_sz_exploded.png')
 
-    density = Density(kz_target=kz, verbose=True, plot_real_space_spin_density=False)
+    exit()
+
+    density.FFT(verbose=True)
+    
+    k1_idx = 1
+    k2_idx = 2
+
+    # kz = 30
+    # i_kz = density.get_i_kz(kz_target=kz)
+    # density.plot_2D_fft(i_kz=i_kz, k1_idx=k1_idx, k2_idx=k2_idx, fout_name=f'./test_fft.png')
+
+    for i_kz in range(0, density.na):
+        density.plot_2D_fft(i_kz=i_kz, k1_idx=k1_idx, k2_idx=k2_idx, fout_name=f'./Mn2GeO4_kz_tomography/log_scale/F_abs_squared_log-scale_kz_at_index_{i_kz}.png')
+
 
     # twoD_data = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
     # plot_2D_fft(twoD_data)
