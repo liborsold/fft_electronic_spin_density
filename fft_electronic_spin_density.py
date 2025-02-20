@@ -7,13 +7,17 @@ import numpy as np
 import scipy.fft as fft
 # import bohr radius
 from scipy.constants import physical_constants
+import matplotlib as mpl
 
-fin_cube = './cube_files/Mn2GeO4_rho_1024.cube'
+
 
 
 class Density:
+    """Read, visualize and fourier transform (spin) density from gaussian .cube files.
+        Replace by a model function if required.
+    """
 
-    def __init__(self, verbose=True):
+    def __init__(self, fname_cube_file='./seedname.cube', verbose=True):
         """_summary_
 
         Args:
@@ -25,8 +29,7 @@ class Density:
         # ================== READ CUBE FILE ==================
 
         # cube[0] is the scalar field numpy array
-        cube_data = read_cube(fin_cube)
-
+        cube_data = read_cube(fname_cube_file)
         cube_data = self.coordinate_permutation(cube_data, permutation=[2,1,0])
 
         # cube[1] contains dictionary with metadata - keys are 'org', 'xvec', 'yvec', 'zvec', 'atoms'
@@ -114,6 +117,54 @@ class Density:
         # need to convert also units of the scalar field >>contained<< in the numpy array
         # spin density in units of Bohr magnetons per Angstrom^3 ??
 
+    def replace_by_model(self, type='gaussian', parameters={'sigmas':[0.5], 'centers':[(0.5, 0.5, 0.5)], 'signs':[1]}):
+        """Replace the scalar field in the numpy array by a model function.
+
+        Args:
+            type (str, optional): Type of the model function. Defaults to 'gaussian'.
+            parameters (dict, optional): Parameters of the model function. Defaults to {'sigmas':[0.5], 'centers':[(0.5, 0.5, 0.5)], 'signs':[1]}.
+        """
+
+        # create models
+        models = {}
+        def gaussian(x, y, z, sigma=0.5, center=(3,3,3), sign=1):
+            """Gaussian distribution in 3D space - https://math.stackexchange.com/questions/434629/3-d-generalization-of-the-gaussian-point-spread-function
+
+            Args:
+                x (_type_): Cartesian x coordinate in Angstrom.
+                y (_type_): Cartesian y coordinate in Angstrom.
+                z (_type_): Cartesian z coordinate in Angstrom.
+                sigma (float, optional): _description_. Defaults to 0.5.
+                center (tuple, optional): _description_. Defaults to (3,3,3).
+                sign (int, optional): _description_. Defaults to 1.
+
+            Returns:
+                _type_: _description_
+            """
+            # normalized gaussian function - see 
+            return 1/(sigma**3 * (2*np.pi)**(3/2)) * sign * np.exp(-((x-center[0])**2 + (y-center[1])**2 + (z-center[2])**2)/(2*sigma**2))
+        models['gaussian'] = gaussian
+        
+        # choose the 3D scalar field function from models
+        f = models[type]
+
+        # construct an equivalent of the scalar array loaded from the .cube file but
+        #   feeding in the model
+        model_density = np.zeros_like(self.array)
+
+        # place all the e.g. gaussians in the space
+        for i in range(len(parameters['sigmas'])):
+            # create a function in 3D space that gives a Gaussian density distribution around point centers[i] with standard deviation sigmas[i]
+            # the sign of the density is given by signs[i]
+            sigma = parameters['sigmas'][i]
+            center = parameters['centers'][i]
+            sign = parameters['signs'][i]
+
+            model_density += f(self.x_cart_mesh, self.y_cart_mesh, self.z_cart_mesh, sigma=sigma, center=center, sign=sign)
+        
+        # replace the scalar field in the numpy array by the model
+        self.array = model_density
+
 
     def coordinate_permutation(self, cube_data, permutation=[2,1,0]):
         """Swap in a cyclic way (x,y,z) -> (y,z,x) -> (z,x,y) depending on number of steps (1 or 2).
@@ -159,14 +210,14 @@ class Density:
         plt.close()
 
 
-    def plot_cube_file(self, c_idx_arr=[0,1,-1], fout_name='rho_sz.png'):
+    def plot_cube_file(self, c_idx_arr=[0,1,-1], fout_name='rho_sz.png', opacity=0.5):
         """For an array of inices, plot a 2D map as contourf at that z index of the 3D scalar field into a 3D plot at the height given by the z value.
 
         Args:
             c_idx_arr (list, optional): _description_. Defaults to [0,1,-1].
             fout_name (str, optional): _description_. Defaults to 'rho_sz.png'.
         """
-        scale_down_data = 0.0001
+        scale_down_data = 0.1
 
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
@@ -176,17 +227,27 @@ class Density:
         Y = self.y_cart_mesh[:,:,0]
         z_cart = np.arange(self.nc)/self.nc * self.c[2]
 
-        z_max_abs = np.max(np.abs(self.array))*scale_down_data
+        z_max_abs_unscaled = np.max(np.abs(self.array))
+        z_max_abs = z_max_abs_unscaled*scale_down_data
 
         # Plot the scalar field
         for c_idx in c_idx_arr:
             z_curr = z_cart[c_idx]
             Z_arr = self.array[:, :, c_idx]
-            levels = np.linspace(np.min(Z_arr), np.max(Z_arr), 100)*scale_down_data
-            plot = ax.contourf(X, Y, z_curr+Z_arr*scale_down_data, cmap='coolwarm', zdir='z', levels=z_curr+levels, vmin=z_curr-z_max_abs, vmax=z_curr+z_max_abs)
+            
+            # get levels
+            min_Z_arr = np.min(Z_arr)
+            max_Z_arr = np.max(Z_arr)
+            if abs(min_Z_arr - max_Z_arr) < 1e-10:
+                levels = np.linspace(min_Z_arr-1e-10, max_Z_arr+1e-10, 100)*scale_down_data
+            else:
+                levels = np.linspace(min_Z_arr, max_Z_arr, 100)*scale_down_data
+            plot = ax.contourf(X, Y, z_curr+Z_arr*scale_down_data, cmap='coolwarm', zdir='z', levels=z_curr+levels, vmin=z_curr-z_max_abs, vmax=z_curr+z_max_abs, alpha=opacity)
 
-        # get the colorbar and adjust its limits
-        cbar = plt.colorbar(plot)
+        fig.colorbar(mpl.cm.ScalarMappable(norm=mpl.colors.Normalize(-z_max_abs_unscaled, z_max_abs_unscaled), cmap='coolwarm'),
+             ax=ax, orientation='vertical', label='spin density')
+        # manually make a colorbar with limits -z_max_abs, z_max_abs and cmap coolwarm
+        
         # cbar.set_clim(-z_max_abs, z_max_abs)
         # plt.colorbar(plot)
 
@@ -195,7 +256,14 @@ class Density:
         # margin = 0.05
         # plt.xlim(0, np.max(self.x_cart_mesh*(1+margin)))
         # plt.ylim(0, np.max(self.y_cart_mesh*(1+margin)))
-        # ax.set_zlim(0, np.max(self.z_cart_mesh))
+
+        plt.title(f'Spin density ranging from {np.min(self.array):.3f} to {np.max(self.array):.3f}')
+
+        ax.set_zlim(min(0, self.c[2]), max(0, self.c[2]))
+
+        ax.set_xlabel(r'$x$ ($\mathrm{\AA}$)', fontsize=11)
+        ax.set_ylabel(r'$y$ ($\mathrm{\AA}$)', fontsize=11)
+        ax.set_zlabel(r'$z$ ($\mathrm{\AA}$)', fontsize=11)
 
         # ax.set_aspect('equal', adjustable='box')
         # plot colorbar the colorbar
@@ -228,7 +296,7 @@ class Density:
         return i_kz
 
 
-    def plot_2D_fft(self, i_kz, k1_idx=0, k2_idx=1, fout_name='colormap_2D_out.png', verbose=True):
+    def plot_2D_fft(self, i_kz, fft_as_log=False, k1_idx=0, k2_idx=1, fout_name='colormap_2D_out.png', verbose=True):
 
         # ----------------- RECIPROCAL SPACE PLOTTING -----------------
         # sum all projections into plane (defined by a vector normal to the plane)
@@ -269,10 +337,14 @@ class Density:
         X = I * k1[0] + J * k2[0]
         Y = I * k1[1] + J * k2[1]  
 
-        plt.pcolormesh(X, Y, np.log(np.abs(F_abs_sq_cut)), shading='auto', cmap='viridis', )
+        plot_array = np.abs(F_abs_sq_cut)
+        if fft_as_log:
+            plot_array = np.log(plot_array)
+        plt.pcolormesh(X, Y, plot_array, shading='auto', cmap='viridis', )
 
         # colorbar
-        plt.colorbar(label="log(|F|^2)_xy")
+        label = 'log(|F|^2)_xy' if fft_as_log else '|F|^2_xy'
+        plt.colorbar(label=label)
 
         # Overlay grid points
         # plt.scatter(X, Y, color='black', s=1)
@@ -304,20 +376,50 @@ class Density:
 
 if __name__ == '__main__':
 
-    density = Density(verbose=True)
 
-    for i in np.arange(0, density.nc, 4):
-        c_idx_array = np.array([i, 124]) #,11,12])+25 #np.arange(0, density.nc, density.nc//4)
-        density.plot_cube_file(c_idx_arr=c_idx_array, fout_name=f'./rho_sz_exploded_{i}.png')
-    exit()
-    density.FFT(verbose=True)
+    fname_cube_file = './cube_files/Mn2GeO4_rho_sz.cube'
+    density_slices = True
 
-    # kz = 30
+    output_folder = './gaussian' # Mn2GeO4_kz_tomography_64
+
+    fft_as_log = False
+
+
+    # ---- READ CUBE FILE -----
+    density = Density(verbose=True, fname_cube_file=fname_cube_file)
+
+    # ---- INSERT MODEL -----
+    model_type = 'gaussian'
+    parameters = {'sigmas':[0.2, 0.2], 'centers':[(-3.0, -3, -5), (-2.0, -3, -5)], 'signs':[1, -1]}
+
+    density.replace_by_model(type=model_type, parameters=parameters)
+
+
+    # ---- VISUALIZE DENSITY -----
+    if density_slices:
+        for i in np.arange(0, density.nc, 4):
+            c_idx_array = np.array([i, -1])
+            density.plot_cube_file(c_idx_arr=c_idx_array, fout_name=f'{output_folder}/rho_sz_gauss_exploded_{i}.png', opacity=0.8)
+
+    c_idx_array = np.arange(0, density.nc, density.nc//16)
+    density.plot_cube_file(c_idx_arr=c_idx_array, fout_name=f'{output_folder}/rho_sz_gauss_exploded_all.png', opacity=0.05)
+
+    # single cut
+        # kz = 30
     # i_kz = density.get_i_kz(kz_target=kz)
     # density.plot_2D_fft(i_kz=i_kz, k1_idx=k1_idx, k2_idx=k2_idx, fout_name=f'./test_fft.png')
 
-    for i_kz in range(0, density.nc):
-        density.plot_2D_fft(i_kz=i_kz, fout_name=f'./Mn2GeO4_kz_tomography/log_scale/F_abs_squared_log-scale_kz_at_index_{i_kz}.png')
 
+    # ---- FFT -----
+    density.FFT(verbose=True)
+
+
+    # ---- VISUALIZE FFT -----
+    for i_kz in range(0, density.nc, 4):
+        appendix = '_log' if fft_as_log else ''
+        density.plot_2D_fft(i_kz=i_kz, fft_as_log=fft_as_log, fout_name=f'{output_folder}/F_abs_squared{appendix}-scale_kz_at_index_{i_kz}.png')
+
+
+    # test plotting
     # twoD_data = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
     # plot_2D_fft(twoD_data)
