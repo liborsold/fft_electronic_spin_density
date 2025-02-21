@@ -56,6 +56,8 @@ class Density:
         self.db = np.array(list(cube_data[1]['yvec'])) * physical_constants['Bohr radius'][0] * 1e10  # Angstrom
         self.dc = np.array(list(cube_data[1]['zvec'])) * physical_constants['Bohr radius'][0] * 1e10  # Angstrom
 
+        if verbose: print('da, db, dc', self.da, self.db, self.dc, 'Angstrom')
+
         # real-space lattice vectors (nx, ny, nz are the number of grid points in each direction - the dimensions of the cube numpy array)
         self.a =  self.da * self.na # Angstrom
         self.b =  self.db * self.nb # Angstrom
@@ -106,6 +108,8 @@ class Density:
         self.ka = self.dka * self.na  # 1/Angstrom
         self.kb = self.dkb * self.nb  # 1/Angstrom
         self.kc = self.dkc * self.nc  # 1/Angstrom
+
+        if verbose: print('dka, dkb, dkc', self.dka, self.dkb, self.dkc, '1/Angstrom')
 
         # reciprocal lattice parameter matrix (1/Angstrom) - first row is ka, second row is kb, third row is kc
         self.B = np.vstack((self.ka, self.kb, self.kc))
@@ -230,7 +234,7 @@ class Density:
         plt.close()
 
 
-    def plot_cube_file(self, c_idx_arr=[0,1,-1], fout_name='rho_sz.png', opacity=0.5):
+    def plot_cube_file(self, c_idx_arr=[0,1,-1], fout_name='rho_sz.png', opacity=0.5, figsize=(8.0, 6), dpi=300):
         """For an array of inices, plot a 2D map as contourf at that z index of the 3D scalar field into a 3D plot at the height given by the z value.
 
         Args:
@@ -239,7 +243,7 @@ class Density:
         """
         scale_down_data = 0.02
 
-        fig = plt.figure(figsize=(8.0, 6))
+        fig = plt.figure(figsize=figsize)
         ax = fig.add_subplot(111, projection='3d')
 
         # Create a 3D grid
@@ -289,7 +293,7 @@ class Density:
         # plot colorbar the colorbar
 
         # plt.tight_layout()
-        plt.savefig(fout_name)
+        plt.savefig(fout_name, dpi=dpi)
         plt.close()
 
     def FFT(self, verbose=True):
@@ -316,7 +320,7 @@ class Density:
         return i_kz
 
 
-    def plot_2D_fft(self, i_kz, fft_as_log=False, k1_idx=0, k2_idx=1, fout_name='colormap_2D_out.png', verbose=True):
+    def plot_2D_fft(self, i_kz, fft_as_log=False, k1_idx=0, k2_idx=1, fout_name='colormap_2D_out.png', verbose=True, figsize=(8.0, 6.0)):
 
         # ----------------- RECIPROCAL SPACE PLOTTING -----------------
         # sum all projections into plane (defined by a vector normal to the plane)
@@ -338,7 +342,7 @@ class Density:
         #    - cut
         F_abs_sq_cut = self.F_abs_sq.take(i_kz, axis=take_idx)
 
-        fig = plt.figure(figsize=(6, 6))
+        fig = plt.figure(figsize=figsize)
         ax = fig.add_subplot(111)
 
         k1 = [self.ka, self.kb, self.kc][k1_idx]
@@ -396,17 +400,24 @@ class Density:
 
 if __name__ == '__main__':
 
-    fname_cube_file = './cube_files/Cu2AC4_rho_sz_256.cube' #'./cube_files/Mn2GeO4_rho_sz.cube'
+    fname_cube_file = './cube_files/Cu2AC4_rho_sz_512.cube' #'./cube_files/Mn2GeO4_rho_sz.cube'
     
     permutation = None #[2,1,0]
 
-    output_folder = './Cu2AC4' # 'Mn2GeO4_kz_tomography_64' #'./gaussian/sigma_0.3_distance_1.0' # Mn2GeO4_kz_tomography_64
+    output_folder = './Cu2AC4/512' # 'Mn2GeO4_kz_tomography_64' #'./gaussian/sigma_0.3_distance_1.0' # Mn2GeO4_kz_tomography_64
+
+    figsize_rho = (14.0, 11.0)
+    dpi_rho = 300
+
+    figsize_fft = (14.0, 14.0)
 
     density_slices = True
     fft_as_log = False
 
     # ---- READ CUBE FILE -----
     density = Density(permutation=permutation, verbose=True, fname_cube_file=fname_cube_file)
+
+    exit()
 
     # ---- INSERT MODEL -----
     # model_type = 'gaussian'
@@ -421,12 +432,12 @@ if __name__ == '__main__':
 
     # ---- VISUALIZE DENSITY -----
     if density_slices:
-        for i in np.arange(0, density.nc, 4):
+        for i in np.arange(0, density.nc, 1):
             c_idx_array = np.array([i, 0]) #np.array([i, -1]
-            density.plot_cube_file(c_idx_arr=c_idx_array, fout_name=f'{output_folder}/rho_sz_exploded_{i}.png', opacity=0.8)  # rho_sz_gauss_exploded
+            density.plot_cube_file(c_idx_arr=c_idx_array, fout_name=f'{output_folder}/rho_sz_exploded_{i}.jpg', opacity=0.8, figsize=figsize_rho, dpi=dpi_rho)  # rho_sz_gauss_exploded
 
     c_idx_array = np.arange(0, density.nc, density.nc//40)
-    density.plot_cube_file(c_idx_arr=c_idx_array, fout_name=f'{output_folder}/rho_sz_exploded_all.png', opacity=0.05)  # rho_sz_gauss_exploded_all
+    density.plot_cube_file(c_idx_arr=c_idx_array, fout_name=f'{output_folder}/rho_sz_exploded_all.jpg', opacity=0.05, figsize=figsize_rho, dpi=dpi_rho)  # rho_sz_gauss_exploded_all
 
     # single cut
         # kz = 30
@@ -440,7 +451,7 @@ if __name__ == '__main__':
     # ---- VISUALIZE FFT -----
     for i_kz in range(0, density.nc, 4):
         appendix = '_log' if fft_as_log else ''
-        density.plot_2D_fft(i_kz=i_kz, fft_as_log=fft_as_log, fout_name=f'{output_folder}/F_abs_squared{appendix}-scale_kz_at_index_{i_kz}.png')
+        density.plot_2D_fft(i_kz=i_kz, fft_as_log=fft_as_log, fout_name=f'{output_folder}/F_abs_squared{appendix}-scale_kz_at_index_{i_kz}.png', figsize=figsize_fft, )
 
 
     # test plotting
