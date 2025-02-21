@@ -17,7 +17,7 @@ class Density:
         Replace by a model function if required.
     """
 
-    def __init__(self, fname_cube_file='./seedname.cube', verbose=True):
+    def __init__(self, fname_cube_file='./seedname.cube', permutation=None, verbose=True):
         """_summary_
 
         Args:
@@ -30,7 +30,8 @@ class Density:
 
         # cube[0] is the scalar field numpy array
         cube_data = read_cube(fname_cube_file)
-        cube_data = self.coordinate_permutation(cube_data, permutation=[2,1,0])
+        if permutation:
+            cube_data = self.coordinate_permutation(cube_data, permutation=permutation)
 
         # cube[1] contains dictionary with metadata - keys are 'org', 'xvec', 'yvec', 'zvec', 'atoms'
         # get unit cell size: 'xvec' gives 
@@ -142,8 +143,27 @@ class Density:
                 _type_: _description_
             """
             # normalized gaussian function - see 
-            return 1/(sigma**3 * (2*np.pi)**(3/2)) * sign * np.exp(-((x-center[0])**2 + (y-center[1])**2 + (z-center[2])**2)/(2*sigma**2))
+            return sign * np.exp(-((x-center[0])**2 + (y-center[1])**2 + (z-center[2])**2)/(2*sigma**2)) # * 1/(sigma**3 * (2*np.pi)**(3/2)) 
         models['gaussian'] = gaussian
+
+        def dz2(x, y, z, sigma=0.5, center=(3,3,3), sign=1):
+            """dz2 orbital distribution in 3D space - https://math.stackexchange.com/questions/434629/3-d-generalization-of-the-gaussian-point-spread-function
+
+            Args:
+                x (_type_): Cartesian x coordinate in Angstrom.
+                y (_type_): Cartesian y coordinate in Angstrom.
+                z (_type_): Cartesian z coordinate in Angstrom.
+                sigma (float, optional): _description_. Defaults to 0.5.
+                center (tuple, optional): _description_. Defaults to (3,3,3).
+                sign (int, optional): _description_. Defaults to 1.
+
+            Returns:
+                _type_: _description_
+            """
+            # normalized gaussian function - see
+            r2 = (x-center[0])**2 + (y-center[1])**2 + (z-center[2])**2
+            return sign * np.abs(3*(z-center[2])**2 - r2)/r2 * np.exp(-(r2/(2*sigma**2)))
+        models['dz2'] = dz2
         
         # choose the 3D scalar field function from models
         f = models[type]
@@ -217,9 +237,9 @@ class Density:
             c_idx_arr (list, optional): _description_. Defaults to [0,1,-1].
             fout_name (str, optional): _description_. Defaults to 'rho_sz.png'.
         """
-        scale_down_data = 0.1
+        scale_down_data = 0.02
 
-        fig = plt.figure()
+        fig = plt.figure(figsize=(8.0, 6))
         ax = fig.add_subplot(111, projection='3d')
 
         # Create a 3D grid
@@ -265,7 +285,7 @@ class Density:
         ax.set_ylabel(r'$y$ ($\mathrm{\AA}$)', fontsize=11)
         ax.set_zlabel(r'$z$ ($\mathrm{\AA}$)', fontsize=11)
 
-        # ax.set_aspect('equal', adjustable='box')
+        ax.set_aspect('equal', adjustable='box')
         # plot colorbar the colorbar
 
         # plt.tight_layout()
@@ -365,7 +385,7 @@ class Density:
         # Formatting
         plt.xlabel(r"$k_x$ ($\mathrm{\AA}^{-1}$)", fontsize=12)
         plt.ylabel(r"$k_y$ ($\mathrm{\AA}^{-1}$)", fontsize=12)
-        plt.title("F")
+        plt.title("F^2")
 
         plt.axis('equal')  # Keep aspect ratio
         plt.tight_layout()
@@ -376,39 +396,42 @@ class Density:
 
 if __name__ == '__main__':
 
+    fname_cube_file = './cube_files/Cu2AC4_rho_sz_256.cube' #'./cube_files/Mn2GeO4_rho_sz.cube'
+    
+    permutation = None #[2,1,0]
 
-    fname_cube_file = './cube_files/Mn2GeO4_rho_sz.cube'
+    output_folder = './Cu2AC4' # 'Mn2GeO4_kz_tomography_64' #'./gaussian/sigma_0.3_distance_1.0' # Mn2GeO4_kz_tomography_64
+
     density_slices = True
-
-    output_folder = './gaussian' # Mn2GeO4_kz_tomography_64
-
     fft_as_log = False
 
-
     # ---- READ CUBE FILE -----
-    density = Density(verbose=True, fname_cube_file=fname_cube_file)
+    density = Density(permutation=permutation, verbose=True, fname_cube_file=fname_cube_file)
 
     # ---- INSERT MODEL -----
-    model_type = 'gaussian'
+    # model_type = 'gaussian'
+    model_type = 'dz2'
+    
     parameters = {'sigmas':[0.2, 0.2], 'centers':[(-3.0, -3, -5), (-2.0, -3, -5)], 'signs':[1, -1]}
+    # parameters = {'sigmas':[0.2, 0.2], 'centers':[(-3.25, -3, -5), (-1.75, -3, -5)], 'signs':[1, -1]}
+    # parameters = {'sigmas':[0.5, 0.5], 'centers':[(-3.00, -3, -5), (-2.00, -3, -5)], 'signs':[1, -1]}
 
-    density.replace_by_model(type=model_type, parameters=parameters)
+    # density.replace_by_model(type=model_type, parameters=parameters)
 
 
     # ---- VISUALIZE DENSITY -----
     if density_slices:
         for i in np.arange(0, density.nc, 4):
-            c_idx_array = np.array([i, -1])
-            density.plot_cube_file(c_idx_arr=c_idx_array, fout_name=f'{output_folder}/rho_sz_gauss_exploded_{i}.png', opacity=0.8)
+            c_idx_array = np.array([i, 0]) #np.array([i, -1]
+            density.plot_cube_file(c_idx_arr=c_idx_array, fout_name=f'{output_folder}/rho_sz_exploded_{i}.png', opacity=0.8)  # rho_sz_gauss_exploded
 
-    c_idx_array = np.arange(0, density.nc, density.nc//16)
-    density.plot_cube_file(c_idx_arr=c_idx_array, fout_name=f'{output_folder}/rho_sz_gauss_exploded_all.png', opacity=0.05)
+    c_idx_array = np.arange(0, density.nc, density.nc//40)
+    density.plot_cube_file(c_idx_arr=c_idx_array, fout_name=f'{output_folder}/rho_sz_exploded_all.png', opacity=0.05)  # rho_sz_gauss_exploded_all
 
     # single cut
         # kz = 30
     # i_kz = density.get_i_kz(kz_target=kz)
     # density.plot_2D_fft(i_kz=i_kz, k1_idx=k1_idx, k2_idx=k2_idx, fout_name=f'./test_fft.png')
-
 
     # ---- FFT -----
     density.FFT(verbose=True)
