@@ -39,6 +39,9 @@ class Density:
         #     along the first index of the array (--> a lattice vector of the unit celll) 
         #      in units of Bohr radii
         # ... being used below
+
+        # metadata
+        self.metadata = cube_data[1]
         
         # numpy array dimensions
         self.array = cube_data[0]
@@ -92,7 +95,7 @@ class Density:
         # convert to cartesian coordinates
         r_cart_mesh_flat = r_rec_mesh_flat @ self.A
 
-        # cartesian coordinates 3D mesh arrays - ready for plotting (in Angstrom)
+        # cartesian coordinates 3D mesh arrays - ready for use in plotting (in Angstrom)
         self.x_cart_mesh = r_cart_mesh_flat[:, 0].reshape((self.na, self.nb, self.nc))
         self.y_cart_mesh = r_cart_mesh_flat[:, 1].reshape((self.na, self.nb, self.nc))
         self.z_cart_mesh = r_cart_mesh_flat[:, 2].reshape((self.na, self.nb, self.nc))
@@ -122,8 +125,29 @@ class Density:
         # need to convert also units of the scalar field >>contained<< in the numpy array
         # spin density in units of Bohr magnetons per Angstrom^3 ??
 
+    def get_sites_of_atoms(self, site_idx):
+        """Return the site centers of the atoms at the given indices.
+
+        Args:
+            site_idx (list of integers): integers of the required sites
+
+        Returns:
+            list of tuples: tuples are cartesian coordinates (xyz) in Angstrom of the site centers
+        """
+        site_centers = []
+        for idx in site_idx:
+            # self.metadata['atoms'][idx] is a tuple with the atomic mass and the coordinates of the atom in the unit cell
+            #   coordinates is a map object -> convert to list: first element is again the atomic mass -> take the rest: units are in Bohr radii -> convert to Angstrom -> convert to tuple -> add to list
+            site_centers.append(tuple(np.array(list(self.metadata['atoms'][idx][1])[1:])*physical_constants['Bohr radius'][0]*1e10))
+        return site_centers
+
     def mask_except_sites(self, leave_sites):
-        raise NotImplementedError('This function is not implemented yet.')
+        # initialize true array
+        mask = np.zeros_like(self.x_cart_mesh, dtype=bool)
+        for center, radius in zip(leave_sites['site_centers'], leave_sites['site_radii']):
+            mask_i = np.sqrt((self.x_cart_mesh - center[0])**2 + (self.y_cart_mesh - center[1])**2 + (self.z_cart_mesh - center[2])**2) < radius
+            mask = np.logical_or(mask, mask_i)
+        self.array[~mask] = 0
 
     def get_kz_at_index(self, kz_index=30):
         """Return the k_z value (in Angstrom^-1) at a given index: first or last indices are -+ k_max/2, the middle index is k_z=0 (data is zero-centered; fftshifted after fft was performed).
@@ -479,20 +503,28 @@ if __name__ == '__main__':
     
     permutation = None #!! for Mn2GeO4 need to use [2,1,0] to swap x,y,z -> z,y,x
 
-    output_folder = './Cu2AC4/512' # 'Mn2GeO4_kz_tomography_64' #'./gaussian/sigma_0.3_distance_1.0' # Mn2GeO4_kz_tomography_64
+    output_folder = './Cu2AC4/512/masked_0_1' # 'Mn2GeO4_kz_tomography_64' #'./gaussian/sigma_0.3_distance_1.0' # Mn2GeO4_kz_tomography_64
 
     figsize_rho = (14.0, 11.0)
     dpi_rho = 300
 
     figsize_fft = (14.0, 14.0)
 
-    density_slices = False
+    density_slices = True
     fft_as_log = False
 
     # ---- READ CUBE FILE -----
     density = Density(permutation=permutation, verbose=True, fname_cube_file=fname_cube_file)
 
-    leave_sites = {'site_centers':[(0.5, 0.5, 0.5)], 'site_radii':[0.1]}
+
+    # ---- MASKING -----
+    site_idx = [0,1]
+    site_centers = density.get_sites_of_atoms(site_idx)
+
+    print('site_centers', site_centers)
+
+    # leave_sites = {'site_centers':[(0.5, 0.5, 0.5)], 'site_radii':[0.5]}
+    leave_sites = {'site_centers':site_centers, 'site_radii':[1.0]*len(site_centers)}
     density.mask_except_sites(leave_sites)
 
     # get kz at index
@@ -515,10 +547,10 @@ if __name__ == '__main__':
     if density_slices:
         for i in np.arange(0, density.nc, 1):
             c_idx_array = np.array([i, 0]) #np.array([i, -1]
-            density.plot_cube_file(c_idx_arr=c_idx_array, fout_name=f'{output_folder}/rho_sz_exploded_{i}.jpg', opacity=0.8, figsize=figsize_rho, dpi=dpi_rho)  # rho_sz_gauss_exploded
+            density.plot_cube_file(c_idx_arr=c_idx_array, fout_name=f'{output_folder}/rho_sz_exploded_masked_{i}.jpg', opacity=0.8, figsize=figsize_rho, dpi=dpi_rho)  # rho_sz_gauss_exploded
 
     c_idx_array = np.arange(0, density.nc, density.nc//40)
-    density.plot_cube_file(c_idx_arr=c_idx_array, fout_name=f'{output_folder}/rho_sz_exploded_all.jpg', opacity=0.05, figsize=figsize_rho, dpi=dpi_rho)  # rho_sz_gauss_exploded_all
+    density.plot_cube_file(c_idx_arr=c_idx_array, fout_name=f'{output_folder}/rho_sz_exploded_masked_all.jpg', opacity=0.05, figsize=figsize_rho, dpi=dpi_rho)  # rho_sz_gauss_exploded_all
 
     # single cut
         # kz = 30
