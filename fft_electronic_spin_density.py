@@ -122,6 +122,32 @@ class Density:
         # need to convert also units of the scalar field >>contained<< in the numpy array
         # spin density in units of Bohr magnetons per Angstrom^3 ??
 
+    def mask_except_sites(self, leave_sites):
+        raise NotImplementedError('This function is not implemented yet.')
+
+    def get_kz_at_index(self, kz_index=30):
+        """Return the k_z value (in Angstrom^-1) at a given index: first or last indices are -+ k_max/2, the middle index is k_z=0 (data is zero-centered; fftshifted after fft was performed).
+        Check that index is in range.
+        """
+        assert kz_index < self.nc, f'kz_index must be between 0 and {self.nc-1} (inclusive)'
+        kz = (kz_index - self.nc//2) * self.dkc[2]
+        print(f'kz at index {kz_index} is {kz:.6f} 1/Angstrom')
+        return kz
+    
+
+    def get_index_at_kz(self, kz_target=15):
+        """Return the index at a given k_z value (in Angstrom^-1). Check that the k_z value is in range.
+
+        Args:
+            kz_target (int, optional): _description_. Defaults to 15.
+        """
+        if kz_target > np.abs(self.kc[2]):
+            raise ValueError(f'kz_target must be between 0.00 and {np.abs(self.kc[2]):.6f} 1/Angstrom')
+        i_kz = np.argmin(np.abs((np.arange(self.nc) - self.nc//2) * self.dkc[2] - kz_target))
+        print(f'index for kz_target {(i_kz - self.nc//2) * self.dkc[2]:.6f} 1/Angstrom is {i_kz}')
+        return i_kz
+
+
     def replace_by_model(self, type='gaussian', parameters={'sigmas':[0.5], 'centers':[(0.5, 0.5, 0.5)], 'signs':[1]}):
         """Replace the scalar field in the numpy array by a model function.
 
@@ -298,7 +324,7 @@ class Density:
 
     def FFT(self, verbose=True):
         # norm='backward' means no prefactor applied
-        self.F = fft.fftshift(fft.fftn(self.array, norm='backward'))
+        self.F = fft.fftshift(fft.fftn(self.array, norm='backward'), )
         self.F_abs_sq = np.square(np.abs(self.F))
 
     def get_i_kz(self, kz_target):
@@ -389,7 +415,7 @@ class Density:
         # Formatting
         plt.xlabel(r"$k_x$ ($\mathrm{\AA}^{-1}$)", fontsize=12)
         plt.ylabel(r"$k_y$ ($\mathrm{\AA}^{-1}$)", fontsize=12)
-        plt.title("F^2")
+        plt.title(r"$|F|^2$ at $k_z$ = " + f'{self.get_kz_at_index(i_kz):.4f} '+r'$\mathrm{\AA}^{-1}$', fontsize=12)
 
         plt.axis('equal')  # Keep aspect ratio
         plt.tight_layout()
@@ -397,12 +423,61 @@ class Density:
         plt.close()
 
 
+def test_shift():
+    array_3D = np.zeros((9,9,9), dtype=np.float_)
+    idx_3D = np.zeros((9,9,9), dtype=np.bool_)
+
+    for i in range(9):
+        for j in range(9):
+            for k in range(9):
+                idx_3D[i,j,k] = i > 4 and j > 4 and k > 4
+    # print(array3D)
+
+    array_3D[idx_3D] = 1
+    array_3D[~idx_3D] = -1
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    # Create a 3D grid
+    x = np.arange(9)
+    y = np.arange(9)
+    z = np.arange(9)
+    X, Y, Z = np.meshgrid(x, y, z)
+    # Plot the scalar field
+    plot = ax.scatter(X, Y, Z, c=idx_3D.flatten(), cmap='coolwarm')
+    ax.set_aspect('equal', adjustable='box')
+    # plot colorbar the colorbar
+    plt.colorbar(plot)
+    plt.tight_layout()
+    plt.savefig('fake_3D.png')
+    plt.close()
+
+    # shift
+    array3D_shifted = np.fft.fftshift(idx_3D)
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    # Create a 3D grid
+    x = np.arange(9)
+    y = np.arange(9)
+    z = np.arange(9)
+    X, Y, Z = np.meshgrid(x, y, z)
+    # Plot the scalar field
+    plot = ax.scatter(X, Y, Z, c=array3D_shifted.flatten(), cmap='coolwarm')
+    ax.set_aspect('equal', adjustable='box')
+    # plot colorbar the colorbar
+    plt.colorbar(plot)
+    plt.tight_layout()
+    plt.savefig('fake_3D_shifted.png')
+    plt.close()
+
+
 
 if __name__ == '__main__':
 
     fname_cube_file = './cube_files/Cu2AC4_rho_sz_512.cube' #'./cube_files/Mn2GeO4_rho_sz.cube'
     
-    permutation = None #[2,1,0]
+    permutation = None #!! for Mn2GeO4 need to use [2,1,0] to swap x,y,z -> z,y,x
 
     output_folder = './Cu2AC4/512' # 'Mn2GeO4_kz_tomography_64' #'./gaussian/sigma_0.3_distance_1.0' # Mn2GeO4_kz_tomography_64
 
@@ -411,13 +486,19 @@ if __name__ == '__main__':
 
     figsize_fft = (14.0, 14.0)
 
-    density_slices = True
+    density_slices = False
     fft_as_log = False
 
     # ---- READ CUBE FILE -----
     density = Density(permutation=permutation, verbose=True, fname_cube_file=fname_cube_file)
 
-    exit()
+    leave_sites = {'site_centers':[(0.5, 0.5, 0.5)], 'site_radii':[0.1]}
+    density.mask_except_sites(leave_sites)
+
+    # get kz at index
+    # density.get_kz_at_index(80)
+    # density.get_index_at_kz(-14.67785)
+    # density.get_index_at_kz(14.67785)
 
     # ---- INSERT MODEL -----
     # model_type = 'gaussian'
@@ -447,11 +528,13 @@ if __name__ == '__main__':
     # ---- FFT -----
     density.FFT(verbose=True)
 
-
     # ---- VISUALIZE FFT -----
     for i_kz in range(0, density.nc, 4):
         appendix = '_log' if fft_as_log else ''
         density.plot_2D_fft(i_kz=i_kz, fft_as_log=fft_as_log, fout_name=f'{output_folder}/F_abs_squared{appendix}-scale_kz_at_index_{i_kz}.png', figsize=figsize_fft, )
+
+    # test_shift()
+    # exit()
 
 
     # test plotting
