@@ -10,6 +10,7 @@ from scipy.constants import physical_constants
 import matplotlib as mpl
 from matplotlib import pylab
 from matplotlib.colors import ListedColormap
+import os
 
 class Density:
     """Read, visualize and fourier transform (spin) density from gaussian .cube files.
@@ -284,7 +285,7 @@ class Density:
 
 
     def plot_cube_file(self, c_idx_arr=[0,1,-1], fout_name='rho_sz.png', alpha=0.2, figsize=(8.0, 6), dpi=300, zeros_transparent=True,
-                       xlims=None, ylims=None, zlims=None):
+                       xlims=None, ylims=None, zlims=None, show_plot=False):
         """For an array of inices, plot a 2D map as contourf at that z index of the 3D scalar field into a 3D plot at the height given by the z value.
 
         Args:
@@ -294,8 +295,8 @@ class Density:
         scale_down_data = 0.02
 
         if zeros_transparent:
-            transparent_sigma = 0.07
-            alpha_baseline = 0.15
+            transparent_sigma = 0.15
+            alpha_baseline = 0.50
             print(f"Plotting with transparency near the middle of the colormap: alpha = {alpha_baseline:.3f} (1 - exp(-(x/sigma)^2) with sigma={transparent_sigma:.3f})")
             x = np.linspace(-0.5, 0.5, pylab.cm.coolwarm.N)
             alpha = alpha_baseline*(1 - np.exp(-(x/transparent_sigma)**2))
@@ -367,11 +368,13 @@ class Density:
 
         ax.set_aspect('equal', adjustable='box')
         # plot colorbar the colorbar
-
         plt.tight_layout()
-        # plt.show()
-        plt.savefig(fout_name, dpi=dpi)
-        plt.close()
+
+        if show_plot:
+            plt.show()
+        else:
+            plt.savefig(fout_name, dpi=dpi)
+            plt.close()
 
     def FFT(self, verbose=True):
         # norm='backward' means no prefactor applied
@@ -530,20 +533,20 @@ if __name__ == '__main__':
     
     permutation = None #!! for Mn2GeO4 need to use [2,1,0] to swap x,y,z -> z,y,x
 
-    output_folder = './outputs/Cu2AC4/512/masked_0_1.0-Angstrom' # 'Mn2GeO4_kz_tomography_64' #'./gaussian/sigma_0.3_distance_1.0' # Mn2GeO4_kz_tomography_64
+    output_folder = './outputs/Cu2AC4/512/masked_Cu0_only' #_and_oxygens' # 'Mn2GeO4_kz_tomography_64' #'./gaussian/sigma_0.3_distance_1.0' # Mn2GeO4_kz_tomography_64
 
     density_slices = False
     figsize_rho = (14.0, 11.0)
     dpi_rho = 300
     density_slice_each_n_images = 4
 
-    all_in_one_xlims = (3.0, 7.0) #None
-    all_in_one_ylims = (3.0, 7.0) #None
-    all_in_one_zlims = (2.0, 6.0) #None
+    all_in_one_xlims = (1.5, 6.5) #None
+    all_in_one_ylims = (3.5, 8.5) #None
+    all_in_one_zlims = (1.0, 7.5) #None
 
-    # all_in_one_xlims = (3.0, 7.0) #None
-    # all_in_one_ylims = (3.0, 7.0) #None
-    # all_in_one_zlims = (2.0, 6.0) #None
+    # all_in_one_xlims = None
+    # all_in_one_ylims = None
+    # all_in_one_zlims = None
 
     all_in_one_density_total_slices = 300
 
@@ -551,19 +554,27 @@ if __name__ == '__main__':
     fft_as_log = False
     fft_slice_each_n_images = 4
 
+    # -- create folder if does not exist --
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
+
     # ---- READ CUBE FILE -----
     density = Density(permutation=permutation, verbose=True, fname_cube_file=fname_cube_file)
 
 
     # ---- MASKING -----
-    site_idx = [0]
-    cutoff_radius = 1.0 #Angstrom
+    r_mt_Cu = 1.1 #Angstrom
+    r_mt_O = 0.9 #Angstrom
+
+    site_idx = [0] #[1, 41, 8, 24, 17, 0,  16, 25, 9, 40] #[0] #, 16, 25, 9, 40]
+    site_radii = [r_mt_Cu] #+ 4*[r_mt_O] + [r_mt_Cu]+ 4*[r_mt_O]
+
     site_centers = density.get_sites_of_atoms(site_idx)
 
     print('site_centers', site_centers)
 
     # leave_sites = {'site_centers':[(0.5, 0.5, 0.5)], 'site_radii':[0.5]}
-    leave_sites = {'site_centers':site_centers, 'site_radii':[cutoff_radius]*len(site_centers)}
+    leave_sites = {'site_centers':site_centers, 'site_radii':site_radii}
     density.mask_except_sites(leave_sites)
 
     # get kz at index
@@ -590,13 +601,13 @@ if __name__ == '__main__':
 
     c_idx_array = np.arange(0, density.nc, max(1, density.nc//all_in_one_density_total_slices))
     density.plot_cube_file(c_idx_arr=c_idx_array, fout_name=f'{output_folder}/rho_sz_exploded_masked_all.jpg', alpha=0.05, figsize=figsize_rho, dpi=dpi_rho, zeros_transparent=True,
-                           xlims=all_in_one_xlims, ylims=all_in_one_ylims, zlims=all_in_one_zlims)  # rho_sz_gauss_exploded_all
+                           xlims=all_in_one_xlims, ylims=all_in_one_ylims, zlims=all_in_one_zlims, show_plot=False)  # rho_sz_gauss_exploded_all
     
     # single cut
         # kz = 30
     # i_kz = density.get_i_kz(kz_target=kz)
     # density.plot_2D_fft(i_kz=i_kz, k1_idx=k1_idx, k2_idx=k2_idx, fout_name=f'./test_fft.png')
-    exit()
+
     # ---- FFT -----
     density.FFT(verbose=True)
 
