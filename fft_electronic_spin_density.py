@@ -11,6 +11,7 @@ import matplotlib as mpl
 from matplotlib import pylab
 from matplotlib.colors import ListedColormap
 import os
+from matplotlib.ticker import FuncFormatter
 
 class Density:
     """Read, visualize and fourier transform (spin) density from gaussian .cube files.
@@ -400,7 +401,10 @@ class Density:
         return i_kz
 
 
-    def plot_2D_fft(self, i_kz, fft_as_log=False, k1_idx=0, k2_idx=1, fout_name='colormap_2D_out.png', verbose=True, figsize=(8.0, 6.0)):
+    def plot_fft_2D(self, i_kz, fft_as_log=False, k1_idx=0, k2_idx=1, fout_name='colormap_2D_out.png', verbose=True, figsize=(8.0, 6.0), 
+                    dpi=500,
+                    fixed_z_scale=True, 
+                    xlims=None, ylims=None):
 
         # ----------------- RECIPROCAL SPACE PLOTTING -----------------
         # sum all projections into plane (defined by a vector normal to the plane)
@@ -447,8 +451,16 @@ class Density:
         plt.pcolormesh(X, Y, plot_array, shading='auto', cmap='viridis', )
 
         # colorbar
-        label = 'log(|F|^2)_xy' if fft_as_log else '|F|^2_xy'
-        plt.colorbar(label=label)
+        label = r'$\mathrm{log}\(|F|^2\)_{xy}$' if fft_as_log else '$|F|^2$'
+        def fmt(x, pos): 
+            base, exponent = f"{x:2.1e}".split('e')
+            exponent = f"{int(exponent):+01d}"  # Format exponent with a sign and 3 digits
+            return f"{base}e{exponent}"
+        # format string which keeps fixed length of the number, scientific format 
+        plt.colorbar(label=label, format=FuncFormatter(fmt))
+
+        if fixed_z_scale:
+            plt.clim(0, np.max(self.F_abs_sq))
 
         # Overlay grid points
         # plt.scatter(X, Y, color='black', s=1)
@@ -469,11 +481,21 @@ class Density:
         # Formatting
         plt.xlabel(r"$k_x$ ($\mathrm{\AA}^{-1}$)", fontsize=12)
         plt.ylabel(r"$k_y$ ($\mathrm{\AA}^{-1}$)", fontsize=12)
-        plt.title(r"$|F|^2$ at $k_z$ = " + f'{self.get_kz_at_index(i_kz):.4f} '+r'$\mathrm{\AA}^{-1}$', fontsize=12)
+        plt.title(r"$|F|^2$($k_x$, $k_y$; $k_z$ = " + f'{self.get_kz_at_index(i_kz):.4f} '+r'$\mathrm{\AA}^{-1})$', fontsize=12)
 
-        plt.axis('equal')  # Keep aspect ratio
+        ax.set_aspect('equal', adjustable='box')  # Keep aspect ratio
+
+        if xlims:
+            plt.xlim(xlims)
+        if ylims:
+            plt.ylim(ylims)
+
         plt.tight_layout()
-        plt.savefig(fout_name, dpi=400)
+        if fixed_z_scale:
+            # add appendix to name (while keeping original file format)
+            fsplit = fout_name.split('.')
+            fout_name = '.'.join(fsplit[:-1]) + '_fix-scale.' + fsplit[-1]
+        plt.savefig(fout_name, dpi=dpi)
         plt.close()
 
 
@@ -533,10 +555,10 @@ if __name__ == '__main__':
     
     permutation = None #!! for Mn2GeO4 need to use [2,1,0] to swap x,y,z -> z,y,x
 
-    output_folder = './outputs/Cu2AC4/512/masked_Cu0_only' #_and_oxygens' # 'Mn2GeO4_kz_tomography_64' #'./gaussian/sigma_0.3_distance_1.0' # Mn2GeO4_kz_tomography_64
+    output_folder = './outputs/Cu2AC4/512/masked_Cu1_and_oxygens' #_and_oxygens' # 'Mn2GeO4_kz_tomography_64' #'./gaussian/sigma_0.3_distance_1.0' # Mn2GeO4_kz_tomography_64
 
     density_slices = False
-    figsize_rho = (14.0, 11.0)
+    density_figsize = (14.0, 11.0)
     dpi_rho = 300
     density_slice_each_n_images = 4
 
@@ -548,11 +570,14 @@ if __name__ == '__main__':
     # all_in_one_ylims = None
     # all_in_one_zlims = None
 
-    all_in_one_density_total_slices = 300
-
-    figsize_fft = (14.0, 14.0)
+    full_range_fft_spectrum_cuts = True
+    fft_figsize = (4.5, 4.5)
+    fft_dpi = 400
+    fft_xlims = [-19, 19] # 1/Angstrom
+    fft_ylims = [-19, 19] # 1/Angstrom
     fft_as_log = False
     fft_slice_each_n_images = 4
+    all_in_one_density_total_slices = 300
 
     # -- create folder if does not exist --
     if not os.path.exists(output_folder):
@@ -566,8 +591,8 @@ if __name__ == '__main__':
     r_mt_Cu = 1.1 #Angstrom
     r_mt_O = 0.9 #Angstrom
 
-    site_idx = [0] #[1, 41, 8, 24, 17, 0,  16, 25, 9, 40] #[0] #, 16, 25, 9, 40]
-    site_radii = [r_mt_Cu] #+ 4*[r_mt_O] + [r_mt_Cu]+ 4*[r_mt_O]
+    site_idx = [1, 41, 8, 24, 17] #[1, 41, 8, 24, 17, 0,  16, 25, 9, 40] #[0] #, 16, 25, 9, 40]  # [0] #,  16, 25, 9, 40] #
+    site_radii = [r_mt_Cu]*2 + 4*[r_mt_O] #+ [r_mt_Cu]+ 4*[r_mt_O]
 
     site_centers = density.get_sites_of_atoms(site_idx)
 
@@ -597,11 +622,11 @@ if __name__ == '__main__':
     if density_slices:
         for i in np.arange(0, density.nc, density_slice_each_n_images):
             c_idx_array = np.array([i, 0]) #np.array([i, -1]
-            density.plot_cube_file(c_idx_arr=c_idx_array, fout_name=f'{output_folder}/rho_sz_exploded_masked_{i}.jpg', alpha=0.8, figsize=figsize_rho, dpi=dpi_rho, zeros_transparent=False)  # rho_sz_gauss_exploded
+            density.plot_cube_file(c_idx_arr=c_idx_array, fout_name=f'{output_folder}/rho_sz_exploded_masked_{i}.jpg', alpha=0.8, figsize=density_figsize, dpi=dpi_rho, zeros_transparent=False)  # rho_sz_gauss_exploded
 
-    c_idx_array = np.arange(0, density.nc, max(1, density.nc//all_in_one_density_total_slices))
-    density.plot_cube_file(c_idx_arr=c_idx_array, fout_name=f'{output_folder}/rho_sz_exploded_masked_all.jpg', alpha=0.05, figsize=figsize_rho, dpi=dpi_rho, zeros_transparent=True,
-                           xlims=all_in_one_xlims, ylims=all_in_one_ylims, zlims=all_in_one_zlims, show_plot=False)  # rho_sz_gauss_exploded_all
+    # c_idx_array = np.arange(0, density.nc, max(1, density.nc//all_in_one_density_total_slices))
+    # density.plot_cube_file(c_idx_arr=c_idx_array, fout_name=f'{output_folder}/rho_sz_exploded_masked_all.jpg', alpha=0.05, figsize=density_figsize, dpi=dpi_rho, zeros_transparent=True,
+    #                        xlims=all_in_one_xlims, ylims=all_in_one_ylims, zlims=all_in_one_zlims, show_plot=False)  # rho_sz_gauss_exploded_all
     
     # single cut
         # kz = 30
@@ -612,9 +637,28 @@ if __name__ == '__main__':
     density.FFT(verbose=True)
 
     # ---- VISUALIZE FFT -----
-    for i_kz in range(0, density.nc, fft_slice_each_n_images):
-        appendix = '_log' if fft_as_log else ''
-        density.plot_2D_fft(i_kz=i_kz, fft_as_log=fft_as_log, fout_name=f'{output_folder}/F_abs_squared{appendix}-scale_kz_at_index_{i_kz}.png', figsize=figsize_fft, )
+    # (1) variable scale, full reciprocal space
+    if full_range_fft_spectrum_cuts:
+        for i_kz in range(0, density.nc, fft_slice_each_n_images):
+            appendix = '_log' if fft_as_log else ''
+            density.plot_fft_2D(i_kz=i_kz, fft_as_log=fft_as_log, 
+                                fout_name=f'{output_folder}/F_abs_sq{appendix}-scale_kz_at_idx_{i_kz}.png', 
+                                figsize=fft_figsize,
+                                dpi=fft_dpi, 
+                                fixed_z_scale=False,
+                                xlims=None,
+                                ylims=None)
+        
+    # (2) fixed scale, zoom-in
+    for i_kz in range(80, 121, 1):
+        appendix = '_zoom_log' if fft_as_log else '_zoom'
+        density.plot_fft_2D(i_kz=i_kz, fft_as_log=fft_as_log, 
+                            fout_name=f'{output_folder}/F_abs_sq{appendix}-scale_kz_at_idx_{i_kz}.png', 
+                            figsize=(5.5, 4.5),
+                            dpi=fft_dpi,
+                            fixed_z_scale=True,
+                            xlims=fft_xlims,
+                            ylims=fft_ylims)
 
     # test_shift()
     # exit()
