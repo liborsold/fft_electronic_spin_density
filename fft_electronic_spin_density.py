@@ -8,9 +8,8 @@ import scipy.fft as fft
 # import bohr radius
 from scipy.constants import physical_constants
 import matplotlib as mpl
-
-
-
+from matplotlib import pylab
+from matplotlib.colors import ListedColormap
 
 class Density:
     """Read, visualize and fourier transform (spin) density from gaussian .cube files.
@@ -284,7 +283,8 @@ class Density:
         plt.close()
 
 
-    def plot_cube_file(self, c_idx_arr=[0,1,-1], fout_name='rho_sz.png', opacity=0.5, figsize=(8.0, 6), dpi=300):
+    def plot_cube_file(self, c_idx_arr=[0,1,-1], fout_name='rho_sz.png', alpha=0.2, figsize=(8.0, 6), dpi=300, zeros_transparent=True,
+                       xlims=None, ylims=None, zlims=None):
         """For an array of inices, plot a 2D map as contourf at that z index of the 3D scalar field into a 3D plot at the height given by the z value.
 
         Args:
@@ -292,6 +292,25 @@ class Density:
             fout_name (str, optional): _description_. Defaults to 'rho_sz.png'.
         """
         scale_down_data = 0.02
+
+        if zeros_transparent:
+            transparent_sigma = 0.07
+            alpha_baseline = 0.15
+            print(f"Plotting with transparency near the middle of the colormap: alpha = {alpha_baseline:.3f} (1 - exp(-(x/sigma)^2) with sigma={transparent_sigma:.3f})")
+            x = np.linspace(-0.5, 0.5, pylab.cm.coolwarm.N)
+            alpha = alpha_baseline*(1 - np.exp(-(x/transparent_sigma)**2))
+            plt.plot(x,alpha)
+            plt.xlabel('Transparency')
+            plt.ylabel('rho_sz')
+            plt.savefig('/'.join(fout_name.split('/')[:-1]) + '/transparency_profile_rho_sz_all-in-one.png', dpi=400)
+            plt.close()
+        else:
+            # uniform 
+            alpha = np.ones(pylab.cm.coolwarm.N)*alpha
+
+        my_cmap = pylab.cm.coolwarm(np.arange(pylab.cm.coolwarm.N))
+        my_cmap[:,-1] = alpha
+        cmap = ListedColormap(my_cmap)
 
         fig = plt.figure(figsize=figsize)
         ax = fig.add_subplot(111, projection='3d')
@@ -316,9 +335,9 @@ class Density:
                 levels = np.linspace(min_Z_arr-1e-10, max_Z_arr+1e-10, 100)*scale_down_data
             else:
                 levels = np.linspace(min_Z_arr, max_Z_arr, 100)*scale_down_data
-            plot = ax.contourf(X, Y, z_curr+Z_arr*scale_down_data, cmap='coolwarm', zdir='z', levels=z_curr+levels, vmin=z_curr-z_max_abs, vmax=z_curr+z_max_abs, alpha=opacity)
+            ax.contourf(X, Y, z_curr+Z_arr*scale_down_data, cmap=cmap, zdir='z', levels=z_curr+levels, vmin=z_curr-z_max_abs, vmax=z_curr+z_max_abs)
 
-        fig.colorbar(mpl.cm.ScalarMappable(norm=mpl.colors.Normalize(-z_max_abs_unscaled, z_max_abs_unscaled), cmap='coolwarm'),
+        fig.colorbar(mpl.cm.ScalarMappable(norm=mpl.colors.Normalize(-z_max_abs_unscaled, z_max_abs_unscaled), cmap=cmap),
              ax=ax, orientation='vertical', label='spin density')
         # manually make a colorbar with limits -z_max_abs, z_max_abs and cmap coolwarm
         
@@ -339,10 +358,18 @@ class Density:
         ax.set_ylabel(r'$y$ ($\mathrm{\AA}$)', fontsize=11)
         ax.set_zlabel(r'$z$ ($\mathrm{\AA}$)', fontsize=11)
 
+        if xlims:
+            ax.set_xlim(xlims)
+        if ylims:
+            ax.set_ylim(ylims)
+        if zlims:
+            ax.set_zlim(zlims)
+
         ax.set_aspect('equal', adjustable='box')
         # plot colorbar the colorbar
 
-        # plt.tight_layout()
+        plt.tight_layout()
+        # plt.show()
         plt.savefig(fout_name, dpi=dpi)
         plt.close()
 
@@ -503,28 +530,40 @@ if __name__ == '__main__':
     
     permutation = None #!! for Mn2GeO4 need to use [2,1,0] to swap x,y,z -> z,y,x
 
-    output_folder = './Cu2AC4/512/masked_0_1' # 'Mn2GeO4_kz_tomography_64' #'./gaussian/sigma_0.3_distance_1.0' # Mn2GeO4_kz_tomography_64
+    output_folder = './outputs/Cu2AC4/512/masked_0_1.0-Angstrom' # 'Mn2GeO4_kz_tomography_64' #'./gaussian/sigma_0.3_distance_1.0' # Mn2GeO4_kz_tomography_64
 
+    density_slices = False
     figsize_rho = (14.0, 11.0)
     dpi_rho = 300
+    density_slice_each_n_images = 4
+
+    all_in_one_xlims = (3.0, 7.0) #None
+    all_in_one_ylims = (3.0, 7.0) #None
+    all_in_one_zlims = (2.0, 6.0) #None
+
+    # all_in_one_xlims = (3.0, 7.0) #None
+    # all_in_one_ylims = (3.0, 7.0) #None
+    # all_in_one_zlims = (2.0, 6.0) #None
+
+    all_in_one_density_total_slices = 300
 
     figsize_fft = (14.0, 14.0)
-
-    density_slices = True
     fft_as_log = False
+    fft_slice_each_n_images = 4
 
     # ---- READ CUBE FILE -----
     density = Density(permutation=permutation, verbose=True, fname_cube_file=fname_cube_file)
 
 
     # ---- MASKING -----
-    site_idx = [0,1]
+    site_idx = [0]
+    cutoff_radius = 1.0 #Angstrom
     site_centers = density.get_sites_of_atoms(site_idx)
 
     print('site_centers', site_centers)
 
     # leave_sites = {'site_centers':[(0.5, 0.5, 0.5)], 'site_radii':[0.5]}
-    leave_sites = {'site_centers':site_centers, 'site_radii':[1.0]*len(site_centers)}
+    leave_sites = {'site_centers':site_centers, 'site_radii':[cutoff_radius]*len(site_centers)}
     density.mask_except_sites(leave_sites)
 
     # get kz at index
@@ -545,23 +584,24 @@ if __name__ == '__main__':
 
     # ---- VISUALIZE DENSITY -----
     if density_slices:
-        for i in np.arange(0, density.nc, 1):
+        for i in np.arange(0, density.nc, density_slice_each_n_images):
             c_idx_array = np.array([i, 0]) #np.array([i, -1]
-            density.plot_cube_file(c_idx_arr=c_idx_array, fout_name=f'{output_folder}/rho_sz_exploded_masked_{i}.jpg', opacity=0.8, figsize=figsize_rho, dpi=dpi_rho)  # rho_sz_gauss_exploded
+            density.plot_cube_file(c_idx_arr=c_idx_array, fout_name=f'{output_folder}/rho_sz_exploded_masked_{i}.jpg', alpha=0.8, figsize=figsize_rho, dpi=dpi_rho, zeros_transparent=False)  # rho_sz_gauss_exploded
 
-    c_idx_array = np.arange(0, density.nc, density.nc//40)
-    density.plot_cube_file(c_idx_arr=c_idx_array, fout_name=f'{output_folder}/rho_sz_exploded_masked_all.jpg', opacity=0.05, figsize=figsize_rho, dpi=dpi_rho)  # rho_sz_gauss_exploded_all
-
+    c_idx_array = np.arange(0, density.nc, max(1, density.nc//all_in_one_density_total_slices))
+    density.plot_cube_file(c_idx_arr=c_idx_array, fout_name=f'{output_folder}/rho_sz_exploded_masked_all.jpg', alpha=0.05, figsize=figsize_rho, dpi=dpi_rho, zeros_transparent=True,
+                           xlims=all_in_one_xlims, ylims=all_in_one_ylims, zlims=all_in_one_zlims)  # rho_sz_gauss_exploded_all
+    
     # single cut
         # kz = 30
     # i_kz = density.get_i_kz(kz_target=kz)
     # density.plot_2D_fft(i_kz=i_kz, k1_idx=k1_idx, k2_idx=k2_idx, fout_name=f'./test_fft.png')
-
+    exit()
     # ---- FFT -----
     density.FFT(verbose=True)
 
     # ---- VISUALIZE FFT -----
-    for i_kz in range(0, density.nc, 4):
+    for i_kz in range(0, density.nc, fft_slice_each_n_images):
         appendix = '_log' if fft_as_log else ''
         density.plot_2D_fft(i_kz=i_kz, fft_as_log=fft_as_log, fout_name=f'{output_folder}/F_abs_squared{appendix}-scale_kz_at_index_{i_kz}.png', figsize=figsize_fft, )
 
