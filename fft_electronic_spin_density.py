@@ -12,6 +12,7 @@ from matplotlib import pylab
 from matplotlib.colors import ListedColormap
 import os
 from matplotlib.ticker import FuncFormatter
+from copy import deepcopy
 
 class Density:
     """Read, visualize and fourier transform (spin) density from gaussian .cube files.
@@ -47,6 +48,9 @@ class Density:
         # numpy array dimensions
         self.array = cube_data[0]
         self.na, self.nb, self.nc = self.array.shape
+
+        self.metadata_orig = deepcopy(self.metadata)
+        self.array_orig = deepcopy(self.array)
 
 
         # ================== UNITS ==================
@@ -679,7 +683,19 @@ class Density:
         Args:
             fout (str, optional): _description_. Defaults to 'rho_sz_modified.cube'.
         """
-        write_cube(self.array, self.metadata, fout)
+        write_cube(self.array, self.metadata_orig, fout)
+
+    def write_cube_file_fft(self, fout='rho_sz_fft.cube'):
+        """Write out the modified rho_sz to a cube file.
+
+        Args:
+            fout (str, optional): _description_. Defaults to 'rho_sz_modified.cube'.
+        """
+        meta_fft = deepcopy(self.metadata_orig)
+        meta_fft['xvec'] = self.ka
+        meta_fft['yvec'] = self.kb
+        meta_fft['zvec'] = self.kc
+        write_cube(self.F_abs_sq, meta_fft, fout)
 
 
 def test_shift():
@@ -733,11 +749,11 @@ def test_shift():
 
 if __name__ == '__main__':
 
-    fname_cube_file = './cube_files/Cu2AC4_rho_sz_512.cube' #'./cube_files/Mn2GeO4_rho_sz.cube'
+    fname_cube_file = './cube_files/Cu2AC4_rho_sz_256.cube' #'./cube_files/Mn2GeO4_rho_sz.cube'
     
     permutation = None #!! for Mn2GeO4 need to use [2,1,0] to swap x,y,z -> z,y,x
 
-    output_folder = './outputs/Cu2AC4/512/masked_0-cell_fft-plot' #_and_oxygens' # 'Mn2GeO4_kz_tomography_64' #'./gaussian/sigma_0.3_distance_1.0' # Mn2GeO4_kz_tomography_64
+    output_folder = './outputs/Cu2AC4/512/masked_0_gaussian_sigma_0.3' #_and_oxygens' # 'Mn2GeO4_kz_tomography_64' #'./gaussian/sigma_0.3_distance_1.0' # Mn2GeO4_kz_tomography_64
 
     density_slices = False
     density_3D = False
@@ -776,8 +792,8 @@ if __name__ == '__main__':
     r_mt_Cu = 1.1 #Angstrom
     r_mt_O = 0.9 #Angstrom
 
-    site_idx = [0]# None #[0,  16, 25, 9, 40, 1, 41, 8, 24, 17] #[1, 41, 8, 24, 17, 0,  16, 25, 9, 40] #[0] #, 16, 25, 9, 40]  # [0] #,  16, 25, 9, 40] #
-    site_radii = [r_mt_Cu] #None #[r_mt_Cu] + 4*[r_mt_O] + [r_mt_Cu]+ 4*[r_mt_O]
+    site_idx = [0] #  16, 25, 9, 40] #[0]# None #[0,  16, 25, 9, 40, 1, 41, 8, 24, 17] #[1, 41, 8, 24, 17, 0,  16, 25, 9, 40] #[0] #, 16, 25, 9, 40]  # [0] #,  16, 25, 9, 40] #
+    site_radii = [r_mt_Cu] + 4*[r_mt_O] #+ [r_mt_Cu]+ 4*[r_mt_O]
 
     # leave_sites = {'site_centers':[(0.5, 0.5, 0.5)], 'site_radii':[0.5]}
     if site_idx and site_radii:
@@ -793,13 +809,14 @@ if __name__ == '__main__':
 
     # ---- INSERT MODEL -----
     # model_type = 'gaussian'
-    model_type = 'dz2'
+    model_type = 'gaussian' #'dz2'
     
-    parameters = {'sigmas':[0.2, 0.2], 'centers':[(-3.0, -3, -5), (-2.0, -3, -5)], 'signs':[1, -1]}
+    # parameters = {'sigmas':[0.2, 0.2], 'centers':[(-3.0, -3, -5), (-2.0, -3, -5)], 'signs':[1, -1]}
     # parameters = {'sigmas':[0.2, 0.2], 'centers':[(-3.25, -3, -5), (-1.75, -3, -5)], 'signs':[1, -1]}
     # parameters = {'sigmas':[0.5, 0.5], 'centers':[(-3.00, -3, -5), (-2.00, -3, -5)], 'signs':[1, -1]}
+    parameters = {'sigmas':[0.3], 'centers':site_centers, 'signs':[1]}
 
-    # density.replace_by_model(type=model_type, parameters=parameters)
+    density.replace_by_model(type=model_type, parameters=parameters)
 
 
     # ---- VISUALIZE DENSITY -----
@@ -818,11 +835,14 @@ if __name__ == '__main__':
     # i_kz = density.get_i_kz(kz_target=kz)
     # density.plot_2D_fft(i_kz=i_kz, k1_idx=k1_idx, k2_idx=k2_idx, fout_name=f'./test_fft.png')
 
-    # ---- SAVE DENSITY TO CUBE FILE -----
+    # ---- WRITE MODIFIED DENSITY TO CUBE FILE -----
     density.write_cube_file_rho_sz(fout=f'{output_folder}/rho_sz_modified.cube')
 
     # ---- FFT -----
     density.FFT(verbose=True)
+
+    # ---- WRITE MODIFIED FFT TO CUBE FILE -----
+    density.write_cube_file_fft(fout=f'{output_folder}/fft.cube')
 
     # ---- VISUALIZE FFT -----
     
