@@ -285,32 +285,135 @@ class Density:
         plt.close()
 
 
-    def plot_cube_file(self, c_idx_arr=[0,1,-1], fout_name='rho_sz.png', alpha=0.2, figsize=(8.0, 6), dpi=300, zeros_transparent=True,
-                       xlims=None, ylims=None, zlims=None, show_plot=False):
+    # def plot_cube_file_original(self, c_idx_arr=[0,1,-1], fout_name='rho_sz.png', alpha=0.2, figsize=(8.0, 6), dpi=300, zeros_transparent=True,
+    #                    xlims=None, ylims=None, zlims=None, show_plot=False):
+    #     """THE ORIGINAL
+        
+    #     For an array of indices, plot a 2D map as contourf at that z index of the 3D scalar field into a 3D plot at the height given by the z value.
+
+    #     Args:
+    #         c_idx_arr (list, optional): show cuts at these indeces. Defaults to [0,1,-1].
+    #         fout_name (str, optional): _description_. Defaults to 'rho_sz.png'.
+    #     """
+    #     scale_down_data = 0.02
+
+    #     if zeros_transparent:
+    #         transparent_sigma = 0.15
+    #         alpha_baseline = 0.50
+    #         print(f"Plotting with transparency near the middle of the colormap: alpha = {alpha_baseline:.3f} (1 - exp(-(x/sigma)^2) with sigma={transparent_sigma:.3f})")
+    #         x = np.linspace(-0.5, 0.5, pylab.cm.coolwarm.N)
+    #         alpha = alpha_baseline*(1 - np.exp(-(x/transparent_sigma)**2))
+    #         plt.plot(x,alpha)
+    #         plt.xlabel('Transparency')
+    #         plt.ylabel('rho_sz')
+    #         plt.savefig('/'.join(fout_name.split('/')[:-1]) + '/transparency_profile_rho_sz_all-in-one.png', dpi=400)
+    #         plt.close()
+    #     else:
+    #         # uniform 
+    #         alpha = np.ones(pylab.cm.coolwarm.N)*alpha
+
+    #     my_cmap = pylab.cm.coolwarm(np.arange(pylab.cm.coolwarm.N))
+    #     my_cmap[:,-1] = alpha
+    #     cmap = ListedColormap(my_cmap)
+
+    #     fig = plt.figure(figsize=figsize)
+    #     ax = fig.add_subplot(111, projection='3d')
+
+    #     # Create a 3D grid
+    #     X = self.x_cart_mesh[:,:,0] # !!!(1)
+    #     Y = self.y_cart_mesh[:,:,0]# !!!(2)
+    #     z_cart = np.arange(self.nc)/self.nc * self.c[2] # !!!(3)
+
+    #     z_max_abs_unscaled = np.max(np.abs(self.array))
+    #     z_max_abs = z_max_abs_unscaled*scale_down_data
+
+    #     # Plot the scalar field
+    #     for c_idx in c_idx_arr:
+    #         z_curr = z_cart[c_idx]
+    #         Z_arr = self.array[:, :, c_idx]
+            
+    #         # get levels
+    #         min_Z_arr = np.min(Z_arr)
+    #         max_Z_arr = np.max(Z_arr)
+    #         if abs(min_Z_arr - max_Z_arr) < 1e-10:
+    #             levels = np.linspace(min_Z_arr-1e-10, max_Z_arr+1e-10, 100)*scale_down_data
+    #         else:
+    #             levels = np.linspace(min_Z_arr, max_Z_arr, 100)*scale_down_data
+    #         ax.contourf(X, Y, z_curr+Z_arr*scale_down_data, cmap=cmap, zdir='z', levels=z_curr+levels, vmin=z_curr-z_max_abs, vmax=z_curr+z_max_abs)
+
+    #     fig.colorbar(mpl.cm.ScalarMappable(norm=mpl.colors.Normalize(-z_max_abs_unscaled, z_max_abs_unscaled), cmap=cmap),
+    #          ax=ax, orientation='vertical', label='spin density')
+    #     # manually make a colorbar with limits -z_max_abs, z_max_abs and cmap coolwarm
+        
+    #     # cbar.set_clim(-z_max_abs, z_max_abs)
+    #     # plt.colorbar(plot)
+
+    #     # color
+        
+    #     # margin = 0.05
+    #     # plt.xlim(0, np.max(self.x_cart_mesh*(1+margin)))
+    #     # plt.ylim(0, np.max(self.y_cart_mesh*(1+margin)))
+
+    #     plt.title(f'Spin density ranging from {np.min(self.array):.3f} to {np.max(self.array):.3f}')
+
+    #     ax.set_zlim(min(0, self.c[2]), max(0, self.c[2]))
+
+    #     ax.set_xlabel(r'$x$ ($\mathrm{\AA}$)', fontsize=11)
+    #     ax.set_ylabel(r'$y$ ($\mathrm{\AA}$)', fontsize=11)
+    #     ax.set_zlabel(r'$z$ ($\mathrm{\AA}$)', fontsize=11)
+
+    #     if xlims:
+    #         ax.set_xlim(xlims)
+    #     if ylims:
+    #         ax.set_ylim(ylims)
+    #     if zlims:
+    #         ax.set_zlim(zlims)
+
+    #     ax.set_aspect('equal', adjustable='box')
+    #     # plot colorbar the colorbar
+    #     plt.tight_layout()
+
+    #     if show_plot:
+    #         plt.show()
+    #     else:
+    #         plt.savefig(fout_name, dpi=dpi)
+    #         plt.close()
+
+
+    def plot_cube_file_general(self, X, Y, z_levels_cart, scalar3D_data, c_idx_arr=[0,1,-1], fout_name='rho_sz.png', alpha=0.2, figsize=(8.0, 6), dpi=300, zeros_transparent=True,
+                       xlims=None, ylims=None, zlims=None, show_plot=False, xlabel=None, ylabel=None, zlabel=None, colors_centered=True, cmap='coolwarm', alpha_baseline = 0.50, transparent_sigma=0.15, 
+                       colorbar_label='spin density'):
         """For an array of indices, plot a 2D map as contourf at that z index of the 3D scalar field into a 3D plot at the height given by the z value.
 
         Args:
             c_idx_arr (list, optional): show cuts at these indeces. Defaults to [0,1,-1].
             fout_name (str, optional): _description_. Defaults to 'rho_sz.png'.
         """
-        scale_down_data = 0.02
+        scale_down_data = 0.02 * 1/np.max(np.abs(scalar3D_data))
 
-        if zeros_transparent:
-            transparent_sigma = 0.15
-            alpha_baseline = 0.50
-            print(f"Plotting with transparency near the middle of the colormap: alpha = {alpha_baseline:.3f} (1 - exp(-(x/sigma)^2) with sigma={transparent_sigma:.3f})")
-            x = np.linspace(-0.5, 0.5, pylab.cm.coolwarm.N)
-            alpha = alpha_baseline*(1 - np.exp(-(x/transparent_sigma)**2))
-            plt.plot(x,alpha)
+        cmap = plt.get_cmap(cmap)
+        if zeros_transparent:        
+            if colors_centered:
+                t = np.linspace(-0.5, 0.5, cmap.N)
+                alpha = alpha_baseline*(1 - np.exp(-(t/transparent_sigma)**2))
+                print(f"Plotting with transparency near the middle of the colormap: alpha = {alpha_baseline:.3f} (1 - exp(-(x/sigma)^2) with sigma={transparent_sigma:.3f})")
+            else:
+                t = np.linspace(0, 1, cmap.N)
+                alpha = alpha_baseline * np.exp(-((1-t)/transparent_sigma)**3)
+                print(f"Plotting with transparency everywhere except around largest values: alpha = {alpha_baseline:.3f} exp(-((1-x)/sigma)^3) with sigma={transparent_sigma:.3f})")
+            
+            plt.plot(t,alpha)
             plt.xlabel('Transparency')
             plt.ylabel('rho_sz')
-            plt.savefig('/'.join(fout_name.split('/')[:-1]) + '/transparency_profile_rho_sz_all-in-one.png', dpi=400)
+            fsplit = fout_name.split('/')
+            transparency_fout = '/'.join(fsplit[:-1]) + '/transparency_profile_' + fsplit[-1]
+            plt.savefig(transparency_fout, dpi=400)
             plt.close()
         else:
             # uniform 
-            alpha = np.ones(pylab.cm.coolwarm.N)*alpha
+            alpha = np.ones(cmap.N)*alpha
 
-        my_cmap = pylab.cm.coolwarm(np.arange(pylab.cm.coolwarm.N))
+        my_cmap = cmap(np.arange(cmap.N))
         my_cmap[:,-1] = alpha
         cmap = ListedColormap(my_cmap)
 
@@ -318,29 +421,37 @@ class Density:
         ax = fig.add_subplot(111, projection='3d')
 
         # Create a 3D grid
-        X = self.x_cart_mesh[:,:,0] # !!!(1)
-        Y = self.y_cart_mesh[:,:,0]# !!!(2)
-        z_cart = np.arange(self.nc)/self.nc * self.c[2] # !!!(3)
 
-        z_max_abs_unscaled = np.max(np.abs(self.array))
+        z_max_abs_unscaled = np.max(np.abs(scalar3D_data))
         z_max_abs = z_max_abs_unscaled*scale_down_data
 
         # Plot the scalar field
         for c_idx in c_idx_arr:
-            z_curr = z_cart[c_idx]
-            Z_arr = self.array[:, :, c_idx]
+            z_curr = z_levels_cart[c_idx]
+            Z_arr = scalar3D_data[:, :, c_idx]
             
             # get levels
             min_Z_arr = np.min(Z_arr)
             max_Z_arr = np.max(Z_arr)
             if abs(min_Z_arr - max_Z_arr) < 1e-10:
-                levels = np.linspace(min_Z_arr-1e-10, max_Z_arr+1e-10, 100)*scale_down_data
+                # if all levels in the array are close to a single value (zero typically)
+                levels = np.linspace(min_Z_arr-(1e-10/scale_down_data), max_Z_arr+(1e-10/scale_down_data), 100)*scale_down_data
             else:
                 levels = np.linspace(min_Z_arr, max_Z_arr, 100)*scale_down_data
+            
+            if np.max(levels) < 1e-10:
+                levels *= 1e-10 / np.max(np.abs(levels))
+
             ax.contourf(X, Y, z_curr+Z_arr*scale_down_data, cmap=cmap, zdir='z', levels=z_curr+levels, vmin=z_curr-z_max_abs, vmax=z_curr+z_max_abs)
 
-        fig.colorbar(mpl.cm.ScalarMappable(norm=mpl.colors.Normalize(-z_max_abs_unscaled, z_max_abs_unscaled), cmap=cmap),
-             ax=ax, orientation='vertical', label='spin density')
+        if colors_centered:
+            colorbar_min = -z_max_abs_unscaled
+            colorbar_max = z_max_abs_unscaled
+        else:
+            colorbar_min = 0
+            colorbar_max = z_max_abs_unscaled
+        fig.colorbar(mpl.cm.ScalarMappable(norm=mpl.colors.Normalize(colorbar_min, colorbar_max), cmap=cmap),
+             ax=ax, orientation='vertical', label=colorbar_label)
         # manually make a colorbar with limits -z_max_abs, z_max_abs and cmap coolwarm
         
         # cbar.set_clim(-z_max_abs, z_max_abs)
@@ -352,20 +463,29 @@ class Density:
         # plt.xlim(0, np.max(self.x_cart_mesh*(1+margin)))
         # plt.ylim(0, np.max(self.y_cart_mesh*(1+margin)))
 
-        plt.title(f'Spin density ranging from {np.min(self.array):.3f} to {np.max(self.array):.3f}')
+        plt.title(f'{colorbar_label} ranging from {np.min(scalar3D_data):.3f} to {np.max(scalar3D_data):.3f}')
 
-        ax.set_zlim(min(0, self.c[2]), max(0, self.c[2]))
+        ax.set_zlim(min(0, self.c[2]), max(0, self.c[2]))  #!!!
 
-        ax.set_xlabel(r'$x$ ($\mathrm{\AA}$)', fontsize=11)
-        ax.set_ylabel(r'$y$ ($\mathrm{\AA}$)', fontsize=11)
-        ax.set_zlabel(r'$z$ ($\mathrm{\AA}$)', fontsize=11)
+        # axes labels
+        if not xlabel:
+            xlabel = r'$x$ ($\mathrm{\AA}$)'
+        if not ylabel:
+            ylabel = r'$y$ ($\mathrm{\AA}$)'
+        if not zlabel:
+            zlabel = r'$z$ ($\mathrm{\AA}$)'
+
+        ax.set_xlabel(xlabel, fontsize=11)
+        ax.set_ylabel(ylabel, fontsize=11)
+        ax.set_zlabel(zlabel, fontsize=11)
+
 
         if xlims:
-            ax.set_xlim(xlims)
+            ax.set_xlim(min(xlims), max(xlims))
         if ylims:
-            ax.set_ylim(ylims)
+            ax.set_ylim(min(ylims), max(ylims))
         if zlims:
-            ax.set_zlim(zlims)
+            ax.set_zlim(min(zlims), max(zlims))
 
         ax.set_aspect('equal', adjustable='box')
         # plot colorbar the colorbar
@@ -376,6 +496,61 @@ class Density:
         else:
             plt.savefig(fout_name, dpi=dpi)
             plt.close()
+
+
+    def plot_cube_rho_sz(self, c_idx_arr=[0,1,-1], fout_name='rho_sz.png', alpha=0.2, figsize=(8.0, 6), dpi=300, zeros_transparent=True,
+                       xlims=None, ylims=None, zlims=None, show_plot=False):
+        
+        """Concrete use of plot_cube_file_general for spin density files.
+        """
+        
+        X = self.x_cart_mesh[:,:,0]
+        Y = self.y_cart_mesh[:,:,0]
+        z_levels_cart = np.arange(self.nc)/self.nc * self.c[2]
+        scalar3D_data = self.array
+
+        xlabel = r'$x$ ($\mathrm{\AA}$)'
+        ylabel = r'$y$ ($\mathrm{\AA}$)'
+        zlabel = r'$z$ ($\mathrm{\AA}$)'
+
+        if not zlims:
+            zlims = [min(0, self.c[2]), max(0, self.c[2])]
+
+        self.plot_cube_file_general(X, Y, z_levels_cart, scalar3D_data, c_idx_arr=c_idx_arr, fout_name=fout_name, alpha=alpha, figsize=figsize, dpi=dpi, 
+                                    zeros_transparent=zeros_transparent, xlims=xlims, ylims=ylims, zlims=zlims, show_plot=show_plot, xlabel=xlabel, ylabel=ylabel, zlabel=zlabel)
+        
+
+    def plot_cube_fft(self, c_idx_arr=[0,1,-1], fout_name='rho_sz.png', alpha=0.2, figsize=(8.0, 6), dpi=300, zeros_transparent=True,
+                       xlims=None, ylims=None, zlims=None, show_plot=False):
+        
+        """Concrete use of plot_cube_file_general for spin density files.
+        """
+
+        # 2D grid with correct units but no dimensionality
+        i_vals = (np.arange(self.na)-self.na//2) / self.na
+        j_vals = (np.arange(self.nb)-self.nb//2) / self.nb
+        I, J = np.meshgrid(i_vals, j_vals, indexing='ij')
+
+        X = I * self.ka[0] + J * self.kb[0]
+        Y = I * self.ka[1] + J * self.kb[1]
+
+        scalar3D_data = self.F_abs_sq
+
+        z_levels_cart = (np.arange(self.nc)/self.nc - 0.5) * self.kc[2]
+        xlabel = r'$k_x$ ($\mathrm{\AA}^{-1}$)'
+        ylabel = r'$k_y$ ($\mathrm{\AA}^{-1}$)'
+        zlabel = r'$k_z$ ($\mathrm{\AA}^{-1}$)'
+
+        if not zlims:
+            zlims = (min(z_levels_cart), max(z_levels_cart))
+
+        self.plot_cube_file_general(X, Y, z_levels_cart, scalar3D_data, c_idx_arr=c_idx_arr, fout_name=fout_name, alpha=alpha, figsize=figsize, dpi=dpi, 
+                                    zeros_transparent=zeros_transparent, xlims=xlims, ylims=ylims, zlims=zlims, show_plot=show_plot, xlabel=xlabel, ylabel=ylabel, zlabel=zlabel, 
+                                    colors_centered=False, cmap='viridis', 
+                                    alpha_baseline=0.5,
+                                    transparent_sigma=0.25, 
+                                    colorbar_label=r'$|F|^2$')
+
 
     def FFT(self, verbose=True):
         # norm='backward' means no prefactor applied
@@ -498,6 +673,14 @@ class Density:
         plt.savefig(fout_name, dpi=dpi)
         plt.close()
 
+    def write_cube_file_rho_sz(self, fout='rho_sz_modified.cube'):
+        """Write out the modified rho_sz to a cube file.
+
+        Args:
+            fout (str, optional): _description_. Defaults to 'rho_sz_modified.cube'.
+        """
+        write_cube(self.array, self.metadata, fout)
+
 
 def test_shift():
     array_3D = np.zeros((9,9,9), dtype=np.float_)
@@ -548,18 +731,18 @@ def test_shift():
     plt.close()
 
 
-
 if __name__ == '__main__':
 
     fname_cube_file = './cube_files/Cu2AC4_rho_sz_512.cube' #'./cube_files/Mn2GeO4_rho_sz.cube'
     
     permutation = None #!! for Mn2GeO4 need to use [2,1,0] to swap x,y,z -> z,y,x
 
-    output_folder = './outputs/Cu2AC4/512/masked_Cu1_and_oxygens' #_and_oxygens' # 'Mn2GeO4_kz_tomography_64' #'./gaussian/sigma_0.3_distance_1.0' # Mn2GeO4_kz_tomography_64
+    output_folder = './outputs/Cu2AC4/512/masked_0-cell_fft-plot' #_and_oxygens' # 'Mn2GeO4_kz_tomography_64' #'./gaussian/sigma_0.3_distance_1.0' # Mn2GeO4_kz_tomography_64
 
     density_slices = False
-    density_figsize = (14.0, 11.0)
-    dpi_rho = 300
+    density_3D = False
+    density_figsize = (6.0, 4.5)
+    dpi_rho = 500
     density_slice_each_n_images = 4
 
     all_in_one_xlims = (1.5, 6.5) #None
@@ -570,7 +753,9 @@ if __name__ == '__main__':
     # all_in_one_ylims = None
     # all_in_one_zlims = None
 
-    full_range_fft_spectrum_cuts = True
+    full_range_fft_spectrum_cuts = False
+    zoom_in_fft_spectrum_cuts = False
+    fft_3D = False
     fft_figsize = (4.5, 4.5)
     fft_dpi = 400
     fft_xlims = [-19, 19] # 1/Angstrom
@@ -591,16 +776,15 @@ if __name__ == '__main__':
     r_mt_Cu = 1.1 #Angstrom
     r_mt_O = 0.9 #Angstrom
 
-    site_idx = [1, 41, 8, 24, 17] #[1, 41, 8, 24, 17, 0,  16, 25, 9, 40] #[0] #, 16, 25, 9, 40]  # [0] #,  16, 25, 9, 40] #
-    site_radii = [r_mt_Cu]*2 + 4*[r_mt_O] #+ [r_mt_Cu]+ 4*[r_mt_O]
-
-    site_centers = density.get_sites_of_atoms(site_idx)
-
-    print('site_centers', site_centers)
+    site_idx = [0]# None #[0,  16, 25, 9, 40, 1, 41, 8, 24, 17] #[1, 41, 8, 24, 17, 0,  16, 25, 9, 40] #[0] #, 16, 25, 9, 40]  # [0] #,  16, 25, 9, 40] #
+    site_radii = [r_mt_Cu] #None #[r_mt_Cu] + 4*[r_mt_O] + [r_mt_Cu]+ 4*[r_mt_O]
 
     # leave_sites = {'site_centers':[(0.5, 0.5, 0.5)], 'site_radii':[0.5]}
-    leave_sites = {'site_centers':site_centers, 'site_radii':site_radii}
-    density.mask_except_sites(leave_sites)
+    if site_idx and site_radii:
+        site_centers = density.get_sites_of_atoms(site_idx)
+        print('site_centers', site_centers)
+        leave_sites = {'site_centers':site_centers, 'site_radii':site_radii}
+        density.mask_except_sites(leave_sites)
 
     # get kz at index
     # density.get_kz_at_index(80)
@@ -622,21 +806,35 @@ if __name__ == '__main__':
     if density_slices:
         for i in np.arange(0, density.nc, density_slice_each_n_images):
             c_idx_array = np.array([i, 0]) #np.array([i, -1]
-            density.plot_cube_file(c_idx_arr=c_idx_array, fout_name=f'{output_folder}/rho_sz_exploded_masked_{i}.jpg', alpha=0.8, figsize=density_figsize, dpi=dpi_rho, zeros_transparent=False)  # rho_sz_gauss_exploded
+            density.plot_cube_rho_sz(c_idx_arr=c_idx_array, fout_name=f'{output_folder}/rho_sz_exploded_masked_{i}.jpg', alpha=0.8, figsize=density_figsize, dpi=dpi_rho, zeros_transparent=False)  # rho_sz_gauss_exploded
 
-    # c_idx_array = np.arange(0, density.nc, max(1, density.nc//all_in_one_density_total_slices))
-    # density.plot_cube_file(c_idx_arr=c_idx_array, fout_name=f'{output_folder}/rho_sz_exploded_masked_all.jpg', alpha=0.05, figsize=density_figsize, dpi=dpi_rho, zeros_transparent=True,
-    #                        xlims=all_in_one_xlims, ylims=all_in_one_ylims, zlims=all_in_one_zlims, show_plot=False)  # rho_sz_gauss_exploded_all
-    
+    if density_3D:
+        c_idx_array = np.arange(0, density.nc, max(1, density.nc//all_in_one_density_total_slices))
+        density.plot_cube_rho_sz(c_idx_arr=c_idx_array, fout_name=f'{output_folder}/rho_sz_exploded_masked_all.jpg', alpha=0.05, figsize=(5.5,5.5), dpi=dpi_rho, zeros_transparent=True,
+                            xlims=all_in_one_xlims, ylims=all_in_one_ylims, zlims=all_in_one_zlims, show_plot=False)  # rho_sz_gauss_exploded_all
+
     # single cut
         # kz = 30
     # i_kz = density.get_i_kz(kz_target=kz)
     # density.plot_2D_fft(i_kz=i_kz, k1_idx=k1_idx, k2_idx=k2_idx, fout_name=f'./test_fft.png')
 
+    # ---- SAVE DENSITY TO CUBE FILE -----
+    density.write_cube_file_rho_sz(fout=f'{output_folder}/rho_sz_modified.cube')
+
     # ---- FFT -----
     density.FFT(verbose=True)
 
     # ---- VISUALIZE FFT -----
+    
+    # 3D
+    if fft_3D:
+        c_idx_array = np.arange(0, density.nc, max(1, density.nc//all_in_one_density_total_slices))
+        xlims = [-9, 9] #None
+        ylims = xlims
+        zlims = xlims
+        density.plot_cube_fft(c_idx_arr=c_idx_array, fout_name=f'{output_folder}/F_abs_sq_all.png', figsize=(5.5,5.5), dpi=dpi_rho, zeros_transparent=True,
+                                xlims=xlims, ylims=ylims, zlims=zlims, show_plot=False)
+
     # (1) variable scale, full reciprocal space
     if full_range_fft_spectrum_cuts:
         for i_kz in range(0, density.nc, fft_slice_each_n_images):
@@ -650,19 +848,19 @@ if __name__ == '__main__':
                                 ylims=None)
         
     # (2) fixed scale, zoom-in
-    for i_kz in range(80, 121, 1):
-        appendix = '_zoom_log' if fft_as_log else '_zoom'
-        density.plot_fft_2D(i_kz=i_kz, fft_as_log=fft_as_log, 
-                            fout_name=f'{output_folder}/F_abs_sq{appendix}-scale_kz_at_idx_{i_kz}.png', 
-                            figsize=(5.5, 4.5),
-                            dpi=fft_dpi,
-                            fixed_z_scale=True,
-                            xlims=fft_xlims,
-                            ylims=fft_ylims)
+    if zoom_in_fft_spectrum_cuts:
+        for i_kz in range(80, 121, 1):
+            appendix = '_zoom_log' if fft_as_log else '_zoom'
+            density.plot_fft_2D(i_kz=i_kz, fft_as_log=fft_as_log, 
+                                fout_name=f'{output_folder}/F_abs_sq{appendix}-scale_kz_at_idx_{i_kz}.png', 
+                                figsize=(5.5, 4.5),
+                                dpi=fft_dpi,
+                                fixed_z_scale=True,
+                                xlims=fft_xlims,
+                                ylims=fft_ylims)
 
     # test_shift()
     # exit()
-
 
     # test plotting
     # twoD_data = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
