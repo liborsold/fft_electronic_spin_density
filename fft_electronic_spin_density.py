@@ -287,10 +287,10 @@ class Density:
 
     def plot_cube_file(self, c_idx_arr=[0,1,-1], fout_name='rho_sz.png', alpha=0.2, figsize=(8.0, 6), dpi=300, zeros_transparent=True,
                        xlims=None, ylims=None, zlims=None, show_plot=False):
-        """For an array of inices, plot a 2D map as contourf at that z index of the 3D scalar field into a 3D plot at the height given by the z value.
+        """For an array of indices, plot a 2D map as contourf at that z index of the 3D scalar field into a 3D plot at the height given by the z value.
 
         Args:
-            c_idx_arr (list, optional): _description_. Defaults to [0,1,-1].
+            c_idx_arr (list, optional): show cuts at these indeces. Defaults to [0,1,-1].
             fout_name (str, optional): _description_. Defaults to 'rho_sz.png'.
         """
         scale_down_data = 0.02
@@ -318,9 +318,9 @@ class Density:
         ax = fig.add_subplot(111, projection='3d')
 
         # Create a 3D grid
-        X = self.x_cart_mesh[:,:,0]
-        Y = self.y_cart_mesh[:,:,0]
-        z_cart = np.arange(self.nc)/self.nc * self.c[2]
+        X = self.x_cart_mesh[:,:,0] # !!!(1)
+        Y = self.y_cart_mesh[:,:,0]# !!!(2)
+        z_cart = np.arange(self.nc)/self.nc * self.c[2] # !!!(3)
 
         z_max_abs_unscaled = np.max(np.abs(self.array))
         z_max_abs = z_max_abs_unscaled*scale_down_data
@@ -404,7 +404,7 @@ class Density:
     def plot_fft_2D(self, i_kz, fft_as_log=False, k1_idx=0, k2_idx=1, fout_name='colormap_2D_out.png', verbose=True, figsize=(8.0, 6.0), 
                     dpi=500,
                     fixed_z_scale=True, 
-                    xlims=None, ylims=None):
+                    xlims=None, ylims=None,):
 
         # ----------------- RECIPROCAL SPACE PLOTTING -----------------
         # sum all projections into plane (defined by a vector normal to the plane)
