@@ -583,7 +583,7 @@ class Density:
     def plot_fft_2D(self, i_kz, fft_as_log=False, k1_idx=0, k2_idx=1, fout_name='colormap_2D_out.png', verbose=True, figsize=(8.0, 6.0), 
                     dpi=500,
                     fixed_z_scale=True, 
-                    xlims=None, ylims=None,):
+                    xlims=None, ylims=None,zlims=None):
 
         # ----------------- RECIPROCAL SPACE PLOTTING -----------------
         # sum all projections into plane (defined by a vector normal to the plane)
@@ -668,6 +668,8 @@ class Density:
             plt.xlim(xlims)
         if ylims:
             plt.ylim(ylims)
+        if zlims:
+            plt.clim(zlims)
 
         plt.tight_layout()
         if fixed_z_scale:
@@ -749,14 +751,36 @@ def test_shift():
 
 if __name__ == '__main__':
 
-    fname_cube_file = './cube_files/Cu2AC4_rho_sz_256.cube' #'./cube_files/Mn2GeO4_rho_sz.cube'
+    # --- INPUT ----
+
+    fname_cube_file = './cube_files/Cu2AC4_rho_sz_512.cube' #'./cube_files/Mn2GeO4_rho_sz.cube'
     
     permutation = None #!! for Mn2GeO4 need to use [2,1,0] to swap x,y,z -> z,y,x
 
-    output_folder = './outputs/Cu2AC4/512/masked_0_gaussian_sigma_0.3' #_and_oxygens' # 'Mn2GeO4_kz_tomography_64' #'./gaussian/sigma_0.3_distance_1.0' # Mn2GeO4_kz_tomography_64
+    output_folder = './outputs/Cu2AC4/512/masked_Cu0' #_and_oxygens' # 'Mn2GeO4_kz_tomography_64' #'./gaussian/sigma_0.3_distance_1.0' # Mn2GeO4_kz_tomography_64
 
-    density_slices = False
+    # ---- CALCULATION CONTROL ----
+
+    replace_DFT_by_model = False
+
     density_3D = False
+    density_slices = False
+    
+    fft_3D = False
+    full_range_fft_spectrum_cuts = False
+    zoom_in_fft_spectrum_cuts = True
+
+    write_cube_files = False
+
+    # ---- PARAMETERS -----
+    r_mt_Cu = 1.1 #Angstrom
+    r_mt_O = 0.9 #Angstrom
+
+    site_idx = [0] #, 1] # 16, 25, 9, 40, 1, 41, 8, 24, 17] #  16, 25, 9, 40] #[0]# None #[0,  16, 25, 9, 40, 1, 41, 8, 24, 17] #[1, 41, 8, 24, 17, 0,  16, 25, 9, 40] #[0] #, 16, 25, 9, 40]  # [0] #,  16, 25, 9, 40] #
+    site_radii = [r_mt_Cu] # + 4*[r_mt_O] + [r_mt_Cu]+ 4*[r_mt_O]
+    # !!!! [0, 3.5e6] for a single site and [0, 7e6] for double !
+    fft_zlims = [0, 3.5e6] # arb. units
+
     density_figsize = (6.0, 4.5)
     dpi_rho = 500
     density_slice_each_n_images = 4
@@ -769,13 +793,11 @@ if __name__ == '__main__':
     # all_in_one_ylims = None
     # all_in_one_zlims = None
 
-    full_range_fft_spectrum_cuts = False
-    zoom_in_fft_spectrum_cuts = False
-    fft_3D = False
     fft_figsize = (4.5, 4.5)
     fft_dpi = 400
     fft_xlims = [-19, 19] # 1/Angstrom
     fft_ylims = [-19, 19] # 1/Angstrom
+    
     fft_as_log = False
     fft_slice_each_n_images = 4
     all_in_one_density_total_slices = 300
@@ -789,11 +811,6 @@ if __name__ == '__main__':
 
 
     # ---- MASKING -----
-    r_mt_Cu = 1.1 #Angstrom
-    r_mt_O = 0.9 #Angstrom
-
-    site_idx = [0] #  16, 25, 9, 40] #[0]# None #[0,  16, 25, 9, 40, 1, 41, 8, 24, 17] #[1, 41, 8, 24, 17, 0,  16, 25, 9, 40] #[0] #, 16, 25, 9, 40]  # [0] #,  16, 25, 9, 40] #
-    site_radii = [r_mt_Cu] + 4*[r_mt_O] #+ [r_mt_Cu]+ 4*[r_mt_O]
 
     # leave_sites = {'site_centers':[(0.5, 0.5, 0.5)], 'site_radii':[0.5]}
     if site_idx and site_radii:
@@ -809,14 +826,15 @@ if __name__ == '__main__':
 
     # ---- INSERT MODEL -----
     # model_type = 'gaussian'
-    model_type = 'gaussian' #'dz2'
+    model_type = 'dz2'
     
     # parameters = {'sigmas':[0.2, 0.2], 'centers':[(-3.0, -3, -5), (-2.0, -3, -5)], 'signs':[1, -1]}
     # parameters = {'sigmas':[0.2, 0.2], 'centers':[(-3.25, -3, -5), (-1.75, -3, -5)], 'signs':[1, -1]}
     # parameters = {'sigmas':[0.5, 0.5], 'centers':[(-3.00, -3, -5), (-2.00, -3, -5)], 'signs':[1, -1]}
-    parameters = {'sigmas':[0.3], 'centers':site_centers, 'signs':[1]}
+    parameters = {'sigmas':[0.3, 0.3], 'centers':site_centers, 'signs':[1,-1]}
 
-    density.replace_by_model(type=model_type, parameters=parameters)
+    if replace_DFT_by_model:
+        density.replace_by_model(type=model_type, parameters=parameters)
 
 
     # ---- VISUALIZE DENSITY -----
@@ -836,13 +854,15 @@ if __name__ == '__main__':
     # density.plot_2D_fft(i_kz=i_kz, k1_idx=k1_idx, k2_idx=k2_idx, fout_name=f'./test_fft.png')
 
     # ---- WRITE MODIFIED DENSITY TO CUBE FILE -----
-    density.write_cube_file_rho_sz(fout=f'{output_folder}/rho_sz_modified.cube')
+    if write_cube_files:
+        density.write_cube_file_rho_sz(fout=f'{output_folder}/rho_sz_modified.cube')
 
     # ---- FFT -----
     density.FFT(verbose=True)
 
     # ---- WRITE MODIFIED FFT TO CUBE FILE -----
-    density.write_cube_file_fft(fout=f'{output_folder}/fft.cube')
+    if write_cube_files:
+        density.write_cube_file_fft(fout=f'{output_folder}/fft.cube')
 
     # ---- VISUALIZE FFT -----
     
@@ -877,7 +897,8 @@ if __name__ == '__main__':
                                 dpi=fft_dpi,
                                 fixed_z_scale=True,
                                 xlims=fft_xlims,
-                                ylims=fft_ylims)
+                                ylims=fft_ylims, 
+                                zlims=fft_zlims)
 
     # test_shift()
     # exit()
