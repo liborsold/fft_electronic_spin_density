@@ -177,7 +177,7 @@ class Density:
         return i_kz
 
 
-    def replace_by_model(self, type='gaussian', parameters={'sigmas':[0.5], 'centers':[(0.5, 0.5, 0.5)], 'signs':[1]}):
+    def replace_by_model(self, parameters={'type':'gaussian', 'sigmas':[0.5], 'centers':[(0.5, 0.5, 0.5)], 'signs':[1]}):
         """Replace the scalar field in the numpy array by a model function.
 
         Args:
@@ -225,7 +225,7 @@ class Density:
         models['dz2'] = dz2
         
         # choose the 3D scalar field function from models
-        f = models[type]
+        f = models[parameters['type']]
 
         # construct an equivalent of the scalar array loaded from the .cube file but
         #   feeding in the model
@@ -636,7 +636,7 @@ class Density:
             exponent = f"{int(exponent):+01d}"  # Format exponent with a sign and 3 digits
             return f"{base}e{exponent}"
         # format string which keeps fixed length of the number, scientific format 
-        plt.colorbar(label=label, format=FuncFormatter(fmt))
+        cbar = plt.colorbar(label=label, format=FuncFormatter(fmt))
 
         if fixed_z_scale:
             plt.clim(0, np.max(self.F_abs_sq))
@@ -669,6 +669,10 @@ class Density:
         if ylims:
             plt.ylim(ylims)
         if zlims:
+            # first, add one tick with the colorbar maximum to the colorbar ticks
+            # like this, it is clear what is the colorbar scale and can be easily compared with other plots
+            if not zlims[1] in cbar.get_ticks():
+                cbar.set_ticks(list(cbar.get_ticks()) + [zlims[1]])
             plt.clim(zlims)
 
         plt.tight_layout()
@@ -749,7 +753,7 @@ def test_shift():
     plt.close()
 
 
-if __name__ == '__main__':
+def workflow(output_folder, site_idx, site_radii, replace_DFT_by_model, parameters_model):
 
     # --- INPUT ----
 
@@ -757,29 +761,26 @@ if __name__ == '__main__':
     
     permutation = None #!! for Mn2GeO4 need to use [2,1,0] to swap x,y,z -> z,y,x
 
-    output_folder = './outputs/Cu2AC4/512/masked_Cu0' #_and_oxygens' # 'Mn2GeO4_kz_tomography_64' #'./gaussian/sigma_0.3_distance_1.0' # Mn2GeO4_kz_tomography_64
-
     # ---- CALCULATION CONTROL ----
 
-    replace_DFT_by_model = False
-
-    density_3D = False
-    density_slices = False
+    density_3D = True
+    density_slices = True
     
-    fft_3D = False
-    full_range_fft_spectrum_cuts = False
+    fft_3D = True
+    full_range_fft_spectrum_cuts = True
     zoom_in_fft_spectrum_cuts = True
 
-    write_cube_files = False
+    write_cube_files = True
 
     # ---- PARAMETERS -----
-    r_mt_Cu = 1.1 #Angstrom
-    r_mt_O = 0.9 #Angstrom
 
-    site_idx = [0] #, 1] # 16, 25, 9, 40, 1, 41, 8, 24, 17] #  16, 25, 9, 40] #[0]# None #[0,  16, 25, 9, 40, 1, 41, 8, 24, 17] #[1, 41, 8, 24, 17, 0,  16, 25, 9, 40] #[0] #, 16, 25, 9, 40]  # [0] #,  16, 25, 9, 40] #
-    site_radii = [r_mt_Cu] # + 4*[r_mt_O] + [r_mt_Cu]+ 4*[r_mt_O]
     # !!!! [0, 3.5e6] for a single site and [0, 7e6] for double !
-    fft_zlims = [0, 3.5e6] # arb. units
+    if not site_idx:
+        fft_zlims = [0, 4*6.4e6]
+    elif 0 in site_idx and 1 in site_idx:
+        fft_zlims = [0, 6.4e6] 
+    else:
+        fft_zlims = [0, 1.6e6] # arb. units
 
     density_figsize = (6.0, 4.5)
     dpi_rho = 500
@@ -825,16 +826,14 @@ if __name__ == '__main__':
     # density.get_index_at_kz(14.67785)
 
     # ---- INSERT MODEL -----
-    # model_type = 'gaussian'
-    model_type = 'dz2'
-    
-    # parameters = {'sigmas':[0.2, 0.2], 'centers':[(-3.0, -3, -5), (-2.0, -3, -5)], 'signs':[1, -1]}
-    # parameters = {'sigmas':[0.2, 0.2], 'centers':[(-3.25, -3, -5), (-1.75, -3, -5)], 'signs':[1, -1]}
-    # parameters = {'sigmas':[0.5, 0.5], 'centers':[(-3.00, -3, -5), (-2.00, -3, -5)], 'signs':[1, -1]}
-    parameters = {'sigmas':[0.3, 0.3], 'centers':site_centers, 'signs':[1,-1]}
+    # parameters_model = {'type':'gaussian', 'sigmas':[0.2, 0.2], 'centers':[(-3.0, -3, -5), (-2.0, -3, -5)], 'signs':[1, -1]}
+    # parameters_model = {'type':'gaussian', 'sigmas':[0.3, 0.3], 'centers':site_centers, 'signs':[1,-1]}
+
+    # add centers automatically according to the sites
+    parameters_model['centers'] = site_centers
 
     if replace_DFT_by_model:
-        density.replace_by_model(type=model_type, parameters=parameters)
+        density.replace_by_model(parameters=parameters_model)
 
 
     # ---- VISUALIZE DENSITY -----
@@ -906,3 +905,91 @@ if __name__ == '__main__':
     # test plotting
     # twoD_data = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
     # plot_2D_fft(twoD_data)
+
+
+if __name__ == '__main__':
+
+    r_mt_Cu = 1.1 #Angstrom
+    r_mt_O = 0.9 #Angstrom
+
+    # ===== RUN a single case =====
+    run_a_single_case = False
+
+    if run_a_single_case:
+        output_folder = './outputs/Cu2AC4/512/masked_Cu0_and_oxygens' #_and_oxygens' # 'Mn2GeO4_kz_tomography_64' #'./gaussian/sigma_0.3_distance_1.0' # Mn2GeO4_kz_tomography_64
+        
+        site_idx = [0, 16, 25, 9, 40] #, 1] # 16, 25, 9, 40, 1, 41, 8, 24, 17] #  16, 25, 9, 40] #[0]# None #[0,  16, 25, 9, 40, 1, 41, 8, 24, 17] #[1, 41, 8, 24, 17, 0,  16, 25, 9, 40] #[0] #, 16, 25, 9, 40]  # [0] #,  16, 25, 9, 40] #
+        site_radii = [r_mt_Cu] + 4*[r_mt_O] #+ [r_mt_Cu]+ 4*[r_mt_O]
+        workflow(site_idx=site_idx, site_radii=site_radii, output_folder=output_folder)
+
+
+    # ===== RUN selected cases among the predefined ones =====
+    run_cases = [9] # None
+
+    site_idx_all = [
+        [0], #0            
+        [1], #1
+        [0,1], #2
+        [0, 16, 25, 9, 40], #3
+        [1, 41, 8, 24, 17], #4
+        [0,  16, 25, 9, 40, 1, 41, 8, 24, 17,], #5
+        None, #6
+        [0], #7
+        [0,1], #8
+        [0,1] #9
+    ]
+
+    site_radii_all = [
+        [r_mt_Cu], #0
+        [r_mt_Cu], #1
+        [r_mt_Cu]*2, #2
+        [r_mt_Cu] + 4*[r_mt_O], #3
+        [r_mt_Cu] + 4*[r_mt_O], #4
+        [r_mt_Cu] + 4*[r_mt_O] + [r_mt_Cu] + 4*[r_mt_O], #5
+        None, #6
+        [r_mt_Cu], #7
+        [r_mt_Cu]*2, #8
+        [r_mt_Cu]*2, #9
+    ]
+
+    base_path = './outputs/Cu2AC4/512/'
+    output_folders_all = [
+        base_path+'masked_Cu0',
+        base_path+'masked_Cu1',
+        base_path+'masked_Cu0-1',
+        base_path+'masked_Cu0_and_oxygens',
+        base_path+'masked_Cu1_and_oxygens',
+        base_path+'masked_Cu0-1_and_oxygens',
+        base_path+'unmasked_unit-cell',
+        base_path+'masked_0_gaussian_sigma_0.3', #7
+        base_path+'masked_0_1_gaussians_sigma_0.3', #8
+        base_path+'masked_0_1_gaussians_sigma_0.3_same-sign', #9
+    ]
+
+    replace_DFT_by_model_all = [
+        False, #0
+        False, #1
+        False, #2
+        False, #3
+        False, #4
+        False, #5
+        False, #6
+        True, #7
+        True, #8
+        True, #9
+    ]
+
+    parameters_model_all = [None]*7 + [
+        {'type':'gaussian', 'sigmas':[0.3], 'centers':[], 'signs':[1]}, #7
+        {'type':'gaussian', 'sigmas':[0.3, 0.3], 'centers':[], 'signs':[1,-1]}, #8
+        {'type':'gaussian', 'sigmas':[0.3, 0.3], 'centers':[], 'signs':[1,1]}, #9
+    ]
+
+    if run_cases:
+        for i in run_cases:
+            site_idx = site_idx_all[i]
+            site_radii = site_radii_all[i]
+            output_folder = output_folders_all[i]
+            replace_DFT_by_model = replace_DFT_by_model_all[i]
+            parameters_model = parameters_model_all[i]
+            workflow(site_idx=site_idx, site_radii=site_radii, output_folder=output_folder, replace_DFT_by_model=replace_DFT_by_model, parameters_model=parameters_model)
