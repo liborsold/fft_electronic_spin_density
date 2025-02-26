@@ -223,6 +223,43 @@ class Density:
             r2 = (x-center[0])**2 + (y-center[1])**2 + (z-center[2])**2
             return sign * np.abs(3*(z-center[2])**2 - r2)/r2 * np.exp(-(r2/(2*sigma**2)))
         models['dz2'] = dz2
+
+        def dyz(x, y, z, sigma=0.5, center=(3,3,3), sign=1, amplitude=1, theta0=0, phi0=0):
+            """dyz orbital distribution in 3D space - https://math.stackexchange.com/questions/434629/3-d-generalization-of-the-gaussian-point-spread-function
+
+            Args:
+                x (_type_): Cartesian x coordinate in Angstrom.
+                y (_type_): Cartesian y coordinate in Angstrom.
+                z (_type_): Cartesian z coordinate in Angstrom.
+                sigma (float, optional): _description_. Defaults to 0.5.
+                center (tuple, optional): _description_. Defaults to (3,3,3).
+                sign (int, optional): _description_. Defaults to 1.
+
+            Returns:
+                _type_: _description_
+            """
+            # normalized gaussian function - see
+            r2 = (x-center[0])**2 + (y-center[1])**2 + (z-center[2])**2
+            theta = np.arctan2(np.sqrt((x-center[0])**2 + (y-center[1])**2), z-center[2])
+            phi = np.arccos((x-center[0]) / (y-center[1]))
+            return amplitude * sign * np.sin(2*(theta-theta0))*np.sin((phi-phi0)) * np.exp(-(r2/(2*sigma**2)))
+        models['dyz'] = dyz
+
+        # check plot
+        # x = np.linspace(-1, 1, 101)
+        # y = np.linspace(-1, 1, 101)
+        # z = np.linspace(-1, 1, 101)
+        # X, Y, Z = np.meshgrid(x, y, z)
+        # f = models['dyz']
+        # model_density = f(X, Y, Z, sigma=0.5, center=(0,0,0), sign=1, amplitude=1, theta0=0, phi0=0)
+        # fig = plt.figure()
+        # ax = fig.add_subplot(111, projection='3d')
+        # plot = ax.scatter(X, Y, Z, c=model_density.flatten(), cmap='viridis')
+        # ax.set_aspect('equal', adjustable='box')
+        # plt.colorbar(plot)
+        # plt.tight_layout()
+        # plt.savefig('model_dyz.png')
+        # exit()
         
         # choose the 3D scalar field function from models
         f = models[parameters['type']]
@@ -763,14 +800,14 @@ def workflow(output_folder, site_idx, site_radii, replace_DFT_by_model, paramete
 
     # ---- CALCULATION CONTROL ----
 
-    density_3D = True
+    density_3D = False
     density_slices = True
     
-    fft_3D = True
-    full_range_fft_spectrum_cuts = True
-    zoom_in_fft_spectrum_cuts = True
+    fft_3D = False
+    full_range_fft_spectrum_cuts = False
+    zoom_in_fft_spectrum_cuts = False
 
-    write_cube_files = True
+    write_cube_files = False
 
     # ---- PARAMETERS -----
 
@@ -924,7 +961,7 @@ if __name__ == '__main__':
 
 
     # ===== RUN selected cases among the predefined ones =====
-    run_cases = [9] # None
+    run_cases = [10] # None
 
     site_idx_all = [
         [0], #0            
@@ -936,7 +973,8 @@ if __name__ == '__main__':
         None, #6
         [0], #7
         [0,1], #8
-        [0,1] #9
+        [0,1], #9
+        [0], #10
     ]
 
     site_radii_all = [
@@ -950,6 +988,7 @@ if __name__ == '__main__':
         [r_mt_Cu], #7
         [r_mt_Cu]*2, #8
         [r_mt_Cu]*2, #9
+        [r_mt_Cu]*1, #10
     ]
 
     base_path = './outputs/Cu2AC4/512/'
@@ -964,6 +1003,7 @@ if __name__ == '__main__':
         base_path+'masked_0_gaussian_sigma_0.3', #7
         base_path+'masked_0_1_gaussians_sigma_0.3', #8
         base_path+'masked_0_1_gaussians_sigma_0.3_same-sign', #9
+        base_path+'masked_0_dyz_rotated_test', #10
     ]
 
     replace_DFT_by_model_all = [
@@ -977,12 +1017,14 @@ if __name__ == '__main__':
         True, #7
         True, #8
         True, #9
+        True, #10
     ]
 
     parameters_model_all = [None]*7 + [
         {'type':'gaussian', 'sigmas':[0.3], 'centers':[], 'signs':[1]}, #7
         {'type':'gaussian', 'sigmas':[0.3, 0.3], 'centers':[], 'signs':[1,-1]}, #8
         {'type':'gaussian', 'sigmas':[0.3, 0.3], 'centers':[], 'signs':[1,1]}, #9
+        {'type':'dyz', 'sigmas':[0.3], 'centers':[], 'signs':[1]}, #10
     ]
 
     if run_cases:
