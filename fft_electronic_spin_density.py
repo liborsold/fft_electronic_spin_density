@@ -13,6 +13,8 @@ from matplotlib.colors import ListedColormap
 import os
 from matplotlib.ticker import FuncFormatter
 from copy import deepcopy
+from scipy.spatial.transform import Rotation as R
+from scipy.optimize import minimize
 
 class Density:
     """Read, visualize and fourier transform (spin) density from gaussian .cube files.
@@ -177,17 +179,18 @@ class Density:
         return i_kz
 
 
-    def replace_by_model(self, parameters={'type':'gaussian', 'sigmas':[0.5], 'centers':[(0.5, 0.5, 0.5)], 'signs':[1]}):
+    def replace_by_model(self, fit=False, parameters={'type':'gaussian', 'sigmas':[0.5], 'centers':[(0.5, 0.5, 0.5)], 'fit_params_init_all':{'amplitude':[1]}}):
         """Replace the scalar field in the numpy array by a model function.
 
         Args:
             type (str, optional): Type of the model function. Defaults to 'gaussian'.
-            parameters (dict, optional): Parameters of the model function. Defaults to {'sigmas':[0.5], 'centers':[(0.5, 0.5, 0.5)], 'signs':[1]}.
+            fit (bool, optional): Fit the model to the data. Defaults to False.
+            parameters (dict, optional): Parameters of the model function. Defaults to {'sigmas':[0.5], 'centers':[(0.5, 0.5, 0.5)], 'fit_params_init_all':{'amplitude':[1]}}.
         """
 
-        # create models
+        # define models
         models = {}
-        def gaussian(x, y, z, sigma=0.5, center=(3,3,3), sign=1):
+        def gaussian(x, y, z, sigma=0.5, center=(3,3,3), amplitude=1):
             """Gaussian distribution in 3D space - https://math.stackexchange.com/questions/434629/3-d-generalization-of-the-gaussian-point-spread-function
 
             Args:
@@ -202,10 +205,10 @@ class Density:
                 _type_: _description_
             """
             # normalized gaussian function - see 
-            return sign * np.exp(-((x-center[0])**2 + (y-center[1])**2 + (z-center[2])**2)/(2*sigma**2)) # * 1/(sigma**3 * (2*np.pi)**(3/2)) 
+            return amplitude * np.exp(-((x-center[0])**2 + (y-center[1])**2 + (z-center[2])**2)/(2*sigma**2)) # * 1/(sigma**3 * (2*np.pi)**(3/2)) 
         models['gaussian'] = gaussian
 
-        def dz2(x, y, z, sigma=0.5, center=(3,3,3), sign=1):
+        def dz2(x, y, z, sigma=0.5, center=(3,3,3), amplitude=1):
             """dz2 orbital distribution in 3D space - https://math.stackexchange.com/questions/434629/3-d-generalization-of-the-gaussian-point-spread-function
 
             Args:
@@ -221,11 +224,11 @@ class Density:
             """
             # normalized gaussian function - see
             r2 = (x-center[0])**2 + (y-center[1])**2 + (z-center[2])**2
-            return sign * np.abs(3*(z-center[2])**2 - r2)/r2 * np.exp(-(r2/(2*sigma**2)))
+            return amplitude * np.abs(3*(z-center[2])**2 - r2)/r2 * np.exp(-(r2/(2*sigma**2)))
         models['dz2'] = dz2
 
-        def dyz(x, y, z, sigma=0.5, center=(3,3,3), sign=1, amplitude=1, theta0=0, phi0=0):
-            """dyz orbital distribution in 3D space - https://math.stackexchange.com/questions/434629/3-d-generalization-of-the-gaussian-point-spread-function
+        def dxy(x, y, z, sigma=0.5, center=(3,3,3), amplitude=1, theta0=np.pi/4, phi0=0):
+            """dxy orbital distribution in 3D space - https://math.stackexchange.com/questions/434629/3-d-generalization-of-the-gaussian-point-spread-function
 
             Args:
                 x (_type_): Cartesian x coordinate in Angstrom.
@@ -238,19 +241,65 @@ class Density:
             Returns:
                 _type_: _description_
             """
-            # normalized gaussian function - see
-            r2 = (x-center[0])**2 + (y-center[1])**2 + (z-center[2])**2
-            theta = np.arctan2(np.sqrt((x-center[0])**2 + (y-center[1])**2), z-center[2])
-            phi = np.arccos((x-center[0]) / (y-center[1]))
-            return amplitude * sign * np.sin(2*(theta-theta0))*np.sin((phi-phi0)) * np.exp(-(r2/(2*sigma**2)))
-        models['dyz'] = dyz
 
+            # center at site
+            x, y, z = x-center[0], y-center[1], z-center[2]
+
+            # Rot is a matrix that rotates the orbital in that way (the inv ensures that in fact)
+            #   - extrinsic rotations 'zyz' along the laboratory coordinate system axes
+            #   - intrinsic rotations 'ZYZ' along the orbital coordinate system axes
+            Rot = R.from_euler('ZYZ', [phi0, theta0, 0], degrees=False).inv()
+            
+            # einstein notation matrix multiplication
+            x, y, z = np.einsum('ij,jklm->iklm', Rot.as_matrix(), [x, y, z])
+
+            # get the wave function
+            r_sq = x**2 + y**2 + z**2
+            return amplitude * x*y/r_sq * np.exp(-(r_sq/(2*sigma**2)))
+        models['dxy'] = dxy
+
+        def dx2y2(x, y, z, sigma=0.5, center=(3,3,3), amplitude=1, theta0=0, phi0=0, rho0=1, x_ani=1.00):
+            """dxy orbital distribution in 3D space - https://math.stackexchange.com/questions/434629/3-d-generalization-of-the-gaussian-point-spread-function
+
+            Args:
+                x (_type_): Cartesian x coordinate in Angstrom.
+                y (_type_): Cartesian y coordinate in Angstrom.
+                z (_type_): Cartesian z coordinate in Angstrom.
+                sigma (float, optional): _description_. Defaults to 0.5.
+                center (tuple, optional): _description_. Defaults to (3,3,3).
+                sign (int, optional): _description_. Defaults to 1.
+
+            Returns:
+                _type_: _description_
+            """
+
+            Z = 29
+            a0 = physical_constants['Bohr radius'][0] * 1e10 # Bohr radius in units of Angstrom
+
+            # center at site
+            x, y, z = x-center[0], y-center[1], z-center[2]
+
+            # Rot is a matrix that rotates the orbital in that way (the inv ensures that in fact)
+            #   - extrinsic rotations 'yzy' along the laboratory coordinate system axes
+            Rot = R.from_euler('yzy', [theta0, phi0, 0], degrees=False).inv()
+            
+            # einstein notation matrix multiplication
+            x, y, z = np.einsum('ij,jklm->iklm', Rot.as_matrix(), [x, y, z])
+
+            x *= x_ani
+
+            # get the wave function
+            r_sq = (x**2 + y**2 + z**2)
+            r = np.sqrt(r_sq)
+
+            return amplitude * ( (x**2 - y**2)/r_sq * (r/a0)**2 * np.exp(-(Z*r/a0/3/rho0)) )**2
+        models['dx2y2'] = dx2y2
         # check plot
         # x = np.linspace(-1, 1, 101)
         # y = np.linspace(-1, 1, 101)
         # z = np.linspace(-1, 1, 101)
         # X, Y, Z = np.meshgrid(x, y, z)
-        # f = models['dyz']
+        # f = models['dxy']
         # model_density = f(X, Y, Z, sigma=0.5, center=(0,0,0), sign=1, amplitude=1, theta0=0, phi0=0)
         # fig = plt.figure()
         # ax = fig.add_subplot(111, projection='3d')
@@ -258,28 +307,80 @@ class Density:
         # ax.set_aspect('equal', adjustable='box')
         # plt.colorbar(plot)
         # plt.tight_layout()
-        # plt.savefig('model_dyz.png')
+        # plt.savefig('model_dxy.png')
         # exit()
         
         # choose the 3D scalar field function from models
         f = models[parameters['type']]
 
-        # construct an equivalent of the scalar array loaded from the .cube file but
-        #   feeding in the model
-        model_density = np.zeros_like(self.array)
+        # get the optional other parameters for the model
+        #    - either as the final ones if no fitting, or starting values for fitting
+        if 'fit_params_init_all' in parameters:
+            fit_params_init_all = parameters['fit_params_init_all']
+        else:
+            fit_params_init_all = {}
 
-        # place all the e.g. gaussians in the space
-        for i in range(len(parameters['sigmas'])):
-            # create a function in 3D space that gives a Gaussian density distribution around point centers[i] with standard deviation sigmas[i]
-            # the sign of the density is given by signs[i]
-            sigma = parameters['sigmas'][i]
-            center = parameters['centers'][i]
-            sign = parameters['signs'][i]
+        # convenience function returning the model density depending on the parameters
+        def construct_model_density(fit_params_init_all):
+            model_density = np.zeros_like(self.array)
 
-            model_density += f(self.x_cart_mesh, self.y_cart_mesh, self.z_cart_mesh, sigma=sigma, center=center, sign=sign)
+            # place all the site-centered models in the space
+            for i in range(len(parameters['sigmas'])):
+                # create a function in 3D space that gives a Gaussian density distribution around point centers[i] with standard deviation sigmas[i]
+                # the sign of the density is given by signs[i]
+                sigma = parameters['sigmas'][i]
+                center = parameters['centers'][i]
+                if fit_params_init_all:
+                    fit_params_init = {key:value[i] for key, value in fit_params_init_all.items()}
+                else:
+                    fit_params_init = {}
+
+                model_density += f(self.x_cart_mesh, self.y_cart_mesh, self.z_cart_mesh, sigma=sigma, center=center, **fit_params_init)
+            return model_density
         
-        # replace the scalar field in the numpy array by the model
-        self.array = model_density
+        if fit:
+            def dict_to_list_and_flatten(dict_in):
+                list_out = []
+                for value in dict_in.values():
+                    for val in value:
+                        list_out.append(val)
+                return list_out
+            
+            def list_to_dict(list_in, N_for_each_key, keys):
+                dict_out = {}
+                for i, key in enumerate(keys):
+                    dict_out[key] = list_in[N_for_each_key*i:N_for_each_key*(i+1)]
+                return dict_out
+            
+            N_for_each_key = len(fit_params_init_all[list(fit_params_init_all.keys())[0]])
+            keys = fit_params_init_all.keys()
+            
+            global loss_function_counter 
+            loss_function_counter = 0
+            def loss_function(fit_params_all_as_list):
+                # convert the dictionary of list values to a single list - need to feed the loss function with a single list
+                # count number of iterations
+                global loss_function_counter 
+                loss_function_counter += 1
+                fit_params_init_all = list_to_dict(fit_params_all_as_list, N_for_each_key, keys)
+                loss_function_value = np.mean((construct_model_density(fit_params_init_all) - self.array)**2)
+                print(f'call {loss_function_counter}:   params {fit_params_all_as_list}      loss {loss_function_value:.6e}')
+                return loss_function_value
+            
+            # convert the initial dictionary of list values to a single list - need to feed the loss function with a single list 
+            fit_params_init_all_as_list = dict_to_list_and_flatten(fit_params_init_all)
+
+            # fit
+            res = minimize(loss_function, x0=fit_params_init_all_as_list, method='Nelder-Mead', options={'disp': True}, tol=1e-1)
+            
+            print(res)
+
+            fit_params_final_all = list_to_dict(res.x, N_for_each_key, keys)
+        else:
+            fit_params_final_all = fit_params_init_all
+
+        # replace the scalar field in the numpy array by the (possibly fitted) model
+        self.array = construct_model_density(fit_params_final_all)
 
 
     def coordinate_permutation(self, cube_data, permutation=[2,1,0]):
@@ -790,24 +891,24 @@ def test_shift():
     plt.close()
 
 
-def workflow(output_folder, site_idx, site_radii, replace_DFT_by_model, parameters_model):
+def workflow(output_folder, site_idx, site_radii, replace_DFT_by_model, parameters_model, fit_model_to_DFT):
 
     # --- INPUT ----
 
-    fname_cube_file = './cube_files/Cu2AC4_rho_sz_512.cube' #'./cube_files/Mn2GeO4_rho_sz.cube'
+    fname_cube_file = './cube_files/Cu2AC4_rho_sz_256.cube' #'./cube_files/Mn2GeO4_rho_sz.cube'
     
     permutation = None #!! for Mn2GeO4 need to use [2,1,0] to swap x,y,z -> z,y,x
 
     # ---- CALCULATION CONTROL ----
 
     density_3D = False
-    density_slices = True
+    density_slices = False
     
     fft_3D = False
     full_range_fft_spectrum_cuts = False
     zoom_in_fft_spectrum_cuts = False
 
-    write_cube_files = False
+    write_cube_files = True
 
     # ---- PARAMETERS -----
 
@@ -862,15 +963,15 @@ def workflow(output_folder, site_idx, site_radii, replace_DFT_by_model, paramete
     # density.get_index_at_kz(-14.67785)
     # density.get_index_at_kz(14.67785)
 
-    # ---- INSERT MODEL -----
-    # parameters_model = {'type':'gaussian', 'sigmas':[0.2, 0.2], 'centers':[(-3.0, -3, -5), (-2.0, -3, -5)], 'signs':[1, -1]}
-    # parameters_model = {'type':'gaussian', 'sigmas':[0.3, 0.3], 'centers':site_centers, 'signs':[1,-1]}
+    # ---- INSERT (/AND FIT) MODEL -----
+    # parameters_model = {'type':'gaussian', 'sigmas':[0.2, 0.2], 'centers':[(-3.0, -3, -5), (-2.0, -3, -5)], 'amplitudes':[1, -1]}
+    # parameters_model = {'type':'gaussian', 'sigmas':[0.3, 0.3], 'centers':site_centers, 'amplitudes':[1,-1]}
 
     # add centers automatically according to the sites
     parameters_model['centers'] = site_centers
 
     if replace_DFT_by_model:
-        density.replace_by_model(parameters=parameters_model)
+        density.replace_by_model(fit=fit_model_to_DFT, parameters=parameters_model)
 
 
     # ---- VISUALIZE DENSITY -----
@@ -961,7 +1062,7 @@ if __name__ == '__main__':
 
 
     # ===== RUN selected cases among the predefined ones =====
-    run_cases = [10] # None
+    run_cases = [11] # None
 
     site_idx_all = [
         [0], #0            
@@ -975,6 +1076,7 @@ if __name__ == '__main__':
         [0,1], #8
         [0,1], #9
         [0], #10
+        [0], #11
     ]
 
     site_radii_all = [
@@ -989,6 +1091,7 @@ if __name__ == '__main__':
         [r_mt_Cu]*2, #8
         [r_mt_Cu]*2, #9
         [r_mt_Cu]*1, #10
+        [r_mt_Cu]*1, #11
     ]
 
     base_path = './outputs/Cu2AC4/512/'
@@ -1003,7 +1106,8 @@ if __name__ == '__main__':
         base_path+'masked_0_gaussian_sigma_0.3', #7
         base_path+'masked_0_1_gaussians_sigma_0.3', #8
         base_path+'masked_0_1_gaussians_sigma_0.3_same-sign', #9
-        base_path+'masked_0_dyz_rotated_test', #10
+        base_path+'masked_0_dxy_rotated_test', #10
+        base_path+'masked_0_dx2y2_rotated_fit', #11
     ]
 
     replace_DFT_by_model_all = [
@@ -1018,13 +1122,30 @@ if __name__ == '__main__':
         True, #8
         True, #9
         True, #10
+        True, #11
+    ]
+
+    fit_model_to_DFT_all = [
+        False, #0
+        False, #1
+        False, #2
+        False, #3
+        False, #4
+        False, #5
+        False, #6
+        False, #7
+        False, #8
+        False, #9
+        False, #10
+        False, #11
     ]
 
     parameters_model_all = [None]*7 + [
-        {'type':'gaussian', 'sigmas':[0.3], 'centers':[], 'signs':[1]}, #7
-        {'type':'gaussian', 'sigmas':[0.3, 0.3], 'centers':[], 'signs':[1,-1]}, #8
-        {'type':'gaussian', 'sigmas':[0.3, 0.3], 'centers':[], 'signs':[1,1]}, #9
-        {'type':'dyz', 'sigmas':[0.3], 'centers':[], 'signs':[1]}, #10
+        {'type':'gaussian', 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[1]}}, #7
+        {'type':'gaussian', 'sigmas':[0.3, 0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[1,-1]}}, #8
+        {'type':'gaussian', 'sigmas':[0.3, 0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[1,1]}}, #9
+        {'type':'dxy', 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[1]}}, #10
+        {'type':'dx2y2', 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[6.55955089e+02], 'theta0':[-1.01132816e+00], 'phi0':[-5.98268463e-01], 'rho0':[2.29063660e+00], 'x_ani':[1.03363216e+00]}}, #11
     ]
 
     if run_cases:
@@ -1034,4 +1155,5 @@ if __name__ == '__main__':
             output_folder = output_folders_all[i]
             replace_DFT_by_model = replace_DFT_by_model_all[i]
             parameters_model = parameters_model_all[i]
-            workflow(site_idx=site_idx, site_radii=site_radii, output_folder=output_folder, replace_DFT_by_model=replace_DFT_by_model, parameters_model=parameters_model)
+            fit_model_to_DFT = fit_model_to_DFT_all[i]
+            workflow(site_idx=site_idx, site_radii=site_radii, output_folder=output_folder, replace_DFT_by_model=replace_DFT_by_model, parameters_model=parameters_model, fit_model_to_DFT=fit_model_to_DFT)
