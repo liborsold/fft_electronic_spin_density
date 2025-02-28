@@ -258,7 +258,7 @@ class Density:
             return amplitude * x*y/r_sq * np.exp(-(r_sq/(2*sigma**2)))
         models['dxy'] = dxy
 
-        def dx2y2(x, y, z, sigma=0.5, center=(3,3,3), amplitude=1, theta0=0, phi0=0, rho0=1, x_ani=1.00):
+        def dx2y2(x, y, z, sigma=0.5, center=(3,3,3), amplitude=1, theta0=0, phi0=0, Z_eff=1):
             """dxy orbital distribution in 3D space - https://math.stackexchange.com/questions/434629/3-d-generalization-of-the-gaussian-point-spread-function
 
             Args:
@@ -273,7 +273,6 @@ class Density:
                 _type_: _description_
             """
 
-            Z = 29
             a0 = physical_constants['Bohr radius'][0] * 1e10 # Bohr radius in units of Angstrom
 
             # center at site
@@ -286,13 +285,11 @@ class Density:
             # einstein notation matrix multiplication
             x, y, z = np.einsum('ij,jklm->iklm', Rot.as_matrix(), [x, y, z])
 
-            x *= x_ani
-
             # get the wave function
             r_sq = (x**2 + y**2 + z**2)
             r = np.sqrt(r_sq)
 
-            return amplitude * ( (x**2 - y**2)/r_sq * (r/a0)**2 * np.exp(-(Z*r/a0/3/rho0)) )**2
+            return amplitude * ( (x**2 - y**2)/r_sq * (r/a0)**2 * np.exp(-(Z_eff*r/a0/3)) )**2
         models['dx2y2'] = dx2y2
         # check plot
         # x = np.linspace(-1, 1, 101)
@@ -895,18 +892,18 @@ def workflow(output_folder, site_idx, site_radii, replace_DFT_by_model, paramete
 
     # --- INPUT ----
 
-    fname_cube_file = './cube_files/Cu2AC4_rho_sz_256.cube' #'./cube_files/Mn2GeO4_rho_sz.cube'
+    fname_cube_file = './cube_files/Cu2AC4_rho_sz_512.cube' #'./cube_files/Mn2GeO4_rho_sz.cube'
     
     permutation = None #!! for Mn2GeO4 need to use [2,1,0] to swap x,y,z -> z,y,x
 
     # ---- CALCULATION CONTROL ----
 
-    density_3D = False
-    density_slices = False
+    density_3D = True
+    density_slices = True
     
-    fft_3D = False
-    full_range_fft_spectrum_cuts = False
-    zoom_in_fft_spectrum_cuts = False
+    fft_3D = True
+    full_range_fft_spectrum_cuts = True
+    zoom_in_fft_spectrum_cuts = True
 
     write_cube_files = True
 
@@ -968,7 +965,9 @@ def workflow(output_folder, site_idx, site_radii, replace_DFT_by_model, paramete
     # parameters_model = {'type':'gaussian', 'sigmas':[0.3, 0.3], 'centers':site_centers, 'amplitudes':[1,-1]}
 
     # add centers automatically according to the sites
-    parameters_model['centers'] = site_centers
+
+    if site_centers and site_radii:
+        parameters_model['centers'] = site_centers
 
     if replace_DFT_by_model:
         density.replace_by_model(fit=fit_model_to_DFT, parameters=parameters_model)
@@ -1062,7 +1061,7 @@ if __name__ == '__main__':
 
 
     # ===== RUN selected cases among the predefined ones =====
-    run_cases = [11] # None
+    run_cases = [0, 11] # None
 
     site_idx_all = [
         [0], #0            
@@ -1117,6 +1116,11 @@ if __name__ == '__main__':
         False, #3
         False, #4
         False, #5
+        False, #6True
+        False, #2
+        False, #3
+        False, #4
+        False, #5
         False, #6
         True, #7
         True, #8
@@ -1137,15 +1141,15 @@ if __name__ == '__main__':
         False, #8
         False, #9
         False, #10
-        False, #11
+        True, #11
     ]
 
-    parameters_model_all = [None]*7 + [
+    parameters_model_all = [{}]*7 + [
         {'type':'gaussian', 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[1]}}, #7
         {'type':'gaussian', 'sigmas':[0.3, 0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[1,-1]}}, #8
         {'type':'gaussian', 'sigmas':[0.3, 0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[1,1]}}, #9
-        {'type':'dxy', 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[1]}}, #10
-        {'type':'dx2y2', 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[6.55955089e+02], 'theta0':[-1.01132816e+00], 'phi0':[-5.98268463e-01], 'rho0':[2.29063660e+00], 'x_ani':[1.03363216e+00]}}, #11
+        {'type':'dxy', 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[1]}}, #10  
+        {'type':'dx2y2', 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[700.3], 'theta0':[-1.011], 'phi0':[-0.5983], 'Z_eff':[12.85],}}, #11
     ]
 
     if run_cases:
