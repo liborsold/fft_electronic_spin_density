@@ -148,13 +148,31 @@ class Density:
             site_centers.append(tuple(np.array(list(self.metadata['atoms'][idx][1])[1:])*physical_constants['Bohr radius'][0]*1e10))
         return site_centers
 
-    def mask_except_sites(self, leave_sites):
+    def mask_except_sites(self, leave_sites, density_to_mask=None):
+        """Mask the density except for the sites given in leave_sites.
+        If density_to_mask is given, mask and return this density instead of the loaded density.
+
+        Args:
+            leave_sites (_type_): _description_
+            density_to_mask (_type_, optional): _description_. Defaults to None.
+
+        Returns:
+            _type_: _description_
+        """
         # initialize true array
         mask = np.zeros_like(self.x_cart_mesh, dtype=bool)
         for center, radius in zip(leave_sites['site_centers'], leave_sites['site_radii']):
             mask_i = np.sqrt((self.x_cart_mesh - center[0])**2 + (self.y_cart_mesh - center[1])**2 + (self.z_cart_mesh - center[2])**2) < radius
             mask = np.logical_or(mask, mask_i)
-        self.array[~mask] = 0
+        
+        self.mask = mask
+
+        if density_to_mask is not None:
+            density_to_mask[~mask] = 0
+            return density_to_mask
+        else:
+            # just update the DFT uploaded density
+            self.array[~mask] = 0
 
     def get_kz_at_index(self, kz_index=30):
         """Return the k_z value (in Angstrom^-1) at a given index: first or last indices are -+ k_max/2, the middle index is k_z=0 (data is zero-centered; fftshifted after fft was performed).
@@ -179,13 +197,15 @@ class Density:
         return i_kz
 
 
-    def replace_by_model(self, fit=False, parameters={'type':'gaussian', 'sigmas':[0.5], 'centers':[(0.5, 0.5, 0.5)], 'fit_params_init_all':{'amplitude':[1]}}):
+    def replace_by_model(self, fit=False, parameters={'type':'gaussian', 'sigmas':[0.5], 'centers':[(0.5, 0.5, 0.5)], 'fit_params_init_all':{'amplitude':[1]}}, leave_sites=None):
         """Replace the scalar field in the numpy array by a model function.
 
         Args:
             type (str, optional): Type of the model function. Defaults to 'gaussian'.
             fit (bool, optional): Fit the model to the data. Defaults to False.
-            parameters (dict, optional): Parameters of the model function. Defaults to {'sigmas':[0.5], 'centers':[(0.5, 0.5, 0.5)], 'fit_params_init_all':{'amplitude':[1]}}.
+            parameters (dict, optional): Parameters of the model function. Defaults to {'sigmas':[0.5], 'centers':[(0.5, 0.5, 0.5)], 'fit_params_init_all':{'amplitude':[1]}}
+            leave_sites (dict, optional): Dictionary with keys 'site_centers' and 'site_radii' for the sites to leave in the model. If provided, the fitted density will be masked after its construction. 
+            Defaults to None.
         """
 
         # define models
@@ -317,8 +337,15 @@ class Density:
         else:
             fit_params_init_all = {}
 
-        # convenience function returning the model density depending on the parameters
         def construct_model_density(fit_params_init_all):
+            """convenience function returning the model density depending on the parameters
+
+            Args:
+                fit_params_init_all (_type_): _description_
+
+            Returns:
+                _type_: _description_
+            """
             model_density = np.zeros_like(self.array)
 
             # place all the site-centered models in the space
@@ -354,21 +381,29 @@ class Density:
             
             global loss_function_counter 
             loss_function_counter = 0
+            self.SStot_array = np.sum((self.array[self.mask] - np.mean(self.array[self.mask]))**2)
             def loss_function(fit_params_all_as_list):
                 # convert the dictionary of list values to a single list - need to feed the loss function with a single list
                 # count number of iterations
+
                 global loss_function_counter 
                 loss_function_counter += 1
                 fit_params_init_all = list_to_dict(fit_params_all_as_list, N_for_each_key, keys)
-                loss_function_value = np.mean((construct_model_density(fit_params_init_all) - self.array)**2)
-                print(f'call {loss_function_counter}:   params {fit_params_all_as_list}      loss {loss_function_value:.6e}')
+                model_density = construct_model_density(fit_params_init_all)
+                # mask the model density with in the same way as the original data, if leave_sites is given
+                if leave_sites:
+                    model_density = self.mask_except_sites(leave_sites, density_to_mask=model_density)
+                # make loss function the 1-R2 value
+                R2 = 1 - np.sum((self.array[self.mask] - model_density[self.mask])**2) / self.SStot_array
+                loss_function_value = 1 - R2
+                print(f'call {loss_function_counter}:   params {fit_params_all_as_list}      R^2 {1-loss_function_value:.6f}')
                 return loss_function_value
             
             # convert the initial dictionary of list values to a single list - need to feed the loss function with a single list 
             fit_params_init_all_as_list = dict_to_list_and_flatten(fit_params_init_all)
 
             # fit
-            res = minimize(loss_function, x0=fit_params_init_all_as_list, method='Nelder-Mead', options={'disp': True}, tol=1e-1)
+            res = minimize(loss_function, x0=fit_params_init_all_as_list, method='Nelder-Mead', options={'disp': True}, tol=1e1)
             
             print(res)
 
@@ -970,7 +1005,7 @@ def workflow(output_folder, site_idx, site_radii, replace_DFT_by_model, paramete
         parameters_model['centers'] = site_centers
 
     if replace_DFT_by_model:
-        density.replace_by_model(fit=fit_model_to_DFT, parameters=parameters_model)
+        density.replace_by_model(fit=fit_model_to_DFT, parameters=parameters_model, leave_sites=leave_sites)
 
 
     # ---- VISUALIZE DENSITY -----
@@ -1061,7 +1096,7 @@ if __name__ == '__main__':
 
 
     # ===== RUN selected cases among the predefined ones =====
-    run_cases = [0, 11] # None
+    run_cases = [11] # None
 
     site_idx_all = [
         [0], #0            
@@ -1116,11 +1151,6 @@ if __name__ == '__main__':
         False, #3
         False, #4
         False, #5
-        False, #6True
-        False, #2
-        False, #3
-        False, #4
-        False, #5
         False, #6
         True, #7
         True, #8
@@ -1149,7 +1179,7 @@ if __name__ == '__main__':
         {'type':'gaussian', 'sigmas':[0.3, 0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[1,-1]}}, #8
         {'type':'gaussian', 'sigmas':[0.3, 0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[1,1]}}, #9
         {'type':'dxy', 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[1]}}, #10  
-        {'type':'dx2y2', 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[700.3], 'theta0':[-1.011], 'phi0':[-0.5983], 'Z_eff':[12.85],}}, #11
+        {'type':'dx2y2', 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[500.3], 'theta0':[-1.006], 'phi0':[-0.5933], 'Z_eff':[11.5],}}, #11
     ]
 
     if run_cases:
