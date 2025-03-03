@@ -348,6 +348,10 @@ class Density:
             print('C2', C**2)
             return  C**2 * ( (x**2 - y**2)/r_sq * (r/a0)**2 * np.exp(-(Z_eff*r/a0/n)) )**2
         models['dx2y2_normalized'] = dx2y2_normalized
+
+
+
+
         # check plot
         # x = np.linspace(-1, 1, 101)
         # y = np.linspace(-1, 1, 101)
@@ -910,6 +914,30 @@ class Density:
         meta_fft['zvec'] = self.kc
         write_cube(self.F_abs_sq, meta_fft, fout)
 
+    def integrate_cube_file(self, data_array=None, volume=None, verbose=True):
+        """Integrate the density in a cube file.
+
+        Args:
+            data_array (nd array, optional): cube_file data (either provided or taken as the saved array upon loading). Defaults to None.
+            volume (float, optional): volume of the cell in Bohr^3 !!!. If None, taken as  Defaults to None.
+            verbose (bool, optional): Print out the progress. Defaults to True.
+
+        Returns:
+            (float, float): total charge in the volume, total absolute charge in the volume
+        """
+        if not data_array:
+            data_array = self.array
+        if not volume:
+            Angstrom = 1e-10
+            a_Bohr = physical_constants['Bohr radius'][0]
+            # volume in Bohr^3
+            volume = np.abs(np.dot(np.cross(self.a, self.b), self.c)) * (Angstrom/a_Bohr)**3
+        rho_tot = np.sum(data_array) * volume / data_array.size
+        abs_rho_tot = np.sum(np.abs(data_array)) * volume / data_array.size
+        if verbose:
+            print(f'\nTotal charge in the volume: {rho_tot:.6f} e')
+            print(f'Total absolute charge in the volume: {abs_rho_tot:.6f} e\n')
+        return rho_tot, abs_rho_tot
 
 def test_shift():
     array_3D = np.zeros((9,9,9), dtype=np.float_)
@@ -1017,6 +1045,8 @@ def workflow(output_folder, site_idx, site_radii, replace_DFT_by_model, paramete
     # ---- READ CUBE FILE -----
     density = Density(permutation=permutation, verbose=True, fname_cube_file=fname_cube_file)
 
+    density.integrate_cube_file()
+
 
     # ---- MASKING -----
 
@@ -1026,6 +1056,9 @@ def workflow(output_folder, site_idx, site_radii, replace_DFT_by_model, paramete
         print('site_centers', site_centers)
         leave_sites = {'site_centers':site_centers, 'site_radii':site_radii}
         density.mask_except_sites(leave_sites)
+
+    print('After masking:')
+    density.integrate_cube_file()
 
     # get kz at index
     # density.get_kz_at_index(80)
@@ -1116,7 +1149,60 @@ def workflow(output_folder, site_idx, site_radii, replace_DFT_by_model, paramete
     # plot_2D_fft(twoD_data)
 
 
+def workflow_density_vs_cutoff_radius(site_idx=[0], site_radii_all=[[i] for i in np.arange(0.1, 2.0, 0.05)], plot=True, save_data=True):
+# ===================== WORKFLOW DENSITY vs. cutoff-radius =====================
+    fname_cube_file = './cube_files/Cu2AC4_rho_sz_512.cube' #'./cube_files/Mn2GeO4_rho_sz.cube'
+    
+    permutation = None #!! for Mn2GeO4 need to use [2,1,0] to swap x,y,z -> z,y,x
+    
+    rho_tot_all = []
+    rho_abs_tot_all = []
+
+    for site_radii in site_radii_all:
+            # ---- READ CUBE FILE -----
+        density = Density(permutation=permutation, verbose=True, fname_cube_file=fname_cube_file)
+
+        rho_tot_unitcell, rho_abs_tot_unitcell = density.integrate_cube_file()
+
+
+        # ---- MASKING -----
+
+        # leave_sites = {'site_centers':[(0.5, 0.5, 0.5)], 'site_radii':[0.5]}
+        if site_idx and site_radii:
+            site_centers = density.get_sites_of_atoms(site_idx)
+            print('site_centers', site_centers)
+            leave_sites = {'site_centers':site_centers, 'site_radii':site_radii}
+            density.mask_except_sites(leave_sites)
+
+        print('After masking:')
+        rho_tot, rho_abs_tot = density.integrate_cube_file()
+
+        rho_tot_all.append(rho_tot)
+        rho_abs_tot_all.append(rho_abs_tot)
+
+    # plotting
+    if plot:
+        fig, ax = plt.subplots(1, 1, figsize=(5, 5))
+        plt.plot(site_radii_all, rho_tot_all, 's-', label='rho_tot', markerfacecolor='none')
+        plt.plot(site_radii_all, rho_abs_tot_all, 'o-', label='rho_abs_tot', markerfacecolor='none')
+        plt.xlabel('site_radii (Angstrom)')
+        plt.ylabel('charge')
+        plt.title(f'Total charge in the unit cell {rho_tot_unitcell:.4f} e.\nTotal absolute charge in the unit cell {rho_abs_tot_unitcell:.4f} e.')
+        plt.legend()
+        plt.savefig('rho_vs_cutoff_radius.pdf')
+        plt.close()
+
+    if save_data:
+        data_all = np.array([np.array(site_radii_all)[:,0], rho_tot_all, rho_abs_tot_all])
+        np.savetxt('rho_vs_cutoff_radius.txt', data_all, delimiter='\t', header=f'rho_tot_unitcell {rho_tot_unitcell:.6e} e, rho_abs_tot_unitcell {rho_abs_tot_unitcell:.6e} e\nsite_radii\trho_tot\trho_abs_tot')
+
+    return rho_tot_all, rho_abs_tot_all
+
+
 if __name__ == '__main__':
+
+    # workflow_density_vs_cutoff_radius(site_idx=[0], site_radii_all=[[i] for i in np.arange(0.5, 4.0, 0.5)], plot=True)
+    # exit()
 
     r_mt_Cu = 1.1 #Angstrom
     r_mt_O = 0.9 #Angstrom
@@ -1164,7 +1250,7 @@ if __name__ == '__main__':
         [r_mt_Cu]*2, #9
         [r_mt_Cu]*1, #10
         [r_mt_Cu]*1, #11
-        [r_mt_Cu]*1, #12
+        [r_mt_Cu*1.1]*1, #12
     ]
 
     base_path = './outputs/Cu2AC4/512/'
