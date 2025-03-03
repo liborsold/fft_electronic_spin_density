@@ -365,7 +365,7 @@ _sq = (x**2 + y**2 + z**2)
         def two_s(x, y, z, sigma=None, center=(3,3,3), theta0=0, phi0=0, Z_eff=1):
             # https://winter.group.shef.ac.uk/orbitron/atomic_orbitals/2s/2s_equations.html
             n = 1  # principal number; 1 for s orbital   
-            x, y, z = center_and_rotate(x, y, z, center=center, theta0=theta0, phi0=phi0, seq='yzy')s
+            x, y, z = center_and_rotate(x, y, z, center=center, theta0=theta0, phi0=phi0, seq='yzy')
             r_sq = (x**2 + y**2 + z**2)
             rho = 2 * Z_eff * np.sqrt(r_sq) / n
             C = 1/(2*np.sqrt(8*np.pi)) * Z_eff**(3/2)
@@ -382,18 +382,15 @@ _sq = (x**2 + y**2 + z**2)
             return  C * x/np.sqrt(r_sq) * rho * np.exp(-rho/2)
         models['two_px'] = two_px
 
-        def two_spx(x, y, z, sigma=None, center=(3,3,3), theta0=0, phi0=0, Z_eff=1, C=0.707):
+        def two_spx(x, y, z, sigma=None, center=(3,3,3), amplitude=1, theta0=0, phi0=0, Z_eff=1, C=0.707):
             """spx hybrid where C is the weight of the s orbital
-
-            Args:
-            
-            Returns:
                 
             """
             # https://winter.group.shef.ac.uk/orbitron/atomic_orbitals/2p/2p_equations.html
-            return np.sqrt(1-C**2) * two_px(x, y, z, sigma=sigma, center=center, theta0=theta0, phi0=phi0, Z_eff=Z_eff) +\
-                              C    *  two_s(x, y, z, sigma=sigma, center=center, theta0=theta0, phi0=phi0, Z_eff=Z_eff)
-
+            orbital = np.sqrt(1-C**2) * two_px(x, y, z, sigma=sigma, center=center, theta0=theta0, phi0=phi0, Z_eff=Z_eff) +\
+                                 C    *  two_s(x, y, z, sigma=sigma, center=center, theta0=theta0, phi0=phi0, Z_eff=Z_eff)
+            return amplitude * orbital
+        models['two_spx'] = two_spx
 
         # check plot
         # x = np.linspace(-1, 1, 101)
@@ -474,8 +471,9 @@ _sq = (x**2 + y**2 + z**2)
                 loss_function_counter += 1
                 fit_params_init_all = list_to_dict(fit_params_all_as_list, N_for_each_key, keys)
                 model_density = construct_model_density(fit_params_init_all)
-                # mask the model density with in the same way as the original data, if leave_sites is given
-                if leave_sites:
+
+                # if leave_sites is given, mask the model density with in the same way as the original data
+                if leave_sites is not None:
                     model_density = self.mask_except_sites(leave_sites, density_to_mask=model_density)
                 # make loss function the 1-R2 value
                 R2 = 1 - np.sum((self.array[self.mask] - model_density[self.mask])**2) / self.SStot_array
@@ -1041,12 +1039,12 @@ def workflow(output_folder, site_idx, site_radii, replace_DFT_by_model, paramete
 
     # ---- CALCULATION CONTROL ----
 
-    density_3D = True
-    density_slices = True
+    density_3D = False #True
+    density_slices = False #True
     
-    fft_3D = True
-    full_range_fft_spectrum_cuts = True
-    zoom_in_fft_spectrum_cuts = True
+    fft_3D = False #True
+    full_range_fft_spectrum_cuts = False #True
+    zoom_in_fft_spectrum_cuts = False #True
 
     write_cube_files = True
 
@@ -1119,7 +1117,8 @@ def workflow(output_folder, site_idx, site_radii, replace_DFT_by_model, paramete
 
     if replace_DFT_by_model:
         density.replace_by_model(fit=fit_model_to_DFT, parameters=parameters_model, leave_sites=leave_sites)
-
+    print('After replacing by model:')
+    density.integrate_cube_file()
 
     # ---- VISUALIZE DENSITY -----
     if density_slices:
@@ -1262,7 +1261,7 @@ if __name__ == '__main__':
 
 
     # ===== RUN selected cases among the predefined ones =====
-    run_cases = [12] # None
+    run_cases = [15] # None
 
     site_idx_all = [
         [0], #0            
@@ -1278,6 +1277,13 @@ if __name__ == '__main__':
         [0], #10
         [0], #11
         [0], #12
+        [1,], #13
+        [25,], #14
+        [25,], #15
+        [40], #16
+        [9], #17
+        [16], #18
+        [25, 40, 9, 16], #19
     ]
 
     site_radii_all = [
@@ -1294,6 +1300,13 @@ if __name__ == '__main__':
         [r_mt_Cu]*1, #10
         [r_mt_Cu]*1, #11
         [r_mt_Cu*1.1]*1, #12
+        [r_mt_Cu]*1, #13
+        [r_mt_O], #14
+        [r_mt_O], #15
+        [r_mt_O], #16
+        [r_mt_O], #17
+        [r_mt_O], #18
+        [r_mt_Cu]+[r_mt_O]*4, #19
     ]
 
     base_path = './outputs/Cu2AC4/512/'
@@ -1311,6 +1324,13 @@ if __name__ == '__main__':
         base_path+'masked_0_dxy_rotated_test', #10
         base_path+'masked_0_dx2y2_rotated_fit', #11
         base_path+'masked_0_dx2y2_rotated_normalized_fit', #12
+        base_path+'masked_0_two_s_rotated_fit', #13
+        base_path+'masked_0_two_px_rotated_fit', #14
+        base_path+'masked_0_two_spx_rotated_25', #15
+        base_path+'masked_0_two_spx_rotated_40', #16
+        base_path+'masked_0_two_spx_rotated_9', #17
+        base_path+'masked_0_two_spx_rotated_16', #18
+        base_path+'masked_model_Cu0_and_oxygens', #19
     ]
 
     replace_DFT_by_model_all = [
@@ -1327,6 +1347,13 @@ if __name__ == '__main__':
         True, #10
         True, #11
         True, #12
+        True, #13
+        True, #14
+        True, #15
+        True, #16
+        True, #17
+        True, #18
+        True, #19
     ]
 
     fit_model_to_DFT_all = [
@@ -1343,6 +1370,13 @@ if __name__ == '__main__':
         False, #10
         True, #11
         True, #12
+        False, #13
+        False, #14
+        True, #15
+        False, #16
+        False, #17
+        False, #18
+        False, #19
     ]
 
     parameters_model_all = [{}]*7 + [
@@ -1352,6 +1386,13 @@ if __name__ == '__main__':
         {'type':'dxy', 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[1]}}, #10  
         {'type':'dx2y2', 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[500.3], 'theta0':[-1.006], 'phi0':[-0.5933], 'Z_eff':[11.5],}}, #11
         {'type':'dx2y2_normalized', 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'theta0':[-1.01], 'phi0':[-0.6001], 'Z_eff':[9.7],}}, #12
+        {'type':'two_s', 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'theta0':[-1.006], 'phi0':[-0.5933], 'Z_eff':[20.5],}}, #13
+        {'type':'two_px', 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'theta0':[-1.006], 'phi0':[-0.5933], 'Z_eff':[10],}}, #14
+        {'type':'two_spx', 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[1.], 'theta0':[-1.006], 'phi0':[-0.5933], 'Z_eff':[2.5]}}, #15 (atom 25)
+        {'type':'two_spx', 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'theta0':[0.565], 'phi0':[0.977], 'Z_eff':[2.5], 'C':[0.707]}}, #16 (aotm 40)
+        {'type':'two_spx', 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'theta0':[0.0], 'phi0':[1.1], 'Z_eff':[2.5], 'C':[0.707]}}, #17 (atom 9)
+        {'type':'two_spx', 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'theta0':[0.0], 'phi0':[0.471], 'Z_eff':[2.5], 'C':[0.707]}}, #18 (atom 16)
+        {'type':'two_spx', 'sigmas':[0.3]*4, 'centers':[], 'fit_params_init_all':{'theta0':[-1.006, 1.006, 0., 0.], 'phi0':[-0.5933, 2.5483, 1.0, -2.10], 'Z_eff':[10]*4, 'C':[0.707]*4}}, #19
     ]
 
     if run_cases:
