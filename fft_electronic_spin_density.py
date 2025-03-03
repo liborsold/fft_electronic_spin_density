@@ -16,6 +16,8 @@ from copy import deepcopy
 from scipy.spatial.transform import Rotation as R
 from scipy.optimize import minimize
 
+a0 = physical_constants['Bohr radius'][0] * 1e10 # Bohr radius in units of Angstrom
+
 class Density:
     """Read, visualize and fourier transform (spin) density from gaussian .cube files.
         Replace by a model function if required.
@@ -207,7 +209,6 @@ class Density:
             leave_sites (dict, optional): Dictionary with keys 'site_centers' and 'site_radii' for the sites to leave in the model. If provided, the fitted density will be masked after its construction. 
             Defaults to None.
         """
-
         # define models
         models = {}
         def gaussian(x, y, z, sigma=0.5, center=(3,3,3), amplitude=1):
@@ -244,7 +245,7 @@ class Density:
             """
             # normalized gaussian function - see
             r2 = (x-center[0])**2 + (y-center[1])**2 + (z-center[2])**2
-            return amplitude * np.abs(3*(z-center[2])**2 - r2)/r2 * np.exp(-(r2/(2*sigma**2)))
+            return amplitude * (3*(z-center[2])**2 - r2)/r2 * np.exp(-(r2/(2*sigma**2)))
         models['dz2'] = dz2
 
         def dxy(x, y, z, sigma=0.5, center=(3,3,3), amplitude=1, theta0=np.pi/4, phi0=0):
@@ -278,7 +279,7 @@ class Density:
             return amplitude * x*y/r_sq * np.exp(-(r_sq/(2*sigma**2)))
         models['dxy'] = dxy
 
-        def dx2y2(x, y, z, sigma=0.5, center=(3,3,3), amplitude=1, theta0=0, phi0=0, Z_eff=1):
+        def dx2y2(x, y, z, sigma=None, center=(3,3,3), amplitude=1, theta0=0, phi0=0, Z_eff=1):
             """dxy orbital distribution in 3D space - https://math.stackexchange.com/questions/434629/3-d-generalization-of-the-gaussian-point-spread-function
 
             Args:
@@ -310,10 +311,10 @@ class Density:
             r_sq = (x**2 + y**2 + z**2)
             r = np.sqrt(r_sq)
 
-            return amplitude * ( (x**2 - y**2)/r_sq * (r/a0)**2 * np.exp(-(Z_eff*r/a0/n)) )**2
+            return np.sqrt(amplitude) * (x**2 - y**2)/r_sq * (r/a0)**2 * np.exp(-(Z_eff*r/a0/n))
         models['dx2y2'] = dx2y2
 
-        def dx2y2_normalized(x, y, z, sigma=0.5, center=(3,3,3), theta0=0, phi0=0, Z_eff=1):
+        def dx2y2_normalized(x, y, z, sigma=None, center=(3,3,3), theta0=0, phi0=0, Z_eff=1):
             """dxy orbital distribution in 3D space - https://math.stackexchange.com/questions/434629/3-d-generalization-of-the-gaussian-point-spread-function
 
             Args:
@@ -323,7 +324,10 @@ class Density:
                 sigma (float, optional): _description_. Defaults to 0.5.
                 center (tuple, optional): _description_. Defaults to (3,3,3).
                 sign (int, optional): _description_. Defaults to 1.
-
+_sq = (x**2 + y**2 + z**2)
+            rho = 2 * Z_eff * np.sqrt(r_sq) / n
+            C = 1/(2*np.sqrt(8*np.pi)) * Z_eff**(3/2)
+            return  (C * (2 - rho) * np.exp(-rho/2) )**2
             Returns:
                 _type_: _description_
             """
@@ -346,10 +350,49 @@ class Density:
             r = np.sqrt(r_sq)
             C = 1/(9*np.sqrt(30)) * (2*Z_eff/n)**2 * Z_eff**(3/2) * np.sqrt(15/(16*np.pi))
             print('C2', C**2)
-            return  C**2 * ( (x**2 - y**2)/r_sq * (r/a0)**2 * np.exp(-(Z_eff*r/a0/n)) )**2
+            return  C *  (x**2 - y**2)/r_sq * (r/a0)**2 * np.exp(-(Z_eff*r/a0/n))
         models['dx2y2_normalized'] = dx2y2_normalized
 
+        def center_and_rotate(x, y, z, center=(3,3,3), theta0=0, phi0=0, seq='yzy'):
+            x, y, z = x-center[0], y-center[1], z-center[2]
+            # Rot is a matrix that rotates the orbital in that way (the inv ensures that in fact)
+            #   - extrinsic rotations 'yzy' along the laboratory coordinate system axes
+            Rot = R.from_euler(seq, [theta0, phi0, 0], degrees=False).inv()
+            # einstein notation matrix multiplication
+            x, y, z = np.einsum('ij,jklm->iklm', Rot.as_matrix(), [x, y, z])
+            return x, y, z
 
+        def two_s(x, y, z, sigma=None, center=(3,3,3), theta0=0, phi0=0, Z_eff=1):
+            # https://winter.group.shef.ac.uk/orbitron/atomic_orbitals/2s/2s_equations.html
+            n = 1  # principal number; 1 for s orbital   
+            x, y, z = center_and_rotate(x, y, z, center=center, theta0=theta0, phi0=phi0, seq='yzy')s
+            r_sq = (x**2 + y**2 + z**2)
+            rho = 2 * Z_eff * np.sqrt(r_sq) / n
+            C = 1/(2*np.sqrt(8*np.pi)) * Z_eff**(3/2)
+            return  C * (2 - rho) * np.exp(-rho/2)
+        models['two_s'] = two_s
+
+        def two_px(x, y, z, sigma=None, center=(3,3,3), theta0=0, phi0=0, Z_eff=1):
+            # https://winter.group.shef.ac.uk/orbitron/atomic_orbitals/2p/2p_equations.html
+            n = 2
+            x, y, z = center_and_rotate(x, y, z, center=center, theta0=theta0, phi0=phi0, seq='yzy')
+            r_sq = (x**2 + y**2 + z**2)
+            rho = 2 * Z_eff * np.sqrt(r_sq) / n
+            C = 1/(2*np.sqrt(8*np.pi)) * Z_eff**(3/2)
+            return  C * x/np.sqrt(r_sq) * rho * np.exp(-rho/2)
+        models['two_px'] = two_px
+
+        def two_spx(x, y, z, sigma=None, center=(3,3,3), theta0=0, phi0=0, Z_eff=1, C=0.707):
+            """spx hybrid where C is the weight of the s orbital
+
+            Args:
+            
+            Returns:
+                
+            """
+            # https://winter.group.shef.ac.uk/orbitron/atomic_orbitals/2p/2p_equations.html
+            return np.sqrt(1-C**2) * two_px(x, y, z, sigma=sigma, center=center, theta0=theta0, phi0=phi0, Z_eff=Z_eff) +\
+                              C    *  two_s(x, y, z, sigma=sigma, center=center, theta0=theta0, phi0=phi0, Z_eff=Z_eff)
 
 
         # check plot
@@ -358,7 +401,7 @@ class Density:
         # z = np.linspace(-1, 1, 101)
         # X, Y, Z = np.meshgrid(x, y, z)
         # f = models['dxy']
-        # model_density = f(X, Y, Z, sigma=0.5, center=(0,0,0), sign=1, amplitude=1, theta0=0, phi0=0)
+        # model_density = (f(X, Y, Z, sigma=0.5, center=(0,0,0), sign=1, amplitude=1, theta0=0, phi0=0))**2
         # fig = plt.figure()
         # ax = fig.add_subplot(111, projection='3d')
         # plot = ax.scatter(X, Y, Z, c=model_density.flatten(), cmap='viridis')
@@ -400,7 +443,7 @@ class Density:
                 else:
                     fit_params_init = {}
 
-                model_density += f(self.x_cart_mesh, self.y_cart_mesh, self.z_cart_mesh, sigma=sigma, center=center, **fit_params_init)
+                model_density += ( f(self.x_cart_mesh, self.y_cart_mesh, self.z_cart_mesh, sigma=sigma, center=center, **fit_params_init) )**2
             return model_density
         
         if fit:
