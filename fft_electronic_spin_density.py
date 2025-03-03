@@ -294,6 +294,7 @@ class Density:
             """
 
             a0 = physical_constants['Bohr radius'][0] * 1e10 # Bohr radius in units of Angstrom
+            n = 3  # principal number; 3 for d orbitals
 
             # center at site
             x, y, z = x-center[0], y-center[1], z-center[2]
@@ -309,8 +310,44 @@ class Density:
             r_sq = (x**2 + y**2 + z**2)
             r = np.sqrt(r_sq)
 
-            return amplitude * ( (x**2 - y**2)/r_sq * (r/a0)**2 * np.exp(-(Z_eff*r/a0/3)) )**2
+            return amplitude * ( (x**2 - y**2)/r_sq * (r/a0)**2 * np.exp(-(Z_eff*r/a0/n)) )**2
         models['dx2y2'] = dx2y2
+
+        def dx2y2_normalized(x, y, z, sigma=0.5, center=(3,3,3), theta0=0, phi0=0, Z_eff=1):
+            """dxy orbital distribution in 3D space - https://math.stackexchange.com/questions/434629/3-d-generalization-of-the-gaussian-point-spread-function
+
+            Args:
+                x (_type_): Cartesian x coordinate in Angstrom.
+                y (_type_): Cartesian y coordinate in Angstrom.
+                z (_type_): Cartesian z coordinate in Angstrom.
+                sigma (float, optional): _description_. Defaults to 0.5.
+                center (tuple, optional): _description_. Defaults to (3,3,3).
+                sign (int, optional): _description_. Defaults to 1.
+
+            Returns:
+                _type_: _description_
+            """
+
+            a0 = physical_constants['Bohr radius'][0] * 1e10 # Bohr radius in units of Angstrom
+            n = 3  # principal number; 3 for d orbitals
+
+            # center at site
+            x, y, z = x-center[0], y-center[1], z-center[2]
+
+            # Rot is a matrix that rotates the orbital in that way (the inv ensures that in fact)
+            #   - extrinsic rotations 'yzy' along the laboratory coordinate system axes
+            Rot = R.from_euler('yzy', [theta0, phi0, 0], degrees=False).inv()
+            
+            # einstein notation matrix multiplication
+            x, y, z = np.einsum('ij,jklm->iklm', Rot.as_matrix(), [x, y, z])
+
+            # get the wave function
+            r_sq = (x**2 + y**2 + z**2)
+            r = np.sqrt(r_sq)
+            C = 1/(9*np.sqrt(30)) * (2*Z_eff/n)**2 * Z_eff**(3/2) * np.sqrt(15/(16*np.pi))
+            print('C2', C**2)
+            return  C**2 * ( (x**2 - y**2)/r_sq * (r/a0)**2 * np.exp(-(Z_eff*r/a0/n)) )**2
+        models['dx2y2_normalized'] = dx2y2_normalized
         # check plot
         # x = np.linspace(-1, 1, 101)
         # y = np.linspace(-1, 1, 101)
@@ -403,7 +440,7 @@ class Density:
             fit_params_init_all_as_list = dict_to_list_and_flatten(fit_params_init_all)
 
             # fit
-            res = minimize(loss_function, x0=fit_params_init_all_as_list, method='Nelder-Mead', options={'disp': True}, tol=1e1)
+            res = minimize(loss_function, x0=fit_params_init_all_as_list, method='Nelder-Mead', options={'disp': True}, tol=1e-3)
             
             print(res)
 
@@ -1096,7 +1133,7 @@ if __name__ == '__main__':
 
 
     # ===== RUN selected cases among the predefined ones =====
-    run_cases = [11] # None
+    run_cases = [12] # None
 
     site_idx_all = [
         [0], #0            
@@ -1111,6 +1148,7 @@ if __name__ == '__main__':
         [0,1], #9
         [0], #10
         [0], #11
+        [0], #12
     ]
 
     site_radii_all = [
@@ -1126,6 +1164,7 @@ if __name__ == '__main__':
         [r_mt_Cu]*2, #9
         [r_mt_Cu]*1, #10
         [r_mt_Cu]*1, #11
+        [r_mt_Cu]*1, #12
     ]
 
     base_path = './outputs/Cu2AC4/512/'
@@ -1142,6 +1181,7 @@ if __name__ == '__main__':
         base_path+'masked_0_1_gaussians_sigma_0.3_same-sign', #9
         base_path+'masked_0_dxy_rotated_test', #10
         base_path+'masked_0_dx2y2_rotated_fit', #11
+        base_path+'masked_0_dx2y2_rotated_normalized_fit', #12
     ]
 
     replace_DFT_by_model_all = [
@@ -1157,6 +1197,7 @@ if __name__ == '__main__':
         True, #9
         True, #10
         True, #11
+        True, #12
     ]
 
     fit_model_to_DFT_all = [
@@ -1172,6 +1213,7 @@ if __name__ == '__main__':
         False, #9
         False, #10
         True, #11
+        True, #12
     ]
 
     parameters_model_all = [{}]*7 + [
@@ -1180,6 +1222,7 @@ if __name__ == '__main__':
         {'type':'gaussian', 'sigmas':[0.3, 0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[1,1]}}, #9
         {'type':'dxy', 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[1]}}, #10  
         {'type':'dx2y2', 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[500.3], 'theta0':[-1.006], 'phi0':[-0.5933], 'Z_eff':[11.5],}}, #11
+        {'type':'dx2y2_normalized', 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'theta0':[-1.01], 'phi0':[-0.6001], 'Z_eff':[9.7],}}, #12
     ]
 
     if run_cases:
