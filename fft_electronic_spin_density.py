@@ -199,7 +199,7 @@ class Density:
         return i_kz
 
 
-    def replace_by_model(self, fit=False, parameters={'type':'gaussian', 'sigmas':[0.5], 'centers':[(0.5, 0.5, 0.5)], 'fit_params_init_all':{'amplitude':[1]}}, leave_sites=None):
+    def replace_by_model(self, fit=False, parameters={'type':['gaussian'], 'sigmas':[0.5], 'centers':[(0.5, 0.5, 0.5)], 'fit_params_init_all':{'amplitude':[1]}}, leave_sites=None):
         """Replace the scalar field in the numpy array by a model function.
 
         Args:
@@ -209,6 +209,16 @@ class Density:
             leave_sites (dict, optional): Dictionary with keys 'site_centers' and 'site_radii' for the sites to leave in the model. If provided, the fitted density will be masked after its construction. 
             Defaults to None.
         """
+
+        def center_and_rotate(x, y, z, center=(3,3,3), theta0=0, phi0=0, seq='yzy'):
+            x, y, z = x-center[0], y-center[1], z-center[2]
+            # Rot is a matrix that rotates the orbital in that way (the inv ensures that in fact)
+            #   - extrinsic rotations 'yzy' along the laboratory coordinate system axes
+            Rot = R.from_euler(seq, [theta0, phi0, 0], degrees=False).inv()
+            # einstein notation matrix multiplication
+            x, y, z = np.einsum('ij,jklm->iklm', Rot.as_matrix(), [x, y, z])
+            return x, y, z
+
         # define models
         models = {}
         def gaussian(x, y, z, sigma=0.5, center=(3,3,3), amplitude=1):
@@ -279,7 +289,7 @@ class Density:
             return amplitude * x*y/r_sq * np.exp(-(r_sq/(2*sigma**2)))
         models['dxy'] = dxy
 
-        def dx2y2(x, y, z, sigma=None, center=(3,3,3), amplitude=1, theta0=0, phi0=0, Z_eff=1):
+        def dx2y2(x, y, z, sigma=None, center=(3,3,3), amplitude=1, theta0=-0.99290, phi0=-0.58594, Z_eff=1, C=None):
             """dxy orbital distribution in 3D space - https://math.stackexchange.com/questions/434629/3-d-generalization-of-the-gaussian-point-spread-function
 
             Args:
@@ -293,24 +303,10 @@ class Density:
             Returns:
                 _type_: _description_
             """
-
-            a0 = physical_constants['Bohr radius'][0] * 1e10 # Bohr radius in units of Angstrom
             n = 3  # principal number; 3 for d orbitals
-
-            # center at site
-            x, y, z = x-center[0], y-center[1], z-center[2]
-
-            # Rot is a matrix that rotates the orbital in that way (the inv ensures that in fact)
-            #   - extrinsic rotations 'yzy' along the laboratory coordinate system axes
-            Rot = R.from_euler('yzy', [theta0, phi0, 0], degrees=False).inv()
-            
-            # einstein notation matrix multiplication
-            x, y, z = np.einsum('ij,jklm->iklm', Rot.as_matrix(), [x, y, z])
-
-            # get the wave function
+            x, y, z = center_and_rotate(x, y, z, center=center, theta0=theta0, phi0=phi0, seq='yzy')
             r_sq = (x**2 + y**2 + z**2)
             r = np.sqrt(r_sq)
-
             return np.sqrt(amplitude) * (x**2 - y**2)/r_sq * (r/a0)**2 * np.exp(-(Z_eff*r/a0/n))
         models['dx2y2'] = dx2y2
 
@@ -331,21 +327,8 @@ _sq = (x**2 + y**2 + z**2)
             Returns:
                 _type_: _description_
             """
-
-            a0 = physical_constants['Bohr radius'][0] * 1e10 # Bohr radius in units of Angstrom
             n = 3  # principal number; 3 for d orbitals
-
-            # center at site
-            x, y, z = x-center[0], y-center[1], z-center[2]
-
-            # Rot is a matrix that rotates the orbital in that way (the inv ensures that in fact)
-            #   - extrinsic rotations 'yzy' along the laboratory coordinate system axes
-            Rot = R.from_euler('yzy', [theta0, phi0, 0], degrees=False).inv()
-            
-            # einstein notation matrix multiplication
-            x, y, z = np.einsum('ij,jklm->iklm', Rot.as_matrix(), [x, y, z])
-
-            # get the wave function
+            x, y, z = center_and_rotate(x, y, z, center=center, theta0=theta0, phi0=phi0, seq='yzy')
             r_sq = (x**2 + y**2 + z**2)
             r = np.sqrt(r_sq)
             C = 1/(9*np.sqrt(30)) * (2*Z_eff/n)**2 * Z_eff**(3/2) * np.sqrt(15/(16*np.pi))
@@ -353,18 +336,9 @@ _sq = (x**2 + y**2 + z**2)
             return  C *  (x**2 - y**2)/r_sq * (r/a0)**2 * np.exp(-(Z_eff*r/a0/n))
         models['dx2y2_normalized'] = dx2y2_normalized
 
-        def center_and_rotate(x, y, z, center=(3,3,3), theta0=0, phi0=0, seq='yzy'):
-            x, y, z = x-center[0], y-center[1], z-center[2]
-            # Rot is a matrix that rotates the orbital in that way (the inv ensures that in fact)
-            #   - extrinsic rotations 'yzy' along the laboratory coordinate system axes
-            Rot = R.from_euler(seq, [theta0, phi0, 0], degrees=False).inv()
-            # einstein notation matrix multiplication
-            x, y, z = np.einsum('ij,jklm->iklm', Rot.as_matrix(), [x, y, z])
-            return x, y, z
-
         def two_s(x, y, z, sigma=None, center=(3,3,3), theta0=0, phi0=0, Z_eff=1):
             # https://winter.group.shef.ac.uk/orbitron/atomic_orbitals/2s/2s_equations.html
-            n = 1  # principal number; 1 for s orbital   
+            n = 1  # principal number; 1 for s orbital (wrong, but no point to correct now?)  
             x, y, z = center_and_rotate(x, y, z, center=center, theta0=theta0, phi0=phi0, seq='yzy')
             r_sq = (x**2 + y**2 + z**2)
             rho = 2 * Z_eff * np.sqrt(r_sq) / n
@@ -382,7 +356,7 @@ _sq = (x**2 + y**2 + z**2)
             return  C * x/np.sqrt(r_sq) * rho * np.exp(-rho/2)
         models['two_px'] = two_px
 
-        def two_spx(x, y, z, sigma=None, center=(3,3,3), amplitude=1, theta0=0, phi0=0, Z_eff=1, C=0.707):
+        def two_spx(x, y, z, sigma=None, center=(3,3,3), amplitude=0.136746, theta0=-1.006, phi0=-0.5933, Z_eff=8.333754, Z_eff_s=None, C=0.48):
             """spx hybrid where C is the weight of the s orbital
                 
             """
@@ -391,6 +365,37 @@ _sq = (x**2 + y**2 + z**2)
                                  C    *  two_s(x, y, z, sigma=sigma, center=center, theta0=theta0, phi0=phi0, Z_eff=Z_eff)
             return amplitude * orbital
         models['two_spx'] = two_spx
+
+        def four_s(x, y, z, sigma=None, center=(3,3,3), theta0=0, phi0=0, Z_eff=1):
+            # https://winter.group.shef.ac.uk/orbitron/atomic_orbitals/4s/4s_equations.html
+            n = 4  # principal number; 1 for s orbital   
+            x, y, z = center_and_rotate(x, y, z, center=center, theta0=theta0, phi0=phi0, seq='yzy')
+            r_sq = (x**2 + y**2 + z**2)
+            rho = 2 * Z_eff * np.sqrt(r_sq) / n
+            C = 1/(96*np.sqrt(4*np.pi)) * Z_eff**(3/2)
+            return  C * (24 - 36*rho + 12*rho**2 - rho**3) * np.exp(-rho/2)
+        models['four_s'] = four_s
+
+        def dx2y2_with_four_s(x, y, z, sigma=None, center=(3,3,3), amplitude=1, theta0=-1.011299, phi0=-0.59835726, Z_eff=12.8, Z_eff_s=10, C=0.2):
+            """dxy orbital distribution in 3D space - https://math.stackexchange.com/questions/434629/3-d-generalization-of-the-gaussian-point-spread-function
+
+            Args:
+                x (_type_): Cartesian x coordinate in Angstrom.
+                y (_type_): Cartesian y coordinate in Angstrom.
+                z (_type_): Cartesian z coordinate in Angstrom.
+                sigma (float, optional): _description_. Defaults to 0.5.
+                center (tuple, optional): _description_. Defaults to (3,3,3).
+                sign (int, optional): _description_. Defaults to 1.
+
+            Returns:
+                _type_: _description_
+            """
+            # https://winter.group.shef.ac.uk/orbitron/atomic_orbitals/2p/2p_equations.html
+            orbital = np.sqrt(1-C**2) * dx2y2(x, y, z, sigma=sigma, center=center, theta0=theta0, phi0=phi0, Z_eff=Z_eff) +\
+                                 C    *  four_s(x, y, z, sigma=sigma, center=center, theta0=theta0, phi0=phi0, Z_eff=Z_eff_s)
+            return np.sqrt(amplitude) * orbital
+        models['dx2y2_with_four_s'] = dx2y2_with_four_s
+            
 
         # check plot
         # x = np.linspace(-1, 1, 101)
@@ -407,9 +412,6 @@ _sq = (x**2 + y**2 + z**2)
         # plt.tight_layout()
         # plt.savefig('model_dxy.png')
         # exit()
-        
-        # choose the 3D scalar field function from models
-        f = models[parameters['type']]
 
         # get the optional other parameters for the model
         #    - either as the final ones if no fitting, or starting values for fitting
@@ -430,7 +432,7 @@ _sq = (x**2 + y**2 + z**2)
             model_density = np.zeros_like(self.array)
 
             # place all the site-centered models in the space
-            for i in range(len(parameters['sigmas'])):
+            for i in range(len(parameters['type'])):
                 # create a function in 3D space that gives a Gaussian density distribution around point centers[i] with standard deviation sigmas[i]
                 # the sign of the density is given by signs[i]
                 sigma = parameters['sigmas'][i]
@@ -440,6 +442,8 @@ _sq = (x**2 + y**2 + z**2)
                 else:
                     fit_params_init = {}
 
+                # choose the 3D scalar field function from models
+                f = models[parameters['type'][i]]
                 model_density += ( f(self.x_cart_mesh, self.y_cart_mesh, self.z_cart_mesh, sigma=sigma, center=center, **fit_params_init) )**2
             return model_density
         
@@ -478,14 +482,14 @@ _sq = (x**2 + y**2 + z**2)
                 # make loss function the 1-R2 value
                 R2 = 1 - np.sum((self.array[self.mask] - model_density[self.mask])**2) / self.SStot_array
                 loss_function_value = 1 - R2
-                print(f'call {loss_function_counter}:   params {fit_params_all_as_list}      R^2 {1-loss_function_value:.6f}')
+                print(f'call {loss_function_counter}:   params {fit_params_all_as_list}      R^2 {R2:.6f}')
                 return loss_function_value
             
             # convert the initial dictionary of list values to a single list - need to feed the loss function with a single list 
             fit_params_init_all_as_list = dict_to_list_and_flatten(fit_params_init_all)
 
             # fit
-            res = minimize(loss_function, x0=fit_params_init_all_as_list, method='Nelder-Mead', options={'disp': True}, tol=1e-3)
+            res = minimize(loss_function, x0=fit_params_init_all_as_list, method='Nelder-Mead', options={'disp': True}, tol=5e-4)
             
             print(res)
 
@@ -1039,12 +1043,12 @@ def workflow(output_folder, site_idx, site_radii, replace_DFT_by_model, paramete
 
     # ---- CALCULATION CONTROL ----
 
-    density_3D = False #True
-    density_slices = False #True
+    density_3D = True
+    density_slices = True
     
-    fft_3D = False #True
-    full_range_fft_spectrum_cuts = False #True
-    zoom_in_fft_spectrum_cuts = False #True
+    fft_3D = True
+    full_range_fft_spectrum_cuts = True
+    zoom_in_fft_spectrum_cuts = True
 
     write_cube_files = True
 
@@ -1261,7 +1265,7 @@ if __name__ == '__main__':
 
 
     # ===== RUN selected cases among the predefined ones =====
-    run_cases = [15] # None
+    run_cases = [21] # None
 
     site_idx_all = [
         [0], #0            
@@ -1283,7 +1287,9 @@ if __name__ == '__main__':
         [40], #16
         [9], #17
         [16], #18
-        [25, 40, 9, 16], #19
+        [0, 25, 40, 9, 16], #19
+        [0], #20
+        [0, 25, 40, 9, 16], #21
     ]
 
     site_radii_all = [
@@ -1307,6 +1313,8 @@ if __name__ == '__main__':
         [r_mt_O], #17
         [r_mt_O], #18
         [r_mt_Cu]+[r_mt_O]*4, #19
+        [r_mt_Cu], #20
+        [r_mt_Cu]+[r_mt_O]*4, #21
     ]
 
     base_path = './outputs/Cu2AC4/512/'
@@ -1331,6 +1339,8 @@ if __name__ == '__main__':
         base_path+'masked_0_two_spx_rotated_9', #17
         base_path+'masked_0_two_spx_rotated_16', #18
         base_path+'masked_model_Cu0_and_oxygens', #19
+        base_path+'masked_model_Cu0_s-dx2y2', #20
+        base_path+'masked_model_Cu0_and_oxygens_s-dx2y2', #21
     ]
 
     replace_DFT_by_model_all = [
@@ -1354,6 +1364,8 @@ if __name__ == '__main__':
         True, #17
         True, #18
         True, #19
+        True, #20
+        True, #21
     ]
 
     fit_model_to_DFT_all = [
@@ -1373,28 +1385,40 @@ if __name__ == '__main__':
         False, #13
         False, #14
         True, #15
-        False, #16
-        False, #17
-        False, #18
+        True, #16
+        True, #17
+        True, #18
         False, #19
+        False, #20
+        False, #21
     ]
 
     parameters_model_all = [{}]*7 + [
-        {'type':'gaussian', 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[1]}}, #7
-        {'type':'gaussian', 'sigmas':[0.3, 0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[1,-1]}}, #8
-        {'type':'gaussian', 'sigmas':[0.3, 0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[1,1]}}, #9
-        {'type':'dxy', 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[1]}}, #10  
-        {'type':'dx2y2', 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[500.3], 'theta0':[-1.006], 'phi0':[-0.5933], 'Z_eff':[11.5],}}, #11
-        {'type':'dx2y2_normalized', 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'theta0':[-1.01], 'phi0':[-0.6001], 'Z_eff':[9.7],}}, #12
-        {'type':'two_s', 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'theta0':[-1.006], 'phi0':[-0.5933], 'Z_eff':[20.5],}}, #13
-        {'type':'two_px', 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'theta0':[-1.006], 'phi0':[-0.5933], 'Z_eff':[10],}}, #14
-        {'type':'two_spx', 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[1.], 'theta0':[-1.006], 'phi0':[-0.5933], 'Z_eff':[2.5]}}, #15 (atom 25)
-        {'type':'two_spx', 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'theta0':[0.565], 'phi0':[0.977], 'Z_eff':[2.5], 'C':[0.707]}}, #16 (aotm 40)
-        {'type':'two_spx', 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'theta0':[0.0], 'phi0':[1.1], 'Z_eff':[2.5], 'C':[0.707]}}, #17 (atom 9)
-        {'type':'two_spx', 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'theta0':[0.0], 'phi0':[0.471], 'Z_eff':[2.5], 'C':[0.707]}}, #18 (atom 16)
-        {'type':'two_spx', 'sigmas':[0.3]*4, 'centers':[], 'fit_params_init_all':{'theta0':[-1.006, 1.006, 0., 0.], 'phi0':[-0.5933, 2.5483, 1.0, -2.10], 'Z_eff':[10]*4, 'C':[0.707]*4}}, #19
+        {'type':['gaussian'], 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[1]}}, #7
+        {'type':['gaussian']*2, 'sigmas':[0.3, 0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[1,-1]}}, #8
+        {'type':['gaussian']*2, 'sigmas':[0.3, 0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[1,1]}}, #9
+        {'type':['dxy'], 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[1]}}, #10
+        {'type':['dx2y2'], 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[700.256342], 'theta0':[-1.011299], 'phi0':[-0.59835726], 'Z_eff':[12.85111],}}, #11 (old Copper)
+        {'type':['dx2y2_normalized'], 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'theta0':[-1.01], 'phi0':[-0.6001], 'Z_eff':[9.7],}}, #12
+        {'type':['two_s'], 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'theta0':[-1.006], 'phi0':[-0.5933], 'Z_eff':[20.5],}}, #13
+        {'type':['two_px'], 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'theta0':[-1.006], 'phi0':[-0.5933], 'Z_eff':[10],}}, #14
+        {'type':['two_spx'], 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[0.12095979], 'theta0':[-0.82363378], 'phi0':[-0.59752522], 'Z_eff':[8.5545368], 'C':[0.50774442]}}, #15 (atom 25) <-------- Oxygen 1/4
+        {'type':['two_spx'], 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[0.1264227], 'theta0':[1.18166768], 'phi0':[2.55285232], 'Z_eff':[8.5995384], 'C':[0.46376494]}}, #16 (atom 40) <-------- Oxygen 2/4
+        {'type':['two_spx'], 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[0.123107364], 'theta0':[0.0003331], 'phi0':[0.829267292], 'Z_eff':[8.53154405], 'C':[0.543582469]}}, #17 (atom 9) <-------- Oxygen 3/4
+        {'type':['two_spx'], 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[0.12409948], 'theta0':[0.17039612], 'phi0':[-2.0329591 ], 'Z_eff':[8.57672478], 'C':[0.46376494]}}, #18 (atom 16) <-------- Oxygen 4/4
+        {'type':['dx2y2']+4*['two_spx'], 'sigmas':[0.3]*5, 'centers':[], 'fit_params_init_all':{'amplitude':[509.65056, 0.12095979, 0.1264227, 0.123107364, 0.12409948], 
+                                                                                'theta0':[-0.99290,-0.82363378, 1.18166768, 0.0003331, 0.17039612], 
+                                                                                'phi0':[-0.58594, -0.5933, 2.55285232, 0.829267292, -2.0329591 ], 
+                                                                                'Z_eff':[12.2132868, 8.5545368, 8.5995384, 8.53154405, 8.57672478],
+                                                                                'C':[0.000, 0.50774442, 0.46376494, 0.543582469, 0.50554664]}}, #19 <-------- Copper (d only) + 4 Oxygens
+        {'type':['dx2y2_with_four_s'], 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[691.803173], 'theta0':[-1.01204317], 'phi0':[-0.599982000], 'Z_eff':[12.8281], 'Z_eff_s':[3.59397636], 'C':[0.0057885]}}, #20 <------ Copper 1/1 
+        {'type':['dx2y2_with_four_s']+4*['two_spx'], 'sigmas':[0.3]*5, 'centers':[], 'fit_params_init_all':{'amplitude':[691.803173, 0.12095979, 0.1264227, 0.123107364, 0.12409948], 
+                                                                        'theta0':[-1.01204317,-0.82363378, 1.18166768, 0.0003331, 0.17039612], 
+                                                                        'phi0':[-0.599982, -0.5933, 2.55285232, 0.829267292, -2.0329591 ], 
+                                                                        'Z_eff':[12.8281, 8.5545368, 8.5995384, 8.53154405, 8.57672478],
+                                                                        'Z_eff_s':[3.59397636, None, None, None, None],
+                                                                        'C':[0.0057885, 0.50774442, 0.46376494, 0.543582469, 0.50554664]}}, #21 <-------- Copper (sd) + 4 Oxygens  
     ]
-
     if run_cases:
         for i in run_cases:
             site_idx = site_idx_all[i]
