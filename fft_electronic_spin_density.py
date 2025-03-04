@@ -130,9 +130,43 @@ class Density:
             print('A (Angstrom)\n', self.A)
             print('\nB (1/Angstrom)\n', self.B)
 
+        # make a grid in kx,ky,kz cartesian coordinates of the reciprocal-space grid points
+        k_cart_mesh_flat = r_rec_mesh_flat @ self.B
+
+        # reciprocal-space cartesian coordinates 3D mesh arrays - ready for use in plotting (in 1/Angstrom)
+        self.kx_cart_mesh = k_cart_mesh_flat[:, 0].reshape((self.na, self.nb, self.nc))
+        self.ky_cart_mesh = k_cart_mesh_flat[:, 1].reshape((self.na, self.nb, self.nc))
+        self.kz_cart_mesh = k_cart_mesh_flat[:, 2].reshape((self.na, self.nb, self.nc))
 
         # need to convert also units of the scalar field >>contained<< in the numpy array
-        # spin density in units of Bohr magnetons per Angstrom^3 ??
+        # spin density in units of electron per a_Bohr^3
+
+    def multiply_with(self, other):
+        """Multiply the density by another density object in-place.
+
+        Args:
+            other (Density): The other density object to multiply with.
+
+        Returns:
+            np.array: The product of the two densities.
+        """
+        self.array = np.multiply(self.array, other.array)
+    
+    def conjugate(self):
+        """Conjugate the density in-place.
+
+        Returns:
+            np.array: The conjugated density.
+        """
+        self.array = np.conjugate(self.array)
+
+    def square_data(self):
+        """Square the density in-place.
+
+        Returns:
+            np.array: The squared density.
+        """
+        self.array = np.square(self.array)
 
     def get_sites_of_atoms(self, site_idx):
         """Return the site centers of the atoms at the given indices.
@@ -1245,6 +1279,74 @@ def workflow_density_vs_cutoff_radius(site_idx=[0], site_radii_all=[[i] for i in
     return rho_tot_all, rho_abs_tot_all
 
 
+def workflow_autocorrelation_term(parameters_model, R_array=[(1,1,1)], folder_out='.'):
+
+    fname_cube_file = './cube_files/Cu2AC4_rho_sz_256.cube' #'./cube_files/Mn2GeO4_rho_sz.cube'
+    permutation = None #!! for Mn2GeO4 need to use [2,1,0] to swap x,y,z -> z,y,x
+
+    site_idx = [0, 25, 40, 9, 16] # case 21
+
+    # ---- READ CUBE FILE -----
+    orbital = Density(permutation=permutation, verbose=True, fname_cube_file=fname_cube_file)
+
+    # conjugate it
+    orbital.conjugate()
+    orbital_conj_array = deepcopy(orbital.array)
+
+    # make a density out of it
+    orbital.square_data()
+    # and its FFT
+    orbital.FFT()
+    orbital_density_FFT_array = orbital.F
+
+    # copy to a new orbital object
+    orbital_shifted_plus = deepcopy(orbital)
+    orbital_shifted_minus = deepcopy(orbital)
+
+    # ---- REPLACE BY MODEL -----
+    site_centers = orbital.get_sites_of_atoms(site_idx=site_idx)
+    parameters_model['centers'] = site_centers
+    orbital.replace_by_model(parameters=parameters_model)
+
+    for R in R_array:
+        # ---- REPLACE 2 BY MODEL -----
+        # add the displacement R to all site centers
+        site_centers_plus = [tuple(np.array(r) + np.array(R)) for r in site_centers]
+        site_centers_minus = [tuple(np.array(r) - np.array(R)) for r in site_centers]
+
+        parameters_model['centers'] = site_centers_plus
+        orbital_shifted_plus.replace_by_model(parameters=parameters_model)
+        # update density_2 by multiplying with density (in-place)
+        orbital_shifted_plus.multiply_with(orbital)
+
+        parameters_model['centers'] = site_centers_minus
+        orbital_shifted_minus.replace_by_model(parameters=parameters_model)
+        # update density_2 by multiplying with density (in-place)   
+        orbital_shifted_minus.multiply_with(orbital)
+
+        # scalar
+        R_phiphi_plus, _ = orbital_shifted_plus.integrate_cube_file()
+        R_phiphi_minus, _ = orbital_shifted_minus.integrate_cube_file()
+
+        # FFT of R_phiphi
+        orbital_shifted_plus.FFT()
+        orbital_shifted_minus.FFT()
+
+        R_tilde_phiphi_plus = orbital_shifted_plus.F
+        R_tilde_phiphi_minus = orbital_shifted_minus.F
+
+        cos_prefactor = np.sqrt( (1-np.cos(R[0]*orbital.kx_cart_mesh + R[1]*orbital.ky_cart_mesh + R[2]*orbital.kz_cart_mesh)) / 2)
+
+        E_perp = np.multiply(cos_prefactor, orbital_density_FFT_array) + \
+                R_phiphi_plus * R_tilde_phiphi_minus + \
+                - R_phiphi_minus * R_tilde_phiphi_plus
+        
+        # insert as data array of orbital_shifted_plus to save to a cube file
+        orbital_shifted_plus.array = E_perp
+        orbital_shifted_plus.write_cube_file_rho_sz(fout=folder_out + f'/E_perp_R_{R[0]:.2f}_{R[1]:.2f}_{R[2]:.2f}.cube')
+        
+
+
 if __name__ == '__main__':
 
     # workflow_density_vs_cutoff_radius(site_idx=[0], site_radii_all=[[i] for i in np.arange(0.5, 4.0, 0.5)], plot=True)
@@ -1417,8 +1519,16 @@ if __name__ == '__main__':
                                                                         'phi0':[-0.599982, -0.5933, 2.55285232, 0.829267292, -2.0329591 ], 
                                                                         'Z_eff':[12.8281, 8.5545368, 8.5995384, 8.53154405, 8.57672478],
                                                                         'Z_eff_s':[3.59397636, None, None, None, None],
-                                                                        'C':[0.0057885, 0.50774442, 0.46376494, 0.543582469, 0.50554664]}}, #21 <-------- Copper (sd) + 4 Oxygens  
+                                                                        'C':[0.0057885, 0.50774442, 0.46376494, 0.543582469, 0.50554664]}}, #21 <-------- (  Copper (sd) + 4 Oxygens --- not much better) 
     ]
+
+
+    case = 19
+    R_base = np.array([3.01571, 6.45289, 4.99992]) - np.array([4.85991, 5.28091, 3.56158]) # Cu1 - Cu0 = (-1.8442, 1.17198, 1.43834)
+    scale_R_array = [0.9, 1.0] #np.arange(0.5, 1.5, 0.05)
+    workflow_autocorrelation_term(parameters_model_all[case], R_array=[f*R_base for f in scale_R_array], folder_out=output_folders_all[case])
+    exit()
+
     if run_cases:
         for i in run_cases:
             site_idx = site_idx_all[i]
