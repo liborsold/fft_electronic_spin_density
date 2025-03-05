@@ -233,14 +233,16 @@ class Density:
         return i_kz
 
 
-    def replace_by_model(self, fit=False, parameters={'type':['gaussian'], 'sigmas':[0.5], 'centers':[(0.5, 0.5, 0.5)], 'fit_params_init_all':{'amplitude':[1]}}, leave_sites=None):
+    def replace_by_model(self, fit=False, parameters={'type':['gaussian'], 'sigmas':[0.5], 'centers':[(0.5, 0.5, 0.5)], 'fit_params_init_all':{'amplitude':[1]}}, leave_sites=None,
+                         leave_as_wavefunction=False):
         """Replace the scalar field in the numpy array by a model function.
 
         Args:
             type (str, optional): Type of the model function. Defaults to 'gaussian'.
             fit (bool, optional): Fit the model to the data. Defaults to False.
             parameters (dict, optional): Parameters of the model function. Defaults to {'sigmas':[0.5], 'centers':[(0.5, 0.5, 0.5)], 'fit_params_init_all':{'amplitude':[1]}}
-            leave_sites (dict, optional): Dictionary with keys 'site_centers' and 'site_radii' for the sites to leave in the model. If provided, the fitted density will be masked after its construction. 
+            leave_sites (dict, optional): Dictionary with keys 'site_centers' and 'site_radii' for the sites to leave in the model. If provided, the fitted density will be masked after its construction.
+            leave_as_wavefunction (bool, optional): Leave the model as a wavefunction instead of the density (wavefunction squared). Defaults to False.
             Defaults to None.
         """
 
@@ -463,7 +465,7 @@ _sq = (x**2 + y**2 + z**2)
             Returns:
                 _type_: _description_
             """
-            model_density = np.zeros_like(self.array)
+            model_wavefunction = np.zeros_like(self.array)
 
             # place all the site-centered models in the space
             for i in range(len(parameters['type'])):
@@ -478,8 +480,12 @@ _sq = (x**2 + y**2 + z**2)
 
                 # choose the 3D scalar field function from models
                 f = models[parameters['type'][i]]
-                model_density += ( f(self.x_cart_mesh, self.y_cart_mesh, self.z_cart_mesh, sigma=sigma, center=center, **fit_params_init) )**2
-            return model_density
+                model_wavefunction += f(self.x_cart_mesh, self.y_cart_mesh, self.z_cart_mesh, sigma=sigma, center=center, **fit_params_init)
+
+            if leave_as_wavefunction:
+                return model_wavefunction
+            else:
+                return model_wavefunction**2
         
         if fit:
             def dict_to_list_and_flatten(dict_in):
@@ -1289,16 +1295,6 @@ def workflow_autocorrelation_term(parameters_model, R_array=[(1,1,1)], folder_ou
     # ---- READ CUBE FILE -----
     orbital = Density(permutation=permutation, verbose=True, fname_cube_file=fname_cube_file)
 
-    # conjugate it
-    orbital.conjugate()
-    orbital_conj_array = deepcopy(orbital.array)
-
-    # make a density out of it
-    orbital.square_data()
-    # and its FFT
-    orbital.FFT()
-    orbital_density_FFT_array = orbital.F
-
     # copy to a new orbital object
     orbital_shifted_plus = deepcopy(orbital)
     orbital_shifted_minus = deepcopy(orbital)
@@ -1306,7 +1302,22 @@ def workflow_autocorrelation_term(parameters_model, R_array=[(1,1,1)], folder_ou
     # ---- REPLACE BY MODEL -----
     site_centers = orbital.get_sites_of_atoms(site_idx=site_idx)
     parameters_model['centers'] = site_centers
-    orbital.replace_by_model(parameters=parameters_model)
+    orbital.replace_by_model(parameters=parameters_model, leave_as_wavefunction=True)
+    # orbital.write_cube_file_rho_sz(fout=folder_out + '/orbital.cube')  - beware - after writing out the cube file, some data is missing in the object
+
+    # conjugate it
+    orbital.conjugate()
+    orbital_conj_array = deepcopy(orbital.array)
+    # orbital.write_cube_file_rho_sz(fout=folder_out + '/orbital_conjugate.cube')
+
+    # make a density out of it
+    density = deepcopy(orbital)
+    density.square_data()
+    density.integrate_cube_file()
+
+    # get its density's FFT (the form factor)
+    density.FFT()
+    form_factor = np.abs(density.F)
 
     for R in R_array:
         # ---- REPLACE 2 BY MODEL -----
@@ -1315,12 +1326,12 @@ def workflow_autocorrelation_term(parameters_model, R_array=[(1,1,1)], folder_ou
         site_centers_minus = [tuple(np.array(r) - np.array(R)) for r in site_centers]
 
         parameters_model['centers'] = site_centers_plus
-        orbital_shifted_plus.replace_by_model(parameters=parameters_model)
+        orbital_shifted_plus.replace_by_model(parameters=parameters_model, leave_as_wavefunction=True)
         # update density_2 by multiplying with density (in-place)
         orbital_shifted_plus.multiply_with(orbital)
 
         parameters_model['centers'] = site_centers_minus
-        orbital_shifted_minus.replace_by_model(parameters=parameters_model)
+        orbital_shifted_minus.replace_by_model(parameters=parameters_model, leave_as_wavefunction=True)
         # update density_2 by multiplying with density (in-place)   
         orbital_shifted_minus.multiply_with(orbital)
 
@@ -1336,15 +1347,31 @@ def workflow_autocorrelation_term(parameters_model, R_array=[(1,1,1)], folder_ou
         R_tilde_phiphi_minus = orbital_shifted_minus.F
 
         cos_prefactor = np.sqrt( (1-np.cos(R[0]*orbital.kx_cart_mesh + R[1]*orbital.ky_cart_mesh + R[2]*orbital.kz_cart_mesh)) / 2)
+        # density.F_abs_sq = cos_prefactor
+        # density.write_cube_file_fft('cos_prefactor.cube')
 
-        E_perp = np.multiply(cos_prefactor, orbital_density_FFT_array) + \
-                R_phiphi_plus * R_tilde_phiphi_minus + \
+        form_factor_term = np.multiply(cos_prefactor, form_factor)
+        # density.F_abs_sq = np.abs(form_factor_term)
+        # density.write_cube_file_fft('cos_prefactor_times_form_factor.cube')
+
+        overlap_term = R_phiphi_plus * R_tilde_phiphi_minus + \
                 - R_phiphi_minus * R_tilde_phiphi_plus
+        # density.F_abs_sq = np.abs(overlap_term)
+        # density.write_cube_file_fft(f'overlap_term.cube')
+
+
+        E_perp = form_factor_term + overlap_term
+        # density.F_abs_sq = np.abs(E_perp)
+        # density.write_cube_file_fft(f'/E_perp.cube')
         
         # insert as data array of orbital_shifted_plus to save to a cube file
         orbital_shifted_plus.array = E_perp
         orbital_shifted_plus.write_cube_file_rho_sz(fout=folder_out + f'/E_perp_R_{R[0]:.2f}_{R[1]:.2f}_{R[2]:.2f}.cube')
         
+
+                # BE SAVING SQUARED PARTIAL SUMS
+                #    THEN ALSO SQUARED E_PERP !!
+                #        - DIRECTLY COMPARABLE TO form factor squared (f_abs_sq)
 
 
 if __name__ == '__main__':
@@ -1392,6 +1419,7 @@ if __name__ == '__main__':
         [0, 25, 40, 9, 16], #19
         [0], #20
         [0, 25, 40, 9, 16], #21
+        [0, 25, 40, 9, 16], #22
     ]
 
     site_radii_all = [
@@ -1417,6 +1445,7 @@ if __name__ == '__main__':
         [r_mt_Cu]+[r_mt_O]*4, #19
         [r_mt_Cu], #20
         [r_mt_Cu]+[r_mt_O]*4, #21
+        [r_mt_Cu]+[r_mt_O]*4, #22
     ]
 
     base_path = './outputs/Cu2AC4/512/'
@@ -1443,6 +1472,7 @@ if __name__ == '__main__':
         base_path+'masked_model_Cu0_and_oxygens', #19
         base_path+'masked_model_Cu0_s-dx2y2', #20
         base_path+'masked_model_Cu0_and_oxygens_s-dx2y2', #21
+        base_path+'masked_model_Cu0_and_oxygens_purely_bonding', #22
     ]
 
     replace_DFT_by_model_all = [
@@ -1468,6 +1498,7 @@ if __name__ == '__main__':
         True, #19
         True, #20
         True, #21
+        True, #22
     ]
 
     fit_model_to_DFT_all = [
@@ -1493,6 +1524,7 @@ if __name__ == '__main__':
         False, #19
         False, #20
         False, #21
+        False, #22
     ]
 
     parameters_model_all = [{}]*7 + [
@@ -1512,7 +1544,7 @@ if __name__ == '__main__':
                                                                                 'theta0':[-0.99290,-0.82363378, 1.18166768, 0.0003331, 0.17039612], 
                                                                                 'phi0':[-0.58594, -0.5933, 2.55285232, 0.829267292, -2.0329591 ], 
                                                                                 'Z_eff':[12.2132868, 8.5545368, 8.5995384, 8.53154405, 8.57672478],
-                                                                                'C':[0.000, 0.50774442, 0.46376494, 0.543582469, 0.50554664]}}, #19 <-------- Copper (d only) + 4 Oxygens
+                                                                                'C':[0.000, 0.50774442, 0.46376494, 0.543582469, 0.50554664]}}, #19 <-------- Copper (d only) + 4 Oxygens -- mixed bonding and anti-bonding!!
         {'type':['dx2y2_with_four_s'], 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[691.803173], 'theta0':[-1.01204317], 'phi0':[-0.599982000], 'Z_eff':[12.8281], 'Z_eff_s':[3.59397636], 'C':[0.0057885]}}, #20 <------ Copper 1/1 
         {'type':['dx2y2_with_four_s']+4*['two_spx'], 'sigmas':[0.3]*5, 'centers':[], 'fit_params_init_all':{'amplitude':[691.803173, 0.12095979, 0.1264227, 0.123107364, 0.12409948], 
                                                                         'theta0':[-1.01204317,-0.82363378, 1.18166768, 0.0003331, 0.17039612], 
@@ -1520,10 +1552,13 @@ if __name__ == '__main__':
                                                                         'Z_eff':[12.8281, 8.5545368, 8.5995384, 8.53154405, 8.57672478],
                                                                         'Z_eff_s':[3.59397636, None, None, None, None],
                                                                         'C':[0.0057885, 0.50774442, 0.46376494, 0.543582469, 0.50554664]}}, #21 <-------- (  Copper (sd) + 4 Oxygens --- not much better) 
-    ]
-
-
-    case = 19
+        {'type':['dx2y2']+4*['two_spx'], 'sigmas':[0.3]*5, 'centers':[], 'fit_params_init_all':{'amplitude':[509.65056, -0.12095979, -0.1264227, 0.123107364, 0.12409948], 
+                                                                                'theta0':[-0.99290,-0.82363378, 1.18166768, 0.0003331, 0.17039612], 
+                                                                                'phi0':[-0.58594, -0.5933, 2.55285232, 0.829267292, -2.0329591 ], 
+                                                                                'Z_eff':[12.2132868, 8.5545368, 8.5995384, 8.53154405, 8.57672478],
+                                                                                'C':[0.000, 0.50774442, 0.46376494, 0.543582469, 0.50554664]}}, #22 <-------- purely bonding version of 19
+        ]
+    case = 22
     R_base = np.array([3.01571, 6.45289, 4.99992]) - np.array([4.85991, 5.28091, 3.56158]) # Cu1 - Cu0 = (-1.8442, 1.17198, 1.43834)
     scale_R_array = [0.9, 1.0] #np.arange(0.5, 1.5, 0.05)
     workflow_autocorrelation_term(parameters_model_all[case], R_array=[f*R_base for f in scale_R_array], folder_out=output_folders_all[case])
