@@ -233,8 +233,8 @@ class Density:
         return i_kz
 
 
-    def replace_by_model(self, fit=False, parameters={'type':['gaussian'], 'sigmas':[0.5], 'centers':[(0.5, 0.5, 0.5)], 'fit_params_init_all':{'amplitude':[1]}}, leave_sites=None,
-                         leave_as_wavefunction=False):
+    def replace_by_model(self, fit=False, parameters={'type':['gaussian'], 'sigmas':[0.5], 'centers':[(0.5, 0.5, 0.5)], 'spin_down_orbital_all':[False], 'fit_params_init_all':{'amplitude':[1]},}, 
+                         leave_sites=None, leave_as_wavefunction=False):
         """Replace the scalar field in the numpy array by a model function.
 
         Args:
@@ -465,7 +465,7 @@ _sq = (x**2 + y**2 + z**2)
             Returns:
                 _type_: _description_
             """
-            model_wavefunction = np.zeros_like(self.array)
+            model_wavefunction_spinor = [np.zeros_like(self.array), np.zeros_like(self.array)]
 
             # place all the site-centered models in the space
             for i in range(len(parameters['type'])):
@@ -473,6 +473,10 @@ _sq = (x**2 + y**2 + z**2)
                 # the sign of the density is given by signs[i]
                 sigma = parameters['sigmas'][i]
                 center = parameters['centers'][i]
+                
+                spin_down_orbital = False if 'spin_down_orbital_all' not in parameters else parameters['spin_down_orbital_all'][i] # if not provided, flip_sign will be False
+                spinor_idx = 1 if spin_down_orbital else 0
+                
                 if fit_params_init_all:
                     fit_params_init = {key:value[i] for key, value in fit_params_init_all.items()}
                 else:
@@ -480,13 +484,15 @@ _sq = (x**2 + y**2 + z**2)
 
                 # choose the 3D scalar field function from models
                 f = models[parameters['type'][i]]
-                model_wavefunction += f(self.x_cart_mesh, self.y_cart_mesh, self.z_cart_mesh, sigma=sigma, center=center, **fit_params_init)
+                model_wavefunction_spinor[spinor_idx] += f(self.x_cart_mesh, self.y_cart_mesh, self.z_cart_mesh, sigma=sigma, center=center, **fit_params_init)
 
             if leave_as_wavefunction:
-                return model_wavefunction
+                # !!!!! returns the spin-up orbital by default !!!!!!
+                return model_wavefunction_spinor[0]
             else:
-                return model_wavefunction**2
-        
+                rho_up = np.multiply(model_wavefunction_spinor[0].conj(), model_wavefunction_spinor[0])
+                rho_down = np.multiply(model_wavefunction_spinor[1].conj(), model_wavefunction_spinor[1])
+                return rho_up - rho_down
         if fit:
             def dict_to_list_and_flatten(dict_in):
                 list_out = []
@@ -1077,18 +1083,18 @@ def workflow(output_folder, site_idx, site_radii, replace_DFT_by_model, paramete
 
     # --- INPUT ----
 
-    fname_cube_file = './cube_files/Cu2AC4_rho_sz_512.cube' #'./cube_files/Mn2GeO4_rho_sz.cube'
+    fname_cube_file = './cube_files/Cu2AC4_rho_sz_256.cube' #'./cube_files/Mn2GeO4_rho_sz.cube'
     
     permutation = None #!! for Mn2GeO4 need to use [2,1,0] to swap x,y,z -> z,y,x
 
     # ---- CALCULATION CONTROL ----
 
-    density_3D = True
-    density_slices = True
+    density_3D = False
+    density_slices = False
     
-    fft_3D = True
-    full_range_fft_spectrum_cuts = True
-    zoom_in_fft_spectrum_cuts = True
+    fft_3D = False
+    full_range_fft_spectrum_cuts = False
+    zoom_in_fft_spectrum_cuts = False
 
     write_cube_files = True
 
@@ -1285,10 +1291,14 @@ def workflow_density_vs_cutoff_radius(site_idx=[0], site_radii_all=[[i] for i in
     return rho_tot_all, rho_abs_tot_all
 
 
-def workflow_autocorrelation_term(parameters_model, R_array=[(1,1,1)], folder_out='.'):
+def workflow_autocorrelation_term(parameters_model, scale_R_array=[1.0], folder_out='.'):
+
+    R_base = np.array([3.01571, 6.45289, 4.99992]) - np.array([4.85991, 5.28091, 3.56158]) # Cu1 - Cu0 = (-1.8442, 1.17198, 1.43834)
+    R_array=[f*R_base for f in scale_R_array]
 
     fname_cube_file = './cube_files/Cu2AC4_rho_sz_256.cube' #'./cube_files/Mn2GeO4_rho_sz.cube'
     permutation = None #!! for Mn2GeO4 need to use [2,1,0] to swap x,y,z -> z,y,x
+    output_folder = './outputs/Cu2AC4/E_perp/case_22' #_and_oxygens' # 'Mn2GeO4_kz_tomography_64' #'./gaussian/sigma_0.3_distance_1.0' # Mn2GeO4_kz_tomography_64
 
     site_idx = [0, 25, 40, 9, 16] # case 21
 
@@ -1319,7 +1329,7 @@ def workflow_autocorrelation_term(parameters_model, R_array=[(1,1,1)], folder_ou
     density.FFT()
     form_factor = np.abs(density.F)
 
-    for R in R_array:
+    for scale_R, R in zip(scale_R_array, R_array):
         # ---- REPLACE 2 BY MODEL -----
         # add the displacement R to all site centers
         site_centers_plus = [tuple(np.array(r) + np.array(R)) for r in site_centers]
@@ -1347,22 +1357,22 @@ def workflow_autocorrelation_term(parameters_model, R_array=[(1,1,1)], folder_ou
         R_tilde_phiphi_minus = orbital_shifted_minus.F
 
         cos_prefactor = np.sqrt( (1-np.cos(R[0]*orbital.kx_cart_mesh + R[1]*orbital.ky_cart_mesh + R[2]*orbital.kz_cart_mesh)) / 2)
-        # density.F_abs_sq = cos_prefactor
-        # density.write_cube_file_fft('cos_prefactor.cube')
+        # density.F_abs_sq = np.abs(cos_prefactor)**2
+        # density.write_cube_file_fft('cos_prefactor_squared.cube')   # density here is just a surrogate to save the relevant data
 
         form_factor_term = np.multiply(cos_prefactor, form_factor)
-        # density.F_abs_sq = np.abs(form_factor_term)
-        # density.write_cube_file_fft('cos_prefactor_times_form_factor.cube')
+        # density.F_abs_sq = np.abs(form_factor_term)**2
+        # density.write_cube_file_fft('cos_prefactor_times_form_factor_squared.cube')   # density here is just a surrogate to save the relevant data
 
         overlap_term = R_phiphi_plus * R_tilde_phiphi_minus + \
                 - R_phiphi_minus * R_tilde_phiphi_plus
-        # density.F_abs_sq = np.abs(overlap_term)
-        # density.write_cube_file_fft(f'overlap_term.cube')
+        density.F_abs_sq = np.abs(overlap_term)**2
+        density.write_cube_file_fft(f'overlap_term_squared.cube')   # density here is just a surrogate to save the relevant data
 
 
         E_perp = form_factor_term + overlap_term
-        # density.F_abs_sq = np.abs(E_perp)
-        # density.write_cube_file_fft(f'/E_perp.cube')
+        density.F_abs_sq = np.abs(E_perp)**2
+        density.write_cube_file_fft(f'E_perp_squared.cube')   # density here is just a surrogate to save the relevant data
         
         # insert as data array of orbital_shifted_plus to save to a cube file
         orbital_shifted_plus.array = E_perp
@@ -1392,9 +1402,8 @@ if __name__ == '__main__':
         site_radii = [r_mt_Cu] + 4*[r_mt_O] #+ [r_mt_Cu]+ 4*[r_mt_O]
         workflow(site_idx=site_idx, site_radii=site_radii, output_folder=output_folder)
 
-
     # ===== RUN selected cases among the predefined ones =====
-    run_cases = [21] # None
+    run_cases = [23] # None
 
     site_idx_all = [
         [0], #0            
@@ -1402,7 +1411,7 @@ if __name__ == '__main__':
         [0,1], #2
         [0, 16, 25, 9, 40], #3
         [1, 41, 8, 24, 17], #4
-        [0,  16, 25, 9, 40, 1, 41, 8, 24, 17,], #5
+        [0, 16, 25, 9, 40, 1, 41, 8, 24, 17,], #5
         None, #6
         [0], #7
         [0,1], #8
@@ -1420,6 +1429,7 @@ if __name__ == '__main__':
         [0], #20
         [0, 25, 40, 9, 16], #21
         [0, 25, 40, 9, 16], #22
+        [0, 25, 40, 9, 16, 1, 41, 24, 17, 8], #23
     ]
 
     site_radii_all = [
@@ -1446,6 +1456,7 @@ if __name__ == '__main__':
         [r_mt_Cu], #20
         [r_mt_Cu]+[r_mt_O]*4, #21
         [r_mt_Cu]+[r_mt_O]*4, #22
+        [r_mt_Cu]+[r_mt_O]*4+[r_mt_Cu]+[r_mt_O]*4, #23
     ]
 
     base_path = './outputs/Cu2AC4/512/'
@@ -1473,6 +1484,7 @@ if __name__ == '__main__':
         base_path+'masked_model_Cu0_s-dx2y2', #20
         base_path+'masked_model_Cu0_and_oxygens_s-dx2y2', #21
         base_path+'masked_model_Cu0_and_oxygens_purely_bonding', #22
+        base_path+'masked_model_Cu0-1_and_oxygens_purely_bonding_exact_copies_0_and_1', #23
     ]
 
     replace_DFT_by_model_all = [
@@ -1499,6 +1511,7 @@ if __name__ == '__main__':
         True, #20
         True, #21
         True, #22
+        True, #23
     ]
 
     fit_model_to_DFT_all = [
@@ -1525,6 +1538,7 @@ if __name__ == '__main__':
         False, #20
         False, #21
         False, #22
+        False, #23
     ]
 
     parameters_model_all = [{}]*7 + [
@@ -1557,12 +1571,19 @@ if __name__ == '__main__':
                                                                                 'phi0':[-0.58594, -0.5933, 2.55285232, 0.829267292, -2.0329591 ], 
                                                                                 'Z_eff':[12.2132868, 8.5545368, 8.5995384, 8.53154405, 8.57672478],
                                                                                 'C':[0.000, 0.50774442, 0.46376494, 0.543582469, 0.50554664]}}, #22 <-------- purely bonding version of 19
+        {'type':['dx2y2']+4*['two_spx']+['dx2y2']+4*['two_spx'], 'sigmas':[0.3]*10, 'centers':[], 
+            'spin_down_orbital_all':[False]*5 + [True]*5,
+                                                                          'fit_params_init_all':{'amplitude':[509.65056, -0.12095979, -0.1264227, 0.123107364, 0.12409948, 509.65056, -0.12095979, -0.1264227, 0.123107364, 0.12409948], 
+                                                                                'theta0':[-0.99290,-0.82363378, 1.18166768, 0.0003331, 0.17039612, -0.99290,-0.82363378, 1.18166768, 0.0003331, 0.17039612], 
+                                                                                'phi0':[-0.58594, -0.5933, 2.55285232, 0.829267292, -2.0329591, -0.58594, -0.5933, 2.55285232, 0.829267292, -2.0329591,], 
+                                                                                'Z_eff':[12.2132868, 8.5545368, 8.5995384, 8.53154405, 8.57672478, 12.2132868, 8.5545368, 8.5995384, 8.53154405, 8.57672478],
+                                                                                'C':[0.000, 0.50774442, 0.46376494, 0.543582469, 0.50554664, 0.000, 0.50774442, 0.46376494, 0.543582469, 0.50554664]}}, #23 <-------- copy of 22 but orbitals copied to Cu1 sites with opposite spin (controlled by 'spin_down_orbital_all' key in parameters_model)
         ]
     case = 22
-    R_base = np.array([3.01571, 6.45289, 4.99992]) - np.array([4.85991, 5.28091, 3.56158]) # Cu1 - Cu0 = (-1.8442, 1.17198, 1.43834)
+
     scale_R_array = [0.9, 1.0] #np.arange(0.5, 1.5, 0.05)
-    workflow_autocorrelation_term(parameters_model_all[case], R_array=[f*R_base for f in scale_R_array], folder_out=output_folders_all[case])
-    exit()
+    # workflow_autocorrelation_term(parameters_model_all[case], scale_R_array=scale_R_array, folder_out=output_folders_all[case])
+    # exit()
 
     if run_cases:
         for i in run_cases:
