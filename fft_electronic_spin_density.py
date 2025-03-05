@@ -1005,7 +1005,7 @@ _sq = (x**2 + y**2 + z**2)
         meta_fft['zvec'] = self.kc
         write_cube(self.F_abs_sq, meta_fft, fout)
 
-    def integrate_cube_file(self, data_array=None, volume=None, verbose=True):
+    def integrate_cube_file(self, data_array=None, volume=None, verbose=True, fft=False):
         """Integrate the density in a cube file.
 
         Args:
@@ -1017,7 +1017,10 @@ _sq = (x**2 + y**2 + z**2)
             (float, float): total charge in the volume, total absolute charge in the volume
         """
         if not data_array:
-            data_array = self.array
+            if fft:
+                data_array = self.F_abs_sq
+            else:
+                data_array = self.array
         if not volume:
             Angstrom = 1e-10
             a_Bohr = physical_constants['Bohr radius'][0]
@@ -1083,7 +1086,7 @@ def workflow(output_folder, site_idx, site_radii, replace_DFT_by_model, paramete
 
     # --- INPUT ----
 
-    fname_cube_file = './cube_files/Cu2AC4_rho_sz_256.cube' #'./cube_files/Mn2GeO4_rho_sz.cube'
+    fname_cube_file = './cube_files/Cu2AC4_rho_sz_512.cube' #'./cube_files/Mn2GeO4_rho_sz.cube'
     
     permutation = None #!! for Mn2GeO4 need to use [2,1,0] to swap x,y,z -> z,y,x
 
@@ -1291,7 +1294,7 @@ def workflow_density_vs_cutoff_radius(site_idx=[0], site_radii_all=[[i] for i in
     return rho_tot_all, rho_abs_tot_all
 
 
-def workflow_autocorrelation_term(parameters_model, scale_R_array=[1.0], folder_out='.'):
+def workflow_autocorrelation_term(parameters_model, scale_R_array=[1.0], folder_out='.', write_cube_files=False):
 
     R_base = np.array([3.01571, 6.45289, 4.99992]) - np.array([4.85991, 5.28091, 3.56158]) # Cu1 - Cu0 = (-1.8442, 1.17198, 1.43834)
     R_array=[f*R_base for f in scale_R_array]
@@ -1329,6 +1332,10 @@ def workflow_autocorrelation_term(parameters_model, scale_R_array=[1.0], folder_
     density.FFT()
     form_factor = np.abs(density.F)
 
+    form_factor_term_sq_integrated_all = []
+    overlap_term_sq_integrated_all = []
+    E_perp_sq_integrated_all = []
+
     for scale_R, R in zip(scale_R_array, R_array):
         # ---- REPLACE 2 BY MODEL -----
         # add the displacement R to all site centers
@@ -1361,28 +1368,37 @@ def workflow_autocorrelation_term(parameters_model, scale_R_array=[1.0], folder_
         # density.write_cube_file_fft('cos_prefactor_squared.cube')   # density here is just a surrogate to save the relevant data
 
         form_factor_term = np.multiply(cos_prefactor, form_factor)
-        # density.F_abs_sq = np.abs(form_factor_term)**2
-        # density.write_cube_file_fft('cos_prefactor_times_form_factor_squared.cube')   # density here is just a surrogate to save the relevant data
+        density.F_abs_sq = np.abs(form_factor_term)**2
+        if write_cube_files:
+            density.write_cube_file_fft('cos_prefactor_times_form_factor_squared.cube')   # density here is just a surrogate to save the relevant data
+        form_factor_term_sq_integrated, _ = density.integrate_cube_file(fft=True)
+        form_factor_term_sq_integrated_all.append(form_factor_term_sq_integrated)
 
         overlap_term = R_phiphi_plus * R_tilde_phiphi_minus + \
                 - R_phiphi_minus * R_tilde_phiphi_plus
         density.F_abs_sq = np.abs(overlap_term)**2
-        density.write_cube_file_fft(f'overlap_term_squared.cube')   # density here is just a surrogate to save the relevant data
+        if write_cube_files:
+            density.write_cube_file_fft(f'overlap_term_squared.cube')   # density here is just a surrogate to save the relevant data
+        overlap_term_sq_integrated, _ = density.integrate_cube_file(fft=True)
+        overlap_term_sq_integrated_all.append(overlap_term_sq_integrated)
 
 
         E_perp = form_factor_term + overlap_term
         density.F_abs_sq = np.abs(E_perp)**2
-        density.write_cube_file_fft(f'E_perp_squared.cube')   # density here is just a surrogate to save the relevant data
-        
-        # insert as data array of orbital_shifted_plus to save to a cube file
-        orbital_shifted_plus.array = E_perp
-        orbital_shifted_plus.write_cube_file_rho_sz(fout=folder_out + f'/E_perp_R_{R[0]:.2f}_{R[1]:.2f}_{R[2]:.2f}.cube')
-        
+        if write_cube_files:
+            density.write_cube_file_fft(f'E_perp_squared.cube')   # density here is just a surrogate to save the relevant data
+        E_perp_sq_integrated, _ = density.integrate_cube_file(fft=True)
+        E_perp_sq_integrated_all.append(E_perp_sq_integrated)
 
-                # BE SAVING SQUARED PARTIAL SUMS
-                #    THEN ALSO SQUARED E_PERP !!
-                #        - DIRECTLY COMPARABLE TO form factor squared (f_abs_sq)
 
+    # plotting
+    fig, ax = plt.subplots(1, 1, figsize=(5, 5))
+    plt.plot(scale_R_array, form_factor_term_sq_integrated_all, 's-', label='form_factor_term_sq_integrated', markerfacecolor='none')
+    plt.plot(scale_R_array, overlap_term_sq_integrated_all, 'o-', label='overlap_term_sq_integrated', markerfacecolor='none')
+    plt.plot(scale_R_array, E_perp_sq_integrated_all, '^-', label='E_perp_sq_integrated', markerfacecolor='none')
+    plt.xlabel('scale_R')
+    plt.ylabel('charge')
+    plt.show()
 
 if __name__ == '__main__':
 
@@ -1582,8 +1598,8 @@ if __name__ == '__main__':
     case = 22
 
     scale_R_array = [0.9, 1.0] #np.arange(0.5, 1.5, 0.05)
-    # workflow_autocorrelation_term(parameters_model_all[case], scale_R_array=scale_R_array, folder_out=output_folders_all[case])
-    # exit()
+    workflow_autocorrelation_term(parameters_model_all[case], scale_R_array=scale_R_array, folder_out=output_folders_all[case])
+    exit()
 
     if run_cases:
         for i in run_cases:
