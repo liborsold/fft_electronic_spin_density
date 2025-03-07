@@ -15,6 +15,8 @@ from matplotlib.ticker import FuncFormatter
 from copy import deepcopy
 from scipy.spatial.transform import Rotation as R
 from scipy.optimize import minimize
+from scipy.interpolate import LinearNDInterpolator
+from matplotlib.ticker import MultipleLocator
 
 a0 = physical_constants['Bohr radius'][0] * 1e10 # Bohr radius in units of Angstrom
 
@@ -885,7 +887,8 @@ _sq = (x**2 + y**2 + z**2)
     def plot_fft_2D(self, i_kz, fft_as_log=False, k1_idx=0, k2_idx=1, fout_name='colormap_2D_out.png', verbose=True, figsize=(8.0, 6.0), 
                     dpi=500,
                     fixed_z_scale=True, 
-                    xlims=None, ylims=None,zlims=None):
+                    xlims=None, ylims=None,zlims=None,
+                    plot_line_cut=False, kx_arr=None, ky_arr=None):
 
         # ----------------- RECIPROCAL SPACE PLOTTING -----------------
         # sum all projections into plane (defined by a vector normal to the plane)
@@ -958,6 +961,9 @@ _sq = (x**2 + y**2 + z**2)
         ax.arrow(k1[0]/2-k2[0]/2, k1[1]/2-k2[1]/2, k2[0], k2[1], head_width=0, head_length=0, fc=arrow_line_color, ec=arrow_line_color, linestyle=linestyle)
         ax.arrow(-k1[0]/2+k2[0]/2, -k1[1]/2+k2[1]/2, k1[0], k1[1], head_width=0, head_length=0, fc=arrow_line_color, ec=arrow_line_color, linestyle=linestyle)
 
+        if plot_line_cut:
+            # plot line cut
+            ax.arrow(kx_arr[0], ky_arr[0], kx_arr[-1]-kx_arr[0], ky_arr[-1]-ky_arr[0], head_width=None, head_length=None, fc='w', ec='w', linestyle=':', linewidth=2.0)
 
         # Formatting
         plt.xlabel(r"$k_x$ ($\mathrm{\AA}^{-1}$)", fontsize=12)
@@ -1032,6 +1038,76 @@ _sq = (x**2 + y**2 + z**2)
             print(f'\nTotal charge in the volume: {rho_tot:.6f} e')
             print(f'Total absolute charge in the volume: {abs_rho_tot:.6f} e\n')
         return rho_tot, abs_rho_tot
+    
+    def plot_fft_along_line(self, i_kz=None, cut_along='along_stripes', kx_ky_fun=None, k_dist_lim=15, kx_0=None, ky_0=None, N_points=3001, fout_name='test_1D_plot_along.png'):
+
+        figsize = (4.5, 3.5)
+
+        # positions of copper atoms (R = r_Cu2 - r_Cu1)
+        Cu2_xyz = (3.01571, 6.45289, 4.99992)
+        Cu1_xyz = (4.85991, 5.28091, 3.56158)
+        R = np.array(Cu2_xyz) - np.array(Cu1_xyz)
+
+        # --- INTERPOLATION ---
+        # input arrays
+        if i_kz is None:
+            i_kz = self.get_i_kz(0)
+
+        kx_center = (np.max(self.kx_cart_mesh[:,:,i_kz]) + np.min(self.kx_cart_mesh[:,:,i_kz])) / 2
+        ky_center = (np.max(self.ky_cart_mesh[:,:,i_kz]) + np.min(self.ky_cart_mesh[:,:,i_kz])) / 2
+
+        if cut_along=='along_stripes' and kx_0 is None and ky_0 is None:
+            kx_0 = np.abs(R[0]) / 2
+            ky_0 = -np.abs(R[1]) / 2
+        elif cut_along=='perpendicular_to_stripes' and kx_0 is None and ky_0 is None:
+            kx_0 = 0
+            ky_0 = 0
+
+        if kx_ky_fun is None:
+            def kx_ky_fun(k_dist):
+                # direction cosines
+                gamma_x = R[0] / np.sqrt(R[0]**2 + R[1]**2)
+                gamma_y = R[1] / np.sqrt(R[0]**2 + R[1]**2)
+                # R is perpendicular to stripes
+                if cut_along == 'along_stripes':
+                    kx = kx_center + kx_0 - gamma_y * k_dist
+                    ky = ky_center + ky_0 + gamma_x * k_dist
+                # 90 deg rotated --> along the stripes
+                elif cut_along == 'perpendicular_to_stripes':
+                    kx = kx_center + kx_0 + gamma_x * k_dist
+                    ky = ky_center + ky_0 + gamma_y * k_dist
+                return kx, ky
+
+        k_dist_arr = np.linspace(-k_dist_lim, k_dist_lim, N_points)
+        kx_arr, ky_arr = kx_ky_fun(k_dist_arr)
+
+        # interpolate along the line
+        kx_data = self.kx_cart_mesh[:,:,i_kz]
+        ky_data = self.ky_cart_mesh[:,:,i_kz]
+        if not 'F_abs_sq' in dir(self):
+            self.FFT()
+        F_abs_sq_cut = self.F_abs_sq[:,:,i_kz]
+
+        interp = LinearNDInterpolator(np.vstack((kx_data.flatten(), ky_data.flatten())).T, F_abs_sq_cut.flatten())
+        F_abs_sq_interp = interp(kx_arr, ky_arr)
+
+        # --- PLOTTING ---
+        if fout_name is not None:
+            fig = plt.figure(figsize=figsize)
+            ax = fig.add_subplot(111)
+            ax.plot(k_dist_arr, F_abs_sq_interp, '-')
+            ax.set_xlabel(r'$k$ ($\mathrm{\AA}^{-1}$)', fontsize=12)
+            ax.set_ylabel(r'$|F|^2$', fontsize=12)
+            title_appendix = ' along stripes' if cut_along == 'along_stripes' else ' perpendicular to stripes'
+            ax.set_title(r'$|F|^2$'+title_appendix)
+            # xticks by 1.0 Angstrom^-1
+            ax.xaxis.set_minor_locator(MultipleLocator(1.0))
+            plt.tight_layout()
+            plt.savefig(fout_name, dpi=400)
+
+        return (kx_arr-kx_center), (ky_arr-ky_center), F_abs_sq_interp
+
+               
 
 def test_shift():
     array_3D = np.zeros((9,9,9), dtype=np.float_)
@@ -1097,13 +1173,13 @@ def workflow(output_folder, site_idx, site_radii, replace_DFT_by_model, paramete
     
     fft_3D = False
     full_range_fft_spectrum_cuts = False
-    zoom_in_fft_spectrum_cuts = False
+    zoom_in_fft_spectrum_cuts = True
 
-    write_cube_files = True
+    write_cube_files = False
 
     # ---- PARAMETERS -----
 
-    # !!!! [0, 3.5e6] for a single site and [0, 7e6] for double !
+    # !!!! [0, 1.6e6] for a single site and [0, 6.4e6] for double !
     if not site_idx:
         fft_zlims = [0, 4*6.4e6]
     elif 0 in site_idx and 1 in site_idx:
@@ -1225,7 +1301,8 @@ def workflow(output_folder, site_idx, site_radii, replace_DFT_by_model, paramete
         
     # (2) fixed scale, zoom-in
     if zoom_in_fft_spectrum_cuts:
-        for i_kz in range(80, 121, 1):
+        kz_arr = range(80, 120)
+        for i_kz in kz_arr:
             appendix = '_zoom_log' if fft_as_log else '_zoom'
             density.plot_fft_2D(i_kz=i_kz, fft_as_log=fft_as_log, 
                                 fout_name=f'{output_folder}/F_abs_sq{appendix}-scale_kz_at_idx_{i_kz}.png', 
@@ -1235,7 +1312,23 @@ def workflow(output_folder, site_idx, site_radii, replace_DFT_by_model, paramete
                                 xlims=fft_xlims,
                                 ylims=fft_ylims, 
                                 zlims=fft_zlims)
-
+            
+            # for the middle i_kz, plot also line cuts
+            if i_kz == (max(kz_arr) + min(kz_arr)) // 2:
+                # along stripes
+                for cut_along in ['along_stripes', 'perpendicular_to_stripes']:
+                    kx_arr, ky_arr, F_abs_sq_interp = density.plot_fft_along_line(i_kz=i_kz, cut_along=cut_along, kx_ky_fun=None, k_dist_lim=12, kx_0=None, ky_0=None, N_points=3001, fout_name=f'{output_folder}/cut_1D_{cut_along}.png')
+                    density.plot_fft_2D(i_kz=i_kz, fft_as_log=fft_as_log, 
+                                fout_name=f'{output_folder}/F_abs_sq{appendix}-scale_kz_at_idx_{i_kz}_cut_{cut_along}.png', 
+                                figsize=(5.5, 4.5),
+                                dpi=fft_dpi,
+                                fixed_z_scale=True,
+                                xlims=fft_xlims,
+                                ylims=fft_ylims, 
+                                zlims=fft_zlims,
+                                plot_line_cut=True, kx_arr=kx_arr, ky_arr=ky_arr)
+                    np.savetxt(f'{output_folder}/cut_1D_{cut_along}.txt', np.array([kx_arr, ky_arr, F_abs_sq_interp]), delimiter='\t', header='kx (A)\tky (A)\tF_abs_sq_interp')
+                
     # test_shift()
     # exit()
 
@@ -1307,6 +1400,8 @@ def workflow_autocorrelation_term(parameters_model, scale_R_array=[1.0], folder_
 
     # ---- READ CUBE FILE -----
     orbital = Density(permutation=permutation, verbose=True, fname_cube_file=fname_cube_file)
+    orbital.plot_fft_along_line(i_kz=orbital.nc//2, cut_along='stripes', kx_ky_fun=None, k_dist_lim=15, kx_0=None, ky_0=None, N_points=3001, fout_name=f'{output_folder}/test_1D_plot_along.png')
+    exit()
 
     # copy to a new orbital object
     orbital_shifted_plus = deepcopy(orbital)
@@ -1426,7 +1521,7 @@ if __name__ == '__main__':
         workflow(site_idx=site_idx, site_radii=site_radii, output_folder=output_folder)
 
     # ===== RUN selected cases among the predefined ones =====
-    run_cases = [23] # None
+    run_cases = [0, 3, 5] # None
 
     site_idx_all = [
         [0], #0            
@@ -1484,13 +1579,13 @@ if __name__ == '__main__':
 
     base_path = './outputs/Cu2AC4/512/'
     output_folders_all = [
-        base_path+'masked_Cu0',
-        base_path+'masked_Cu1',
-        base_path+'masked_Cu0-1',
-        base_path+'masked_Cu0_and_oxygens',
-        base_path+'masked_Cu1_and_oxygens',
-        base_path+'masked_Cu0-1_and_oxygens',
-        base_path+'unmasked_unit-cell',
+        base_path+'masked_Cu0', #0
+        base_path+'masked_Cu1', #1
+        base_path+'masked_Cu0-1', #2
+        base_path+'masked_Cu0_and_oxygens', #3
+        base_path+'masked_Cu1_and_oxygens', #4
+        base_path+'masked_Cu0-1_and_oxygens', #5
+        base_path+'unmasked_unit-cell', #6
         base_path+'masked_0_gaussian_sigma_0.3', #7
         base_path+'masked_0_1_gaussians_sigma_0.3', #8
         base_path+'masked_0_1_gaussians_sigma_0.3_same-sign', #9
@@ -1604,9 +1699,8 @@ if __name__ == '__main__':
         ]
     case = 22
 
-    scale_R_array = [0.01, 0.03, 0.05, 0.08, 0.1, 0.3, 0.5, 1.0, 1.5, 2.0] #np.arange(0.5, 1.5, 0.05)
-    workflow_autocorrelation_term(parameters_model_all[case], scale_R_array=scale_R_array, folder_out=output_folders_all[case])
-    exit()
+    # scale_R_array = [0.01, 0.03, 0.05, 0.08, 0.1, 0.3, 0.5, 1.0, 1.5, 2.0] #np.arange(0.5, 1.5, 0.05)
+    # workflow_autocorrelation_term(parameters_model_all[case], scale_R_array=scale_R_array, folder_out=output_folders_all[case])
 
     if run_cases:
         for i in run_cases:
