@@ -25,7 +25,7 @@ class Density:
         Replace by a model function if required.
     """
 
-    def __init__(self, fname_cube_file='./seedname.cube', permutation=None, verbose=True):
+    def __init__(self, fname_cube_file='./seedname.cube', permutation=None, verbose=True, scale_factor=1.0):
         """_summary_
 
         Args:
@@ -54,6 +54,8 @@ class Density:
         # numpy array dimensions
         self.array = cube_data[0]
         self.na, self.nb, self.nc = self.array.shape
+
+        # 
 
         self.metadata_orig = deepcopy(self.metadata)
         self.array_orig = deepcopy(self.array)
@@ -113,15 +115,28 @@ class Density:
 
         #--- RECIPROCAL SPACE ---
 
+        if np.abs(scale_factor - 1) > 1e-6:
+            self.pad_x = int(self.na * (scale_factor - 1))//2
+            self.pad_y = int(self.nb * (scale_factor - 1))//2
+            self.pad_z = int(self.nc * (scale_factor - 1))//2
+        else:
+            self.pad_x = 0
+            self.pad_y = 0
+            self.pad_z = 0
+
+        self.nka = self.na + 2*self.pad_x
+        self.nkb = self.nb + 2*self.pad_y
+        self.nkc = self.nc + 2*self.pad_z
+
         # get reciprocal lattice spacings
-        self.dka = 2 * np.pi * np.cross(self.b,self.c) / self.V  # 1/Angstrom
-        self.dkb = 2 * np.pi * np.cross(self.c,self.a) / self.V  # 1/Angstrom
-        self.dkc = 2 * np.pi * np.cross(self.a,self.b) / self.V  # 1/Angstrom
+        self.dka = 2 * np.pi * np.cross(self.b,self.c) / self.V * self.na/self.nka  # 1/Angstrom
+        self.dkb = 2 * np.pi * np.cross(self.c,self.a) / self.V * self.nb/self.nkb # 1/Angstrom
+        self.dkc = 2 * np.pi * np.cross(self.a,self.b) / self.V * self.nc/self.nkc # 1/Angstrom
 
         # reciprocal vectors
-        self.ka = self.dka * self.na  # 1/Angstrom
-        self.kb = self.dkb * self.nb  # 1/Angstrom
-        self.kc = self.dkc * self.nc  # 1/Angstrom
+        self.ka = self.dka * self.nka  # 1/Angstrom
+        self.kb = self.dkb * self.nkb  # 1/Angstrom
+        self.kc = self.dkc * self.nkc  # 1/Angstrom
 
         if verbose: print('dka, dkb, dkc', self.dka, self.dkb, self.dkc, '1/Angstrom')
 
@@ -133,12 +148,28 @@ class Density:
             print('\nB (1/Angstrom)\n', self.B)
 
         # make a grid in kx,ky,kz cartesian coordinates of the reciprocal-space grid points
-        k_cart_mesh_flat = r_rec_mesh_flat @ self.B
+        ka_idx = np.arange(self.nka) / self.nka
+        kb_idx = np.arange(self.nkb) / self.nkb
+        kc_idx = np.arange(self.nkc) / self.nkc
+
+        # mesh arrays are 3D arrays
+        ka_idx_mesh, kb_idx_mesh, kc_idx_mesh = np.meshgrid(ka_idx, kb_idx, kc_idx, indexing='ij')
+
+        # flatten them into (nka*nkb*nkc, 3) array of reciprocal coordinates
+        ka_idx_mesh_flat = ka_idx_mesh.flatten()
+        kb_idx_mesh_flat = kb_idx_mesh.flatten()
+        kc_idx_mesh_flat = kc_idx_mesh.flatten()
+
+        # concatenate the flattened arrays
+        k_rec_mesh_flat = np.vstack((ka_idx_mesh_flat, kb_idx_mesh_flat, kc_idx_mesh_flat)).T
+
+        # make a grid in kx,ky,kz cartesian coordinates of the reciprocal-space grid points
+        k_cart_mesh_flat = k_rec_mesh_flat @ self.B
 
         # reciprocal-space cartesian coordinates 3D mesh arrays - ready for use in plotting (in 1/Angstrom)
-        self.kx_cart_mesh = k_cart_mesh_flat[:, 0].reshape((self.na, self.nb, self.nc))
-        self.ky_cart_mesh = k_cart_mesh_flat[:, 1].reshape((self.na, self.nb, self.nc))
-        self.kz_cart_mesh = k_cart_mesh_flat[:, 2].reshape((self.na, self.nb, self.nc))
+        self.kx_cart_mesh = k_cart_mesh_flat[:, 0].reshape((self.nka, self.nkb, self.nkc))
+        self.ky_cart_mesh = k_cart_mesh_flat[:, 1].reshape((self.nka, self.nkb, self.nkc))
+        self.kz_cart_mesh = k_cart_mesh_flat[:, 2].reshape((self.nka, self.nkb, self.nkc))
 
         # need to convert also units of the scalar field >>contained<< in the numpy array
         # spin density in units of electron per a_Bohr^3
@@ -216,8 +247,8 @@ class Density:
         """Return the k_z value (in Angstrom^-1) at a given index: first or last indices are -+ k_max/2, the middle index is k_z=0 (data is zero-centered; fftshifted after fft was performed).
         Check that index is in range.
         """
-        assert kz_index < self.nc, f'kz_index must be between 0 and {self.nc-1} (inclusive)'
-        kz = (kz_index - self.nc//2) * self.dkc[2]
+        assert kz_index < self.nkc, f'kz_index must be between 0 and {self.nkc-1} (inclusive)'
+        kz = (kz_index - self.nkc//2) * self.dkc[2]
         print(f'kz at index {kz_index} is {kz:.6f} 1/Angstrom')
         return kz
     
@@ -230,8 +261,8 @@ class Density:
         """
         if kz_target > np.abs(self.kc[2]):
             raise ValueError(f'kz_target must be between 0.00 and {np.abs(self.kc[2]):.6f} 1/Angstrom')
-        i_kz = np.argmin(np.abs((np.arange(self.nc) - self.nc//2) * self.dkc[2] - kz_target))
-        print(f'index for kz_target {(i_kz - self.nc//2) * self.dkc[2]:.6f} 1/Angstrom is {i_kz}')
+        i_kz = np.argmin(np.abs((np.arange(self.nkc) - self.nkc//2) * self.dkc[2] - kz_target))
+        print(f'index for kz_target {(i_kz - self.nkc//2) * self.dkc[2]:.6f} 1/Angstrom is {i_kz}')
         return i_kz
 
 
@@ -835,8 +866,8 @@ _sq = (x**2 + y**2 + z**2)
         """
 
         # 2D grid with correct units but no dimensionality
-        i_vals = (np.arange(self.na)-self.na//2) / self.na
-        j_vals = (np.arange(self.nb)-self.nb//2) / self.nb
+        i_vals = (np.arange(self.nka)-self.nka//2) / self.nka
+        j_vals = (np.arange(self.nkb)-self.nkb//2) / self.nkb
         I, J = np.meshgrid(i_vals, j_vals, indexing='ij')
 
         X = I * self.ka[0] + J * self.kb[0]
@@ -844,7 +875,7 @@ _sq = (x**2 + y**2 + z**2)
 
         scalar3D_data = self.F_abs_sq
 
-        z_levels_cart = (np.arange(self.nc)/self.nc - 0.5) * self.kc[2]
+        z_levels_cart = (np.arange(self.nkc)/self.nkc - 0.5) * self.kc[2]
         xlabel = r'$k_x$ ($\mathrm{\AA}^{-1}$)'
         ylabel = r'$k_y$ ($\mathrm{\AA}^{-1}$)'
         zlabel = r'$k_z$ ($\mathrm{\AA}^{-1}$)'
@@ -862,7 +893,14 @@ _sq = (x**2 + y**2 + z**2)
 
     def FFT(self, verbose=True):
         # norm='backward' means no prefactor applied
-        self.F = fft.fftshift(fft.fftn(self.array, norm='backward'), )
+
+        # pad array with zeros if scale_factor > 1 (because then self.nka > self.na)s
+        if self.nka != self.na:
+            array = np.pad(self.array, ((self.pad_x, self.pad_x), (self.pad_y, self.pad_y), (self.pad_z, self.pad_z)), 'constant', constant_values=(0, 0))
+        else:
+            array = self.array
+
+        self.F = fft.fftshift(fft.fftn(array, norm='backward') )
         self.F_abs_sq = np.square(np.abs(self.F))
 
     def get_i_kz(self, kz_target):
@@ -879,8 +917,9 @@ _sq = (x**2 + y**2 + z**2)
         print(f'- by the way, kz_target must be between 0.00 and {kc_array_max:.6f} 1/Angstrom')
         if kz_target > kc_array_max:
             raise ValueError(f'kz_target must be between 0.00 and {kc_array_max:.6f} 1/Angstrom')
-        kc_array = np.linspace(0, kc_array_max, self.nc)
+        kc_array = np.linspace(0, kc_array_max, self.nkc)
         i_kz = np.argmin(np.abs(kc_array - kz_target))
+        print(f'i_kz({kz_target})', i_kz)
         return i_kz
 
 
@@ -894,8 +933,8 @@ _sq = (x**2 + y**2 + z**2)
         # sum all projections into plane (defined by a vector normal to the plane)
         # n_vec_plane = np.array([0, 0, 1])
 
-        n1 = np.array((self.na, self.nb, self.nc))[k1_idx]
-        n2 = np.array((self.na, self.nb, self.nc))[k2_idx]
+        n1 = np.array((self.nka, self.nkb, self.nkc))[k1_idx]
+        n2 = np.array((self.nka, self.nkb, self.nkc))[k2_idx]
 
         take_idx = [0, 1, 2]
         take_idx.remove(k1_idx)
@@ -1213,7 +1252,7 @@ def workflow(output_folder, site_idx, site_radii, replace_DFT_by_model, paramete
         os.makedirs(output_folder)
 
     # ---- READ CUBE FILE -----
-    density = Density(permutation=permutation, verbose=True, fname_cube_file=fname_cube_file)
+    density = Density(permutation=permutation, verbose=True, fname_cube_file=fname_cube_file, scale_factor=scale_factor)
 
     density.integrate_cube_file()
 
@@ -1301,7 +1340,7 @@ def workflow(output_folder, site_idx, site_radii, replace_DFT_by_model, paramete
         
     # (2) fixed scale, zoom-in
     if zoom_in_fft_spectrum_cuts:
-        kz_arr = range(80, 120)
+        kz_arr = range(200 - 1, 200 + 1)
         for i_kz in kz_arr:
             appendix = '_zoom_log' if fft_as_log else '_zoom'
             density.plot_fft_2D(i_kz=i_kz, fft_as_log=fft_as_log, 
@@ -1314,7 +1353,7 @@ def workflow(output_folder, site_idx, site_radii, replace_DFT_by_model, paramete
                                 zlims=fft_zlims)
             
             # for the middle i_kz, plot also line cuts
-            if i_kz == (max(kz_arr) + min(kz_arr)) // 2:
+            if i_kz == 200:
                 # along stripes
                 for cut_along in ['along_stripes', 'perpendicular_to_stripes']:
                     kx_arr, ky_arr, F_abs_sq_interp = density.plot_fft_along_line(i_kz=i_kz, cut_along=cut_along, kx_ky_fun=None, k_dist_lim=12, kx_0=None, ky_0=None, N_points=3001, fout_name=f'{output_folder}/cut_1D_{cut_along}.png')
@@ -1507,6 +1546,8 @@ if __name__ == '__main__':
     # workflow_density_vs_cutoff_radius(site_idx=[0], site_radii_all=[[i] for i in np.arange(0.5, 4.0, 0.5)], plot=True)
     # exit()
 
+    scale_factor = 2.0
+
     r_mt_Cu = 1.1 #Angstrom
     r_mt_O = 0.9 #Angstrom
 
@@ -1521,7 +1562,7 @@ if __name__ == '__main__':
         workflow(site_idx=site_idx, site_radii=site_radii, output_folder=output_folder)
 
     # ===== RUN selected cases among the predefined ones =====
-    run_cases = [0, 3, 5] # None
+    run_cases = [0] #, 3, 5] # None
 
     site_idx_all = [
         [0], #0            
@@ -1579,7 +1620,7 @@ if __name__ == '__main__':
 
     base_path = './outputs/Cu2AC4/512/'
     output_folders_all = [
-        base_path+'masked_Cu0', #0
+        base_path+f'masked_Cu0_scale-factor_{scale_factor:.2f}', #0
         base_path+'masked_Cu1', #1
         base_path+'masked_Cu0-1', #2
         base_path+'masked_Cu0_and_oxygens', #3
