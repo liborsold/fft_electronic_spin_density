@@ -1337,6 +1337,7 @@ def workflow_autocorrelation_term(parameters_model, scale_R_array=[1.0], folder_
     E_perp_sq_integrated_all = []
 
     for scale_R, R in zip(scale_R_array, R_array):
+        appendix = f'scale-R_{scale_R:.2f}'
         # ---- REPLACE 2 BY MODEL -----
         # add the displacement R to all site centers
         site_centers_plus = [tuple(np.array(r) + np.array(R)) for r in site_centers]
@@ -1370,7 +1371,9 @@ def workflow_autocorrelation_term(parameters_model, scale_R_array=[1.0], folder_
         form_factor_term = np.multiply(cos_prefactor, form_factor)
         density.F_abs_sq = np.abs(form_factor_term)**2
         if write_cube_files:
-            density.write_cube_file_fft('cos_prefactor_times_form_factor_squared.cube')   # density here is just a surrogate to save the relevant data
+            density.write_cube_file_fft(f'{output_folder}/cos_prefactor_times_form_factor_squared_{appendix}.cube')   # density here is just a surrogate to save the relevant data
+        # cut maps
+        
         form_factor_term_sq_integrated, _ = density.integrate_cube_file(fft=True)
         form_factor_term_sq_integrated_all.append(form_factor_term_sq_integrated)
 
@@ -1378,7 +1381,7 @@ def workflow_autocorrelation_term(parameters_model, scale_R_array=[1.0], folder_
                 - R_phiphi_minus * R_tilde_phiphi_plus
         density.F_abs_sq = np.abs(overlap_term)**2
         if write_cube_files:
-            density.write_cube_file_fft(f'overlap_term_squared.cube')   # density here is just a surrogate to save the relevant data
+            density.write_cube_file_fft(f'{output_folder}/overlap_term_squared_{appendix}.cube')   # density here is just a surrogate to save the relevant data
         overlap_term_sq_integrated, _ = density.integrate_cube_file(fft=True)
         overlap_term_sq_integrated_all.append(overlap_term_sq_integrated)
 
@@ -1386,18 +1389,22 @@ def workflow_autocorrelation_term(parameters_model, scale_R_array=[1.0], folder_
         E_perp = form_factor_term + overlap_term
         density.F_abs_sq = np.abs(E_perp)**2
         if write_cube_files:
-            density.write_cube_file_fft(f'E_perp_squared.cube')   # density here is just a surrogate to save the relevant data
+            density.write_cube_file_fft(f'{output_folder}/E_perp_squared_{appendix}.cube')   # density here is just a surrogate to save the relevant data
         E_perp_sq_integrated, _ = density.integrate_cube_file(fft=True)
         E_perp_sq_integrated_all.append(E_perp_sq_integrated)
 
 
     # plotting
-    fig, ax = plt.subplots(1, 1, figsize=(5, 5))
+    fig, ax = plt.subplots(1, 1, figsize=(4.5, 3.5))
+    # semilogy
+    plt.semilogy()
     plt.plot(scale_R_array, form_factor_term_sq_integrated_all, 's-', label='form_factor_term_sq_integrated', markerfacecolor='none')
     plt.plot(scale_R_array, overlap_term_sq_integrated_all, 'o-', label='overlap_term_sq_integrated', markerfacecolor='none')
     plt.plot(scale_R_array, E_perp_sq_integrated_all, '^-', label='E_perp_sq_integrated', markerfacecolor='none')
     plt.xlabel('scale_R')
-    plt.ylabel('charge')
+    plt.ylabel('|FFT|^2')
+    plt.legend()
+    plt.tight_layout()
     plt.show()
 
 if __name__ == '__main__':
@@ -1597,7 +1604,7 @@ if __name__ == '__main__':
         ]
     case = 22
 
-    scale_R_array = [0.9, 1.0] #np.arange(0.5, 1.5, 0.05)
+    scale_R_array = [0.01, 0.03, 0.05, 0.08, 0.1, 0.3, 0.5, 1.0, 1.5, 2.0] #np.arange(0.5, 1.5, 0.05)
     workflow_autocorrelation_term(parameters_model_all[case], scale_R_array=scale_R_array, folder_out=output_folders_all[case])
     exit()
 
