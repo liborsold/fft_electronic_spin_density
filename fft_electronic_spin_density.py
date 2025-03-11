@@ -927,7 +927,10 @@ _sq = (x**2 + y**2 + z**2)
                     dpi=500,
                     fixed_z_scale=True, 
                     xlims=None, ylims=None,zlims=None,
-                    plot_line_cut=False, kx_arr=None, ky_arr=None):
+                    plot_line_cut=False, 
+                    kx_arr_along=None, ky_arr_along=None,
+                    kx_arr_perp=None, ky_arr_perp=None,
+                    cut_along='both'):
 
         # ----------------- RECIPROCAL SPACE PLOTTING -----------------
         # sum all projections into plane (defined by a vector normal to the plane)
@@ -1002,8 +1005,17 @@ _sq = (x**2 + y**2 + z**2)
 
         if plot_line_cut:
             # plot line cut
-            ax.arrow(kx_arr[0], ky_arr[0], kx_arr[-1]-kx_arr[0], ky_arr[-1]-ky_arr[0], head_width=None, head_length=None, fc='w', ec='w', linestyle=':', linewidth=2.0)
-
+            linecolor_along = '#00b0f0'
+            linecolor_perp = '#dc005a'
+            if cut_along == 'both' or cut_along == 'along_stripes':
+                if kx_arr_along is not None and ky_arr_along is not None:
+                    ax.arrow(kx_arr_along[0], ky_arr_along[0], kx_arr_along[-1]-kx_arr_along[0], ky_arr_along[-1]-ky_arr_along[0], 
+                             head_width=None, head_length=None, fc=linecolor_along, ec=linecolor_along, linestyle=':', linewidth=2.0, color=linecolor_along)
+            if cut_along == 'both' or cut_along == 'perpendicular_to_stripes':
+                if kx_arr_perp is not None and ky_arr_perp is not None:
+                    ax.arrow(kx_arr_perp[0], ky_arr_perp[0], kx_arr_perp[-1]-kx_arr_perp[0], ky_arr_perp[-1]-ky_arr_perp[0], 
+                             head_width=None, head_length=None, fc=linecolor_perp, ec=linecolor_perp, linestyle=':', linewidth=2.0, color=linecolor_perp)
+            
         # Formatting
         plt.xlabel(r"$k_x$ ($\mathrm{\AA}^{-1}$)", fontsize=12)
         plt.ylabel(r"$k_y$ ($\mathrm{\AA}^{-1}$)", fontsize=12)
@@ -1078,7 +1090,7 @@ _sq = (x**2 + y**2 + z**2)
             print(f'Total absolute charge in the volume: {abs_rho_tot:.6f} e\n')
         return rho_tot, abs_rho_tot
     
-    def plot_fft_along_line(self, i_kz=None, cut_along='along_stripes', kx_ky_fun=None, k_dist_lim=15, kx_0=None, ky_0=None, N_points=3001, fout_name='test_1D_plot_along.png'):
+    def plot_fft_along_line(self, i_kz=None, cut_along='along_stripes', kx_ky_fun=None, k_dist_lim=15, kx_0_along=None, ky_0_along=None, kx_0_perp=None, ky_0_perp=None, N_points=3001, fout_name='test_1D_plot_along.png'):
 
         figsize = (4.5, 3.5)
 
@@ -1095,12 +1107,14 @@ _sq = (x**2 + y**2 + z**2)
         kx_center = (np.max(self.kx_cart_mesh[:,:,i_kz]) + np.min(self.kx_cart_mesh[:,:,i_kz])) / 2
         ky_center = (np.max(self.ky_cart_mesh[:,:,i_kz]) + np.min(self.ky_cart_mesh[:,:,i_kz])) / 2
 
-        if cut_along=='along_stripes' and kx_0 is None and ky_0 is None:
-            kx_0 = np.abs(R[0]) / 2
-            ky_0 = -np.abs(R[1]) / 2
-        elif cut_along=='perpendicular_to_stripes' and kx_0 is None and ky_0 is None:
-            kx_0 = 0
-            ky_0 = 0
+        if kx_0_along is None:
+            kx_0_along = np.abs(R[0]) / 2
+        if ky_0_along is None:
+            ky_0_along = -np.abs(R[1]) / 2
+        if kx_0_perp is None:
+            kx_0_perp = 0
+        if ky_0_perp is None:
+            ky_0_perp = 0
 
         if kx_ky_fun is None:
             def kx_ky_fun(k_dist):
@@ -1108,17 +1122,15 @@ _sq = (x**2 + y**2 + z**2)
                 gamma_x = R[0] / np.sqrt(R[0]**2 + R[1]**2)
                 gamma_y = R[1] / np.sqrt(R[0]**2 + R[1]**2)
                 # R is perpendicular to stripes
-                if cut_along == 'along_stripes':
-                    kx = kx_center + kx_0 - gamma_y * k_dist
-                    ky = ky_center + ky_0 + gamma_x * k_dist
+                kx_along = kx_center + kx_0_along - gamma_y * k_dist
+                ky_along = ky_center + ky_0_along + gamma_x * k_dist
                 # 90 deg rotated --> along the stripes
-                elif cut_along == 'perpendicular_to_stripes':
-                    kx = kx_center + kx_0 + gamma_x * k_dist
-                    ky = ky_center + ky_0 + gamma_y * k_dist
-                return kx, ky
+                kx_perp = kx_center + kx_0_perp + gamma_x * k_dist
+                ky_perp = ky_center + ky_0_perp + gamma_y * k_dist
+                return kx_along, ky_along, kx_perp, ky_perp
 
         k_dist_arr = np.linspace(-k_dist_lim, k_dist_lim, N_points)
-        kx_arr, ky_arr = kx_ky_fun(k_dist_arr)
+        kx_along_arr, ky_along_arr, kx_perp_arr, ky_perp_arr = kx_ky_fun(k_dist_arr)
 
         # interpolate along the line
         kx_data = self.kx_cart_mesh[:,:,i_kz]
@@ -1128,13 +1140,19 @@ _sq = (x**2 + y**2 + z**2)
         F_abs_sq_cut = self.F_abs_sq[:,:,i_kz]
 
         interp = LinearNDInterpolator(np.vstack((kx_data.flatten(), ky_data.flatten())).T, F_abs_sq_cut.flatten())
-        F_abs_sq_interp = interp(kx_arr, ky_arr)
+        F_abs_sq_interp_along = interp(kx_along_arr, ky_along_arr)
+        F_abs_sq_interp_perp = interp(kx_perp_arr, ky_perp_arr)
 
         # --- PLOTTING ---
+        linecolor_along = '#00b0f0'
+        linecolor_perp = '#dc005a'
         if fout_name is not None:
             fig = plt.figure(figsize=figsize)
             ax = fig.add_subplot(111)
-            ax.plot(k_dist_arr, F_abs_sq_interp, '-')
+            if cut_along == 'along_stripes' or cut_along == 'both':
+                ax.plot(k_dist_arr, F_abs_sq_interp_along, '-', color=linecolor_along)
+            if cut_along == 'perpendicular_to_stripes' or cut_along == 'both':
+                ax.plot(k_dist_arr, F_abs_sq_interp_perp, '-', color=linecolor_perp)
             ax.set_xlabel(r'$k$ ($\mathrm{\AA}^{-1}$)', fontsize=12)
             ax.set_ylabel(r'$|F|^2$', fontsize=12)
             title_appendix = ' along stripes' if cut_along == 'along_stripes' else ' perpendicular to stripes'
@@ -1143,8 +1161,9 @@ _sq = (x**2 + y**2 + z**2)
             ax.xaxis.set_minor_locator(MultipleLocator(1.0))
             plt.tight_layout()
             plt.savefig(fout_name, dpi=400)
+            plt.savefig('.'.join(fout_name.split('.')[:-1])+'.pdf', dpi=400)
 
-        return (kx_arr-kx_center), (ky_arr-ky_center), F_abs_sq_interp
+        return (kx_along_arr-kx_center), (ky_along_arr-ky_center), F_abs_sq_interp_along, (kx_perp_arr-kx_center), (ky_perp_arr-ky_center), F_abs_sq_interp_perp
 
                
 
@@ -1340,7 +1359,7 @@ def workflow(output_folder, site_idx, site_radii, replace_DFT_by_model, paramete
         
     # (2) fixed scale, zoom-in
     if zoom_in_fft_spectrum_cuts:
-        kz_arr = range(200 - 1, 200 + 1)
+        kz_arr = range(density.nkc//2, density.nkc//2 + 1)
         for i_kz in kz_arr:
             appendix = '_zoom_log' if fft_as_log else '_zoom'
             density.plot_fft_2D(i_kz=i_kz, fft_as_log=fft_as_log, 
@@ -1353,10 +1372,10 @@ def workflow(output_folder, site_idx, site_radii, replace_DFT_by_model, paramete
                                 zlims=fft_zlims)
             
             # for the middle i_kz, plot also line cuts
-            if i_kz == 200:
+            if i_kz == density.nkc//2:
                 # along stripes
-                for cut_along in ['along_stripes', 'perpendicular_to_stripes']:
-                    kx_arr, ky_arr, F_abs_sq_interp = density.plot_fft_along_line(i_kz=i_kz, cut_along=cut_along, kx_ky_fun=None, k_dist_lim=12, kx_0=None, ky_0=None, N_points=3001, fout_name=f'{output_folder}/cut_1D_{cut_along}.png')
+                for cut_along in ['along_stripes', 'perpendicular_to_stripes', 'both']:
+                    kx_arr_along, ky_arr_along, F_abs_sq_interp_along, kx_arr_perp, ky_arr_perp, F_abs_sq_interp_perp = density.plot_fft_along_line(i_kz=i_kz, cut_along=cut_along, kx_ky_fun=None, k_dist_lim=12, N_points=3001, fout_name=f'{output_folder}/cut_1D_{cut_along}.png')
                     density.plot_fft_2D(i_kz=i_kz, fft_as_log=fft_as_log, 
                                 fout_name=f'{output_folder}/F_abs_sq{appendix}-scale_kz_at_idx_{i_kz}_cut_{cut_along}.png', 
                                 figsize=(5.5, 4.5),
@@ -1365,8 +1384,10 @@ def workflow(output_folder, site_idx, site_radii, replace_DFT_by_model, paramete
                                 xlims=fft_xlims,
                                 ylims=fft_ylims, 
                                 zlims=fft_zlims,
-                                plot_line_cut=True, kx_arr=kx_arr, ky_arr=ky_arr)
-                    np.savetxt(f'{output_folder}/cut_1D_{cut_along}.txt', np.array([kx_arr, ky_arr, F_abs_sq_interp]), delimiter='\t', header='kx (A)\tky (A)\tF_abs_sq_interp')
+                                plot_line_cut=True, kx_arr_along=kx_arr_along, ky_arr_along=ky_arr_along,
+                                kx_arr_perp=kx_arr_perp, ky_arr_perp=ky_arr_perp,
+                                cut_along=cut_along)
+                    np.savetxt(f'{output_folder}/cut_1D_both.txt', np.array([kx_arr_along, ky_arr_along, F_abs_sq_interp_along, kx_arr_perp, ky_arr_perp, F_abs_sq_interp_perp]).T, delimiter='\t', header='kx_along\tky_along\tF_abs_sq_along\tkx_perp\tky_perp\tF_abs_sq_perp')
                 
     # test_shift()
     # exit()
@@ -1546,7 +1567,7 @@ if __name__ == '__main__':
     # workflow_density_vs_cutoff_radius(site_idx=[0], site_radii_all=[[i] for i in np.arange(0.5, 4.0, 0.5)], plot=True)
     # exit()
 
-    scale_factor = 2.0
+    scale_factor = 4.0
 
     r_mt_Cu = 1.1 #Angstrom
     r_mt_O = 0.9 #Angstrom
@@ -1562,7 +1583,7 @@ if __name__ == '__main__':
         workflow(site_idx=site_idx, site_radii=site_radii, output_folder=output_folder)
 
     # ===== RUN selected cases among the predefined ones =====
-    run_cases = [0] #, 3, 5] # None
+    run_cases = [0,3,5] #, 3, 5] # None
 
     site_idx_all = [
         [0], #0            
@@ -1623,9 +1644,9 @@ if __name__ == '__main__':
         base_path+f'masked_Cu0_scale-factor_{scale_factor:.2f}', #0
         base_path+'masked_Cu1', #1
         base_path+'masked_Cu0-1', #2
-        base_path+'masked_Cu0_and_oxygens', #3
+        base_path+f'masked_Cu0_and_oxygens_scale-factor_{scale_factor:.2f}', #3
         base_path+'masked_Cu1_and_oxygens', #4
-        base_path+'masked_Cu0-1_and_oxygens', #5
+        base_path+f'masked_Cu0-1_and_oxygens_scale-factor_{scale_factor:.2f}', #5
         base_path+'unmasked_unit-cell', #6
         base_path+'masked_0_gaussian_sigma_0.3', #7
         base_path+'masked_0_1_gaussians_sigma_0.3', #8
