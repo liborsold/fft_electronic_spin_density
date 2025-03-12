@@ -520,8 +520,8 @@ _sq = (x**2 + y**2 + z**2)
                 model_wavefunction_spinor[spinor_idx] += f(self.x_cart_mesh, self.y_cart_mesh, self.z_cart_mesh, sigma=sigma, center=center, **fit_params_init)
 
             if leave_as_wavefunction:
-                # !!!!! returns the spin-up orbital by default !!!!!!
-                return model_wavefunction_spinor[0]
+                # !!!!! returns the sum of spin-up and spin-down orbitals by default !!!!!!
+                return model_wavefunction_spinor[0] + model_wavefunction_spinor[1]
             else:
                 rho_up = np.multiply(model_wavefunction_spinor[0].conj(), model_wavefunction_spinor[0])
                 rho_down = np.multiply(model_wavefunction_spinor[1].conj(), model_wavefunction_spinor[1])
@@ -1015,6 +1015,7 @@ _sq = (x**2 + y**2 + z**2)
                 if kx_arr_perp is not None and ky_arr_perp is not None:
                     ax.arrow(kx_arr_perp[0], ky_arr_perp[0], kx_arr_perp[-1]-kx_arr_perp[0], ky_arr_perp[-1]-ky_arr_perp[0], 
                              head_width=None, head_length=None, fc=linecolor_perp, ec=linecolor_perp, linestyle=':', linewidth=2.0, color=linecolor_perp)
+                    ax.arrow(0, 0, kx_arr_along[len(kx_arr_along)//2], ky_arr_along[len(ky_arr_along)//2], head_width=None, head_length=None, fc='k', ec='k', linestyle='-', linewidth=1.0, color=linecolor_perp)
             
         # Formatting
         plt.xlabel(r"$k_x$ ($\mathrm{\AA}^{-1}$)", fontsize=12)
@@ -1107,10 +1108,14 @@ _sq = (x**2 + y**2 + z**2)
         kx_center = (np.max(self.kx_cart_mesh[:,:,i_kz]) + np.min(self.kx_cart_mesh[:,:,i_kz])) / 2
         ky_center = (np.max(self.ky_cart_mesh[:,:,i_kz]) + np.min(self.ky_cart_mesh[:,:,i_kz])) / 2
 
+        print('kx_center before', np.max(self.kx_cart_mesh[:,:,i_kz]) + np.min(self.kx_cart_mesh[:,:,i_kz]) / 2)
+        print('ky_center before', np.max(self.ky_cart_mesh[:,:,i_kz]) + np.min(self.ky_cart_mesh[:,:,i_kz]) / 2)
+
+        R2 = R[0]**2 + R[1]**2
         if kx_0_along is None:
-            kx_0_along = np.abs(R[0]) / 2
+            kx_0_along = np.pi * np.abs(R[0])/R2
         if ky_0_along is None:
-            ky_0_along = -np.abs(R[1]) / 2
+            ky_0_along = -np.pi * np.abs(R[1])/R2
         if kx_0_perp is None:
             kx_0_perp = 0
         if ky_0_perp is None:
@@ -1119,8 +1124,8 @@ _sq = (x**2 + y**2 + z**2)
         if kx_ky_fun is None:
             def kx_ky_fun(k_dist):
                 # direction cosines
-                gamma_x = R[0] / np.sqrt(R[0]**2 + R[1]**2)
-                gamma_y = R[1] / np.sqrt(R[0]**2 + R[1]**2)
+                gamma_x = R[0] / np.sqrt(R2)
+                gamma_y = R[1] / np.sqrt(R2)
                 # R is perpendicular to stripes
                 kx_along = kx_center + kx_0_along - gamma_y * k_dist
                 ky_along = ky_center + ky_0_along + gamma_x * k_dist
@@ -1447,21 +1452,23 @@ def workflow_density_vs_cutoff_radius(site_idx=[0], site_radii_all=[[i] for i in
     return rho_tot_all, rho_abs_tot_all
 
 
-def workflow_autocorrelation_term(parameters_model, scale_R_array=[1.0], folder_out='.', write_cube_files=False):
+def workflow_autocorrelation_term(parameters_model, scale_R_array=[1.0], folder_out='.', write_cube_files=False, site_idx=[0]):
 
     R_base = np.array([3.01571, 6.45289, 4.99992]) - np.array([4.85991, 5.28091, 3.56158]) # Cu1 - Cu0 = (-1.8442, 1.17198, 1.43834)
     R_array=[f*R_base for f in scale_R_array]
 
-    fname_cube_file = './cube_files/Cu2AC4_rho_sz_256.cube' #'./cube_files/Mn2GeO4_rho_sz.cube'
+    fname_cube_file = './cube_files/Cu2AC4_rho_sz_512.cube' #'./cube_files/Mn2GeO4_rho_sz.cube'
     permutation = None #!! for Mn2GeO4 need to use [2,1,0] to swap x,y,z -> z,y,x
-    output_folder = './outputs/Cu2AC4/E_perp/case_22' #_and_oxygens' # 'Mn2GeO4_kz_tomography_64' #'./gaussian/sigma_0.3_distance_1.0' # Mn2GeO4_kz_tomography_64
+    output_folder = './outputs/Cu2AC4/E_perp/case_23' #_and_oxygens' # 'Mn2GeO4_kz_tomography_64' #'./gaussian/sigma_0.3_distance_1.0' # Mn2GeO4_kz_tomography_64
 
-    site_idx = [0, 25, 40, 9, 16] # case 21
+    # create output folder if it doesn't exist
+    if not os.path.exists(folder_out):
+        os.makedirs(folder_out)
 
     # ---- READ CUBE FILE -----
     orbital = Density(permutation=permutation, verbose=True, fname_cube_file=fname_cube_file)
-    orbital.plot_fft_along_line(i_kz=orbital.nc//2, cut_along='stripes', kx_ky_fun=None, k_dist_lim=15, kx_0=None, ky_0=None, N_points=3001, fout_name=f'{output_folder}/test_1D_plot_along.png')
-    exit()
+    # orbital.plot_fft_along_line(i_kz=orbital.nc//2, cut_along='stripes', kx_ky_fun=None, k_dist_lim=15, N_points=3001, fout_name=f'{output_folder}/test_1D_plot_along.png')
+
 
     # copy to a new orbital object
     orbital_shifted_plus = deepcopy(orbital)
@@ -1471,7 +1478,8 @@ def workflow_autocorrelation_term(parameters_model, scale_R_array=[1.0], folder_
     site_centers = orbital.get_sites_of_atoms(site_idx=site_idx)
     parameters_model['centers'] = site_centers
     orbital.replace_by_model(parameters=parameters_model, leave_as_wavefunction=True)
-    # orbital.write_cube_file_rho_sz(fout=folder_out + '/orbital.cube')  - beware - after writing out the cube file, some data is missing in the object
+    orbital.write_cube_file_rho_sz(fout=folder_out + '/orbital.cube')  #- beware - after writing out the cube file, some data is maybe missing in the object
+    exit()
 
     # conjugate it
     orbital.conjugate()
@@ -1583,7 +1591,7 @@ if __name__ == '__main__':
         workflow(site_idx=site_idx, site_radii=site_radii, output_folder=output_folder)
 
     # ===== RUN selected cases among the predefined ones =====
-    run_cases = [0,3,5] #, 3, 5] # None
+    run_cases = [2] #, 3, 5, 23] #, 3, 5] # None
 
     site_idx_all = [
         [0], #0            
@@ -1663,8 +1671,8 @@ if __name__ == '__main__':
         base_path+'masked_model_Cu0_and_oxygens', #19
         base_path+'masked_model_Cu0_s-dx2y2', #20
         base_path+'masked_model_Cu0_and_oxygens_s-dx2y2', #21
-        base_path+'masked_model_Cu0_and_oxygens_purely_bonding', #22
-        base_path+'masked_model_Cu0-1_and_oxygens_purely_bonding_exact_copies_0_and_1', #23
+        base_path+f'masked_model_Cu0_and_oxygens_purely_bonding_{scale_factor:.2f}', #22
+        base_path+f'masked_model_Cu0-1_and_oxygens_purely_bonding_exact_copies_0_and_1_{scale_factor:.2f}', #23
     ]
 
     replace_DFT_by_model_all = [
@@ -1757,12 +1765,12 @@ if __name__ == '__main__':
                                                                                 'theta0':[-0.99290,-0.82363378, 1.18166768, 0.0003331, 0.17039612, -0.99290,-0.82363378, 1.18166768, 0.0003331, 0.17039612], 
                                                                                 'phi0':[-0.58594, -0.5933, 2.55285232, 0.829267292, -2.0329591, -0.58594, -0.5933, 2.55285232, 0.829267292, -2.0329591,], 
                                                                                 'Z_eff':[12.2132868, 8.5545368, 8.5995384, 8.53154405, 8.57672478, 12.2132868, 8.5545368, 8.5995384, 8.53154405, 8.57672478],
-                                                                                'C':[0.000, 0.50774442, 0.46376494, 0.543582469, 0.50554664, 0.000, 0.50774442, 0.46376494, 0.543582469, 0.50554664]}}, #23 <-------- copy of 22 but orbitals copied to Cu1 sites with opposite spin (controlled by 'spin_down_orbital_all' key in parameters_model)
+                                                                                'C':[0.000, 0.50774442, 0.46376494, 0.543582469, 0.50554664, 0.000, 0.50774442, 0.46376494, 0.543582469, 0.50554664]}}, #23 <-------- both Cu0 and Cu1 populated with model 22 (Cu1 with spin down - controlled by 'spin_down_orbital_all' key in parameters_model)
         ]
     case = 22
 
     # scale_R_array = [0.01, 0.03, 0.05, 0.08, 0.1, 0.3, 0.5, 1.0, 1.5, 2.0] #np.arange(0.5, 1.5, 0.05)
-    # workflow_autocorrelation_term(parameters_model_all[case], scale_R_array=scale_R_array, folder_out=output_folders_all[case])
+    # workflow_autocorrelation_term(parameters_model_all[case], scale_R_array=scale_R_array, folder_out=output_folders_all[case], site_idx=site_idx_all[case])
 
     if run_cases:
         for i in run_cases:
