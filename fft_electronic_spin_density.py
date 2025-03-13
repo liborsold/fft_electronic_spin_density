@@ -10,6 +10,7 @@ from scipy.constants import physical_constants
 import matplotlib as mpl
 from matplotlib import pylab
 from matplotlib.colors import ListedColormap
+import matplotlib.colors as mcolors
 import os
 from matplotlib.ticker import FuncFormatter
 from copy import deepcopy
@@ -25,7 +26,7 @@ class Density:
         Replace by a model function if required.
     """
 
-    def __init__(self, fname_cube_file='./seedname.cube', permutation=None, verbose=True, scale_factor=1.0):
+    def __init__(self, fname_cube_file='./seedname.cube', permutation=None, verbose=True, scale_factor=1.0, R_atoms_idx=[0,1], output_folder='./',):
         """_summary_
 
         Args:
@@ -33,6 +34,8 @@ class Density:
             verbose (bool, optional): _description_. Defaults to True.
             plot_real_space_spin_density (bool, optional): _description_. Defaults to False.
         """
+
+        self.output_folder = output_folder
 
         # ================== READ CUBE FILE ==================
 
@@ -55,7 +58,24 @@ class Density:
         self.array = cube_data[0]
         self.na, self.nb, self.nc = self.array.shape
 
-        # 
+        # 'R' vector
+        #    - define the real-space separation vector between the two 'R_atoms'
+                # positions of copper atoms (R = r_Cu2 - r_Cu1)
+                    # Cu2_xyz = (3.01571, 6.45289, 4.99992)
+                    # Cu1_xyz = (4.85991, 5.28091, 3.56158)
+                    # self.R = np.array(Cu2_xyz) - np.array(Cu1_xyz)
+        R_idx1, R_idx2 = R_atoms_idx
+        R1 = np.array((4.85991, 5.28091, 3.56158)) # np.array(list(self.metadata['atoms'][R_idx1][1])[1:])*physical_constants['Bohr radius'][0]*1e10
+        R2 = np.array((3.01571, 6.45289, 4.99992)) #np.array(list(self.metadata['atoms'][R_idx2][1])[1:])*physical_constants['Bohr radius'][0]*1e10
+        
+        # vector
+        self.R_vec = R2 - R1
+        # its length
+        self.R_xy = np.sqrt(self.R_vec[0]**2 + self.R_vec[1]**2)
+
+        # point in k-space used for normalization: position of the maxima close to the center
+        self.kx_for_norm = np.pi * np.abs(self.R_vec[0])/self.R_xy**2
+        self.ky_for_norm = -np.pi * np.abs(self.R_vec[1])/self.R_xy**2
 
         self.metadata_orig = deepcopy(self.metadata)
         self.array_orig = deepcopy(self.array)
@@ -838,10 +858,14 @@ _sq = (x**2 + y**2 + z**2)
 
 
     def plot_cube_rho_sz(self, c_idx_arr=[0,1,-1], fout_name='rho_sz.png', alpha=0.2, figsize=(8.0, 6), dpi=300, zeros_transparent=True,
-                       xlims=None, ylims=None, zlims=None, show_plot=False):
+                       xlims=None, ylims=None, zlims=None, show_plot=False, output_folder=None):
         
         """Concrete use of plot_cube_file_general for spin density files.
         """
+
+        if output_folder is None:
+            output_folder = self.output_folder
+        fout_name = os.path.join(output_folder, fout_name)
         
         X = self.x_cart_mesh[:,:,0]
         Y = self.y_cart_mesh[:,:,0]
@@ -860,10 +884,14 @@ _sq = (x**2 + y**2 + z**2)
         
 
     def plot_cube_fft(self, c_idx_arr=[0,1,-1], fout_name='rho_sz.png', alpha=0.2, figsize=(8.0, 6), dpi=300, zeros_transparent=True,
-                       xlims=None, ylims=None, zlims=None, show_plot=False):
+                       xlims=None, ylims=None, zlims=None, show_plot=False, output_folder=None):
         
         """Concrete use of plot_cube_file_general for spin density files.
         """
+
+        if output_folder is None:
+            output_folder = self.output_folder
+        fout_name = os.path.join(output_folder, fout_name)
 
         # 2D grid with correct units but no dimensionality
         i_vals = (np.arange(self.nka)-self.nka//2) / self.nka
@@ -891,7 +919,7 @@ _sq = (x**2 + y**2 + z**2)
                                     colorbar_label=r'$|F|^2$')
 
 
-    def FFT(self, verbose=True):
+    def FFT(self, verbose=True, normalized=True):
         # norm='backward' means no prefactor applied
 
         # pad array with zeros if scale_factor > 1 (because then self.nka > self.na)s
@@ -902,6 +930,26 @@ _sq = (x**2 + y**2 + z**2)
 
         self.F = fft.fftshift(fft.fftn(array, norm='backward') )
         self.F_abs_sq = np.square(np.abs(self.F))
+
+        # NORMALIZATION (normalize by the FFT value at the first stripes maxima (self.kx_for_norm, self.ky_for_norm) at plane defined by kz_for_norm)
+        kx_center = (np.max(self.kx_cart_mesh) + np.min(self.kx_cart_mesh)) / 2
+        ky_center = (np.max(self.ky_cart_mesh) + np.min(self.ky_cart_mesh)) / 2
+        kz_center = (np.max(self.kz_cart_mesh) + np.min(self.kz_cart_mesh)) / 2
+        
+        kz_for_norm = kz_center # 1/Angstrom
+        i_kz = self.get_i_kz(kz_for_norm)
+
+        kx_data = self.kx_cart_mesh[:,:,i_kz] - kx_center
+        ky_data = self.ky_cart_mesh[:,:,i_kz] - ky_center
+        F_abs_sq_cut = self.F_abs_sq[:,:,i_kz]
+        interp = LinearNDInterpolator(np.vstack((kx_data.flatten(), ky_data.flatten())).T, F_abs_sq_cut.flatten())
+        self.F_abs_sq_normalization_constant = interp(self.kx_for_norm, self.ky_for_norm)
+
+        # normalize squared FFT
+        if normalized:
+            self.F_abs_sq_max = np.max(self.F_abs_sq)
+            self.F_abs_sq /= self.F_abs_sq_normalization_constant
+            np.savetxt(os.path.join(self.output_folder,'normalization_constant_FFT_squared.txt'), np.array([self.F_abs_sq_normalization_constant, self.F_abs_sq_max]), delimiter='\t', header='Normalization constant for the squared FFT\tMaximum of FFT', fmt='%.8e')
 
     def get_i_kz(self, kz_target):
                 #    SIMPLE FIRST: just assume c is along z and sum along c axis
@@ -923,6 +971,37 @@ _sq = (x**2 + y**2 + z**2)
         return i_kz
 
 
+    def create_cmap_with_cap(self, base_cmap_name="viridis", threshold=0.7, num_colors=1024):
+        """
+        Creates a colormap where colors remain constant beyond a specified threshold.
+
+        Parameters:
+        - base_cmap_name (str): Name of the base colormap (e.g., 'viridis', 'plasma', etc.).
+        - threshold (float): Value (0 to 1) beyond which the color remains constant.
+        - num_colors (int): Number of discrete colors in the colormap.
+
+        Returns:
+        - matplotlib.colors.ListedColormap: Custom colormap with capped maximum color.
+        """
+        # Get the base colormap
+        base_cmap = plt.get_cmap(base_cmap_name)
+        
+        # Generate color array from the base colormap
+        new_colors = base_cmap(np.linspace(0, 1, num_colors))
+
+        # Determine threshold index
+        threshold_index = int(threshold * num_colors)
+
+        # Set all colors below the threshold to the base colormap, rescaled by the threshold
+        new_colors[:threshold_index] = base_cmap(np.linspace(0, 1, threshold_index))
+
+        # Set all colors above the threshold to the max color
+        new_colors[threshold_index:] = new_colors[-1]  # Use the last color
+
+        # Create and return new colormap
+        return mcolors.ListedColormap(new_colors)
+
+
     def plot_fft_2D(self, i_kz, fft_as_log=False, k1_idx=0, k2_idx=1, fout_name='colormap_2D_out.png', verbose=True, figsize=(8.0, 6.0), 
                     dpi=500,
                     fixed_z_scale=True, 
@@ -930,7 +1009,14 @@ _sq = (x**2 + y**2 + z**2)
                     plot_line_cut=False, 
                     kx_arr_along=None, ky_arr_along=None,
                     kx_arr_perp=None, ky_arr_perp=None,
-                    cut_along='both'):
+                    cut_along='both',
+                    normalized=True, 
+                    cax_saturation=None,
+                    output_folder=None):
+        
+        if output_folder is None:
+            output_folder = self.output_folder
+        fout_name = os.path.join(output_folder, fout_name)
 
         # ----------------- RECIPROCAL SPACE PLOTTING -----------------
         # sum all projections into plane (defined by a vector normal to the plane)
@@ -974,7 +1060,15 @@ _sq = (x**2 + y**2 + z**2)
         plot_array = np.abs(F_abs_sq_cut)
         if fft_as_log:
             plot_array = np.log(plot_array)
-        plt.pcolormesh(X, Y, plot_array, shading='auto', cmap='viridis', )
+
+        # 'SATURATED' colormap
+        #     - custom cmap that will have 'viridis' from 0 to cax_lim and the max color of 'viridis' from cax_lim to 1.0
+        if cax_saturation:
+            cmap = self.create_cmap_with_cap(base_cmap_name="viridis", threshold=cax_saturation)
+        else:
+            cmap = 'viridis'
+
+        plt.pcolormesh(X, Y, plot_array, shading='auto', cmap=cmap)
 
         # colorbar
         label = r'$\mathrm{log}\(|F|^2\)_{xy}$' if fft_as_log else '$|F|^2$'
@@ -982,11 +1076,15 @@ _sq = (x**2 + y**2 + z**2)
             base, exponent = f"{x:2.1e}".split('e')
             exponent = f"{int(exponent):+01d}"  # Format exponent with a sign and 3 digits
             return f"{base}e{exponent}"
-        # format string which keeps fixed length of the number, scientific format 
-        cbar = plt.colorbar(label=label, format=FuncFormatter(fmt))
+        # format string which keeps fixed length of the number, scientific format
+        format = None if normalized else FuncFormatter(fmt)
+        cbar = plt.colorbar(label=label, format=format)
 
-        if fixed_z_scale:
+        if fixed_z_scale and not normalized:
             plt.clim(0, np.max(self.F_abs_sq))
+        elif normalized:
+            plt.clim(0, 1.0)
+
 
         # Overlay grid points
         # plt.scatter(X, Y, color='black', s=1)
@@ -1010,12 +1108,17 @@ _sq = (x**2 + y**2 + z**2)
             if cut_along == 'both' or cut_along == 'along_stripes':
                 if kx_arr_along is not None and ky_arr_along is not None:
                     ax.arrow(kx_arr_along[0], ky_arr_along[0], kx_arr_along[-1]-kx_arr_along[0], ky_arr_along[-1]-ky_arr_along[0], 
-                             head_width=None, head_length=None, fc=linecolor_along, ec=linecolor_along, linestyle=':', linewidth=2.0, color=linecolor_along)
+                                head_width=None, head_length=None, fc=linecolor_along, ec=linecolor_along, linestyle=':', linewidth=2.0, color=linecolor_along)
+                    # dkx = kx_arr_along[len(kx_arr_along)//2]
+                    # dky = ky_arr_along[len(ky_arr_along)//2]
+                    # for n in range(-10, 10):
+                    #     ax.arrow(kx_arr_along[0]+n*dkx, ky_arr_along[0]+n*dky, kx_arr_along[-1]-kx_arr_along[0], ky_arr_along[-1]-ky_arr_along[0], 
+                    #             head_width=None, head_length=None, fc=linecolor_along, ec=linecolor_along, linestyle=':', linewidth=0.5, color=linecolor_along)
             if cut_along == 'both' or cut_along == 'perpendicular_to_stripes':
                 if kx_arr_perp is not None and ky_arr_perp is not None:
                     ax.arrow(kx_arr_perp[0], ky_arr_perp[0], kx_arr_perp[-1]-kx_arr_perp[0], ky_arr_perp[-1]-ky_arr_perp[0], 
                              head_width=None, head_length=None, fc=linecolor_perp, ec=linecolor_perp, linestyle=':', linewidth=2.0, color=linecolor_perp)
-                    ax.arrow(0, 0, kx_arr_along[len(kx_arr_along)//2], ky_arr_along[len(ky_arr_along)//2], head_width=None, head_length=None, fc='k', ec='k', linestyle='-', linewidth=1.0, color=linecolor_perp)
+                    ax.arrow(-kx_arr_along[len(kx_arr_along)//2], -ky_arr_along[len(ky_arr_along)//2], kx_arr_along[len(kx_arr_along)//2], ky_arr_along[len(ky_arr_along)//2], head_width=None, head_length=None, fc='k', ec='k', linestyle='-', linewidth=1.0, color=linecolor_perp)
             
         # Formatting
         plt.xlabel(r"$k_x$ ($\mathrm{\AA}^{-1}$)", fontsize=12)
@@ -1028,7 +1131,7 @@ _sq = (x**2 + y**2 + z**2)
             plt.xlim(xlims)
         if ylims:
             plt.ylim(ylims)
-        if zlims:
+        if zlims and not normalized:
             # first, add one tick with the colorbar maximum to the colorbar ticks
             # like this, it is clear what is the colorbar scale and can be easily compared with other plots
             if not zlims[1] in cbar.get_ticks():
@@ -1043,20 +1146,26 @@ _sq = (x**2 + y**2 + z**2)
         plt.savefig(fout_name, dpi=dpi)
         plt.close()
 
-    def write_cube_file_rho_sz(self, fout='rho_sz_modified.cube'):
+    def write_cube_file_rho_sz(self, fout='rho_sz_modified.cube', output_folder=None):
         """Write out the modified rho_sz to a cube file.
 
         Args:
             fout (str, optional): _description_. Defaults to 'rho_sz_modified.cube'.
         """
+        if output_folder is None:
+            output_folder = self.output_folder
+        fout = os.path.join(output_folder, fout)
         write_cube(self.array, self.metadata_orig, fout)
 
-    def write_cube_file_fft(self, fout='rho_sz_fft.cube'):
+    def write_cube_file_fft(self, fout='rho_sz_fft.cube', output_folder=None):
         """Write out the modified rho_sz to a cube file.
 
         Args:
             fout (str, optional): _description_. Defaults to 'rho_sz_modified.cube'.
         """
+        if output_folder is None:
+            output_folder = self.output_folder
+        fout = os.path.join(output_folder, fout)
         meta_fft = deepcopy(self.metadata_orig)
         meta_fft['xvec'] = self.ka
         meta_fft['yvec'] = self.kb
@@ -1091,14 +1200,11 @@ _sq = (x**2 + y**2 + z**2)
             print(f'Total absolute charge in the volume: {abs_rho_tot:.6f} e\n')
         return rho_tot, abs_rho_tot
     
-    def plot_fft_along_line(self, i_kz=None, cut_along='along_stripes', kx_ky_fun=None, k_dist_lim=15, kx_0_along=None, ky_0_along=None, kx_0_perp=None, ky_0_perp=None, N_points=3001, fout_name='test_1D_plot_along.png'):
-
-        figsize = (4.5, 3.5)
-
-        # positions of copper atoms (R = r_Cu2 - r_Cu1)
-        Cu2_xyz = (3.01571, 6.45289, 4.99992)
-        Cu1_xyz = (4.85991, 5.28091, 3.56158)
-        R = np.array(Cu2_xyz) - np.array(Cu1_xyz)
+    def plot_fft_along_line(self, i_kz=None, cut_along='along_stripes', kx_ky_fun=None, k_dist_lim=15, 
+                            kx_0_along=None, ky_0_along=None, kx_0_perp=None, ky_0_perp=None, 
+                            N_points=3001, fout_name='test_1D_plot_along.png',
+                            normalized=True, figsize=(4.5, 3.5), 
+                            ylim=1.4, cax_saturation=None):
 
         # --- INTERPOLATION ---
         # input arrays
@@ -1111,21 +1217,22 @@ _sq = (x**2 + y**2 + z**2)
         print('kx_center before', np.max(self.kx_cart_mesh[:,:,i_kz]) + np.min(self.kx_cart_mesh[:,:,i_kz]) / 2)
         print('ky_center before', np.max(self.ky_cart_mesh[:,:,i_kz]) + np.min(self.ky_cart_mesh[:,:,i_kz]) / 2)
 
-        R2 = R[0]**2 + R[1]**2
-        if kx_0_along is None:
-            kx_0_along = np.pi * np.abs(R[0])/R2
         if ky_0_along is None:
-            ky_0_along = -np.pi * np.abs(R[1])/R2
+            kx_0_along = self.kx_for_norm
+            ky_0_along = self.ky_for_norm
         if kx_0_perp is None:
             kx_0_perp = 0
         if ky_0_perp is None:
             ky_0_perp = 0
 
+        self.kx_0_along = kx_0_along
+        self.ky_0_along = ky_0_along
+
         if kx_ky_fun is None:
             def kx_ky_fun(k_dist):
                 # direction cosines
-                gamma_x = R[0] / np.sqrt(R2)
-                gamma_y = R[1] / np.sqrt(R2)
+                gamma_x = self.R_vec[0] / self.R_xy
+                gamma_y = self.R_vec[1] / self.R_xy
                 # R is perpendicular to stripes
                 kx_along = kx_center + kx_0_along - gamma_y * k_dist
                 ky_along = ky_center + ky_0_along + gamma_x * k_dist
@@ -1148,6 +1255,9 @@ _sq = (x**2 + y**2 + z**2)
         F_abs_sq_interp_along = interp(kx_along_arr, ky_along_arr)
         F_abs_sq_interp_perp = interp(kx_perp_arr, ky_perp_arr)
 
+        print('MAXIMUM OF FFT', np.max(self.F_abs_sq))
+        print('NORMALIZATION FACTOR FFT', self.F_abs_sq_normalization_constant )
+            
         # --- PLOTTING ---
         linecolor_along = '#00b0f0'
         linecolor_perp = '#dc005a'
@@ -1164,6 +1274,10 @@ _sq = (x**2 + y**2 + z**2)
             ax.set_title(r'$|F|^2$'+title_appendix)
             # xticks by 1.0 Angstrom^-1
             ax.xaxis.set_minor_locator(MultipleLocator(1.0))
+            if normalized:
+                ax.set_ylim(0, ylim)
+            if cax_saturation:
+                plt.axhline(y=cax_saturation, color='k', linestyle='--', linewidth=1.0)
             plt.tight_layout()
             plt.savefig(fout_name, dpi=400)
             plt.savefig('.'.join(fout_name.split('.')[:-1])+'.pdf', dpi=400)
@@ -1242,6 +1356,8 @@ def workflow(output_folder, site_idx, site_radii, replace_DFT_by_model, paramete
 
     # ---- PARAMETERS -----
 
+    cax_saturation = 0.5
+
     # !!!! [0, 1.6e6] for a single site and [0, 6.4e6] for double !
     if not site_idx:
         fft_zlims = [0, 4*6.4e6]
@@ -1276,10 +1392,9 @@ def workflow(output_folder, site_idx, site_radii, replace_DFT_by_model, paramete
         os.makedirs(output_folder)
 
     # ---- READ CUBE FILE -----
-    density = Density(permutation=permutation, verbose=True, fname_cube_file=fname_cube_file, scale_factor=scale_factor)
+    density = Density(permutation=permutation, verbose=True, fname_cube_file=fname_cube_file, scale_factor=scale_factor, output_folder=output_folder)
 
     density.integrate_cube_file()
-
 
     # ---- MASKING -----
 
@@ -1312,15 +1427,16 @@ def workflow(output_folder, site_idx, site_radii, replace_DFT_by_model, paramete
     print('After replacing by model:')
     density.integrate_cube_file()
 
+
     # ---- VISUALIZE DENSITY -----
     if density_slices:
         for i in np.arange(0, density.nc, density_slice_each_n_images):
             c_idx_array = np.array([i, 0]) #np.array([i, -1]
-            density.plot_cube_rho_sz(c_idx_arr=c_idx_array, fout_name=f'{output_folder}/rho_sz_exploded_masked_{i}.jpg', alpha=0.8, figsize=density_figsize, dpi=dpi_rho, zeros_transparent=False)  # rho_sz_gauss_exploded
+            density.plot_cube_rho_sz(c_idx_arr=c_idx_array, fout_name=f'rho_sz_exploded_masked_{i}.jpg', alpha=0.8, figsize=density_figsize, dpi=dpi_rho, zeros_transparent=False)  # rho_sz_gauss_exploded
 
     if density_3D:
         c_idx_array = np.arange(0, density.nc, max(1, density.nc//all_in_one_density_total_slices))
-        density.plot_cube_rho_sz(c_idx_arr=c_idx_array, fout_name=f'{output_folder}/rho_sz_exploded_masked_all.jpg', alpha=0.05, figsize=(5.5,5.5), dpi=dpi_rho, zeros_transparent=True,
+        density.plot_cube_rho_sz(c_idx_arr=c_idx_array, fout_name=f'rho_sz_exploded_masked_all.jpg', alpha=0.05, figsize=(5.5,5.5), dpi=dpi_rho, zeros_transparent=True,
                             xlims=all_in_one_xlims, ylims=all_in_one_ylims, zlims=all_in_one_zlims, show_plot=False)  # rho_sz_gauss_exploded_all
 
     # single cut
@@ -1330,14 +1446,14 @@ def workflow(output_folder, site_idx, site_radii, replace_DFT_by_model, paramete
 
     # ---- WRITE MODIFIED DENSITY TO CUBE FILE -----
     if write_cube_files:
-        density.write_cube_file_rho_sz(fout=f'{output_folder}/rho_sz_modified.cube')
+        density.write_cube_file_rho_sz(fout=f'rho_sz_modified.cube')
 
     # ---- FFT -----
     density.FFT(verbose=True)
 
     # ---- WRITE MODIFIED FFT TO CUBE FILE -----
     if write_cube_files:
-        density.write_cube_file_fft(fout=f'{output_folder}/fft.cube')
+        density.write_cube_file_fft(fout=f'fft.cube')
 
     # ---- VISUALIZE FFT -----
     
@@ -1347,7 +1463,7 @@ def workflow(output_folder, site_idx, site_radii, replace_DFT_by_model, paramete
         xlims = [-9, 9] #None
         ylims = xlims
         zlims = xlims
-        density.plot_cube_fft(c_idx_arr=c_idx_array, fout_name=f'{output_folder}/F_abs_sq_all.png', figsize=(5.5,5.5), dpi=dpi_rho, zeros_transparent=True,
+        density.plot_cube_fft(c_idx_arr=c_idx_array, fout_name=f'F_abs_sq_all.png', figsize=(5.5,5.5), dpi=dpi_rho, zeros_transparent=True,
                                 xlims=xlims, ylims=ylims, zlims=zlims, show_plot=False)
 
     # (1) variable scale, full reciprocal space
@@ -1355,10 +1471,11 @@ def workflow(output_folder, site_idx, site_radii, replace_DFT_by_model, paramete
         for i_kz in range(0, density.nc, fft_slice_each_n_images):
             appendix = '_log' if fft_as_log else ''
             density.plot_fft_2D(i_kz=i_kz, fft_as_log=fft_as_log, 
-                                fout_name=f'{output_folder}/F_abs_sq{appendix}-scale_kz_at_idx_{i_kz}.png', 
+                                fout_name=f'F_abs_sq{appendix}-scale_kz_at_idx_{i_kz}.png', 
                                 figsize=fft_figsize,
                                 dpi=fft_dpi, 
                                 fixed_z_scale=False,
+                                cax_saturation=cax_saturation,
                                 xlims=None,
                                 ylims=None)
         
@@ -1368,10 +1485,11 @@ def workflow(output_folder, site_idx, site_radii, replace_DFT_by_model, paramete
         for i_kz in kz_arr:
             appendix = '_zoom_log' if fft_as_log else '_zoom'
             density.plot_fft_2D(i_kz=i_kz, fft_as_log=fft_as_log, 
-                                fout_name=f'{output_folder}/F_abs_sq{appendix}-scale_kz_at_idx_{i_kz}.png', 
+                                fout_name=f'F_abs_sq{appendix}-scale_kz_at_idx_{i_kz}.png', 
                                 figsize=(5.5, 4.5),
                                 dpi=fft_dpi,
                                 fixed_z_scale=True,
+                                cax_saturation=cax_saturation,
                                 xlims=fft_xlims,
                                 ylims=fft_ylims, 
                                 zlims=fft_zlims)
@@ -1380,19 +1498,20 @@ def workflow(output_folder, site_idx, site_radii, replace_DFT_by_model, paramete
             if i_kz == density.nkc//2:
                 # along stripes
                 for cut_along in ['along_stripes', 'perpendicular_to_stripes', 'both']:
-                    kx_arr_along, ky_arr_along, F_abs_sq_interp_along, kx_arr_perp, ky_arr_perp, F_abs_sq_interp_perp = density.plot_fft_along_line(i_kz=i_kz, cut_along=cut_along, kx_ky_fun=None, k_dist_lim=12, N_points=3001, fout_name=f'{output_folder}/cut_1D_{cut_along}.png')
+                    kx_arr_along, ky_arr_along, F_abs_sq_interp_along, kx_arr_perp, ky_arr_perp, F_abs_sq_interp_perp = density.plot_fft_along_line(i_kz=i_kz, cut_along=cut_along, kx_ky_fun=None, k_dist_lim=12, N_points=3001, fout_name=f'{output_folder}/cut_1D_{cut_along}.png', cax_saturation=cax_saturation,)
                     density.plot_fft_2D(i_kz=i_kz, fft_as_log=fft_as_log, 
-                                fout_name=f'{output_folder}/F_abs_sq{appendix}-scale_kz_at_idx_{i_kz}_cut_{cut_along}.png', 
+                                fout_name=f'F_abs_sq{appendix}-scale_kz_at_idx_{i_kz}_cut_{cut_along}.png', 
                                 figsize=(5.5, 4.5),
                                 dpi=fft_dpi,
                                 fixed_z_scale=True,
+                                cax_saturation=cax_saturation,
                                 xlims=fft_xlims,
                                 ylims=fft_ylims, 
                                 zlims=fft_zlims,
                                 plot_line_cut=True, kx_arr_along=kx_arr_along, ky_arr_along=ky_arr_along,
                                 kx_arr_perp=kx_arr_perp, ky_arr_perp=ky_arr_perp,
                                 cut_along=cut_along)
-                    np.savetxt(f'{output_folder}/cut_1D_both.txt', np.array([kx_arr_along, ky_arr_along, F_abs_sq_interp_along, kx_arr_perp, ky_arr_perp, F_abs_sq_interp_perp]).T, delimiter='\t', header='kx_along\tky_along\tF_abs_sq_along\tkx_perp\tky_perp\tF_abs_sq_perp')
+                    np.savetxt(os.path.join(density.output_folder, 'cut_1D_both.txt'), np.array([kx_arr_along, ky_arr_along, F_abs_sq_interp_along, kx_arr_perp, ky_arr_perp, F_abs_sq_interp_perp]).T, delimiter='\t', fmt='%.8e', header='kx_along\tky_along\tF_abs_sq_along\tkx_perp\tky_perp\tF_abs_sq_perp')
                 
     # test_shift()
     # exit()
@@ -1452,21 +1571,21 @@ def workflow_density_vs_cutoff_radius(site_idx=[0], site_radii_all=[[i] for i in
     return rho_tot_all, rho_abs_tot_all
 
 
-def workflow_autocorrelation_term(parameters_model, scale_R_array=[1.0], folder_out='.', write_cube_files=False, site_idx=[0]):
+def workflow_autocorrelation_term(parameters_model, scale_R_array=[1.0], output_folder='.', write_cube_files=False, site_idx=[0]):
 
     R_base = np.array([3.01571, 6.45289, 4.99992]) - np.array([4.85991, 5.28091, 3.56158]) # Cu1 - Cu0 = (-1.8442, 1.17198, 1.43834)
     R_array=[f*R_base for f in scale_R_array]
 
     fname_cube_file = './cube_files/Cu2AC4_rho_sz_512.cube' #'./cube_files/Mn2GeO4_rho_sz.cube'
     permutation = None #!! for Mn2GeO4 need to use [2,1,0] to swap x,y,z -> z,y,x
-    output_folder = './outputs/Cu2AC4/E_perp/case_23' #_and_oxygens' # 'Mn2GeO4_kz_tomography_64' #'./gaussian/sigma_0.3_distance_1.0' # Mn2GeO4_kz_tomography_64
+    # output_folder = './outputs/Cu2AC4/E_perp/case_23' #_and_oxygens' # 'Mn2GeO4_kz_tomography_64' #'./gaussian/sigma_0.3_distance_1.0' # Mn2GeO4_kz_tomography_64
 
     # create output folder if it doesn't exist
-    if not os.path.exists(folder_out):
-        os.makedirs(folder_out)
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
 
     # ---- READ CUBE FILE -----
-    orbital = Density(permutation=permutation, verbose=True, fname_cube_file=fname_cube_file)
+    orbital = Density(permutation=permutation, verbose=True, fname_cube_file=fname_cube_file, output_folder=output_folder)
     # orbital.plot_fft_along_line(i_kz=orbital.nc//2, cut_along='stripes', kx_ky_fun=None, k_dist_lim=15, N_points=3001, fout_name=f'{output_folder}/test_1D_plot_along.png')
 
 
@@ -1478,8 +1597,7 @@ def workflow_autocorrelation_term(parameters_model, scale_R_array=[1.0], folder_
     site_centers = orbital.get_sites_of_atoms(site_idx=site_idx)
     parameters_model['centers'] = site_centers
     orbital.replace_by_model(parameters=parameters_model, leave_as_wavefunction=True)
-    orbital.write_cube_file_rho_sz(fout=folder_out + '/orbital.cube')  #- beware - after writing out the cube file, some data is maybe missing in the object
-    exit()
+    orbital.write_cube_file_rho_sz(fout='orbital.cube')  #- beware - after writing out the cube file, some data is maybe missing in the object
 
     # conjugate it
     orbital.conjugate()
@@ -1534,7 +1652,7 @@ def workflow_autocorrelation_term(parameters_model, scale_R_array=[1.0], folder_
         form_factor_term = np.multiply(cos_prefactor, form_factor)
         density.F_abs_sq = np.abs(form_factor_term)**2
         if write_cube_files:
-            density.write_cube_file_fft(f'{output_folder}/cos_prefactor_times_form_factor_squared_{appendix}.cube')   # density here is just a surrogate to save the relevant data
+            density.write_cube_file_fft(f'cos_prefactor_times_form_factor_squared_{appendix}.cube')   # density here is just a surrogate to save the relevant data
         # cut maps
         
         form_factor_term_sq_integrated, _ = density.integrate_cube_file(fft=True)
@@ -1544,7 +1662,7 @@ def workflow_autocorrelation_term(parameters_model, scale_R_array=[1.0], folder_
                 - R_phiphi_minus * R_tilde_phiphi_plus
         density.F_abs_sq = np.abs(overlap_term)**2
         if write_cube_files:
-            density.write_cube_file_fft(f'{output_folder}/overlap_term_squared_{appendix}.cube')   # density here is just a surrogate to save the relevant data
+            density.write_cube_file_fft(f'overlap_term_squared_{appendix}.cube')   # density here is just a surrogate to save the relevant data
         overlap_term_sq_integrated, _ = density.integrate_cube_file(fft=True)
         overlap_term_sq_integrated_all.append(overlap_term_sq_integrated)
 
@@ -1552,7 +1670,7 @@ def workflow_autocorrelation_term(parameters_model, scale_R_array=[1.0], folder_
         E_perp = form_factor_term + overlap_term
         density.F_abs_sq = np.abs(E_perp)**2
         if write_cube_files:
-            density.write_cube_file_fft(f'{output_folder}/E_perp_squared_{appendix}.cube')   # density here is just a surrogate to save the relevant data
+            density.write_cube_file_fft(f'E_perp_squared_{appendix}.cube')   # density here is just a surrogate to save the relevant data
         E_perp_sq_integrated, _ = density.integrate_cube_file(fft=True)
         E_perp_sq_integrated_all.append(E_perp_sq_integrated)
 
@@ -1591,7 +1709,7 @@ if __name__ == '__main__':
         workflow(site_idx=site_idx, site_radii=site_radii, output_folder=output_folder)
 
     # ===== RUN selected cases among the predefined ones =====
-    run_cases = [2] #, 3, 5, 23] #, 3, 5] # None
+    run_cases = [0, 3, 5, 23] #, 3, 5, 23] #, 3, 5] # None
 
     site_idx_all = [
         [0], #0            
@@ -1649,12 +1767,12 @@ if __name__ == '__main__':
 
     base_path = './outputs/Cu2AC4/512/'
     output_folders_all = [
-        base_path+f'masked_Cu0_scale-factor_{scale_factor:.2f}', #0
+        base_path+f'masked_Cu0_scale-factor_{scale_factor:.2f}_norm', #0
         base_path+'masked_Cu1', #1
         base_path+'masked_Cu0-1', #2
-        base_path+f'masked_Cu0_and_oxygens_scale-factor_{scale_factor:.2f}', #3
+        base_path+f'masked_Cu0_and_oxygens_scale-factor_{scale_factor:.2f}_norm', #3
         base_path+'masked_Cu1_and_oxygens', #4
-        base_path+f'masked_Cu0-1_and_oxygens_scale-factor_{scale_factor:.2f}', #5
+        base_path+f'masked_Cu0-1_and_oxygens_scale-factor_{scale_factor:.2f}_norm', #5
         base_path+'unmasked_unit-cell', #6
         base_path+'masked_0_gaussian_sigma_0.3', #7
         base_path+'masked_0_1_gaussians_sigma_0.3', #8
@@ -1672,7 +1790,7 @@ if __name__ == '__main__':
         base_path+'masked_model_Cu0_s-dx2y2', #20
         base_path+'masked_model_Cu0_and_oxygens_s-dx2y2', #21
         base_path+f'masked_model_Cu0_and_oxygens_purely_bonding_{scale_factor:.2f}', #22
-        base_path+f'masked_model_Cu0-1_and_oxygens_purely_bonding_exact_copies_0_and_1_{scale_factor:.2f}', #23
+        base_path+f'masked_model_Cu0-1_and_oxygens_purely_bonding_exact_copies_0_and_1_{scale_factor:.2f}_norm', #23
     ]
 
     replace_DFT_by_model_all = [
