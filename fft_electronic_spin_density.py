@@ -427,7 +427,7 @@ _sq = (x**2 + y**2 + z**2)
 
         def two_s(x, y, z, sigma=None, center=(3,3,3), theta0=0, phi0=0, Z_eff=1):
             # https://winter.group.shef.ac.uk/orbitron/atomic_orbitals/2s/2s_equations.html
-            n = 1  # principal number; 1 for s orbital (wrong, but no point to correct now?)  
+            n = 1  # principal number; 1 for s orbital (wrong, it should be 2 for n=2, but no point to correct now?)  
             x, y, z = center_and_rotate(x, y, z, center=center, theta0=theta0, phi0=phi0, seq='yzy')
             r_sq = (x**2 + y**2 + z**2)
             rho = 2 * Z_eff * np.sqrt(r_sq) / n
@@ -454,6 +454,34 @@ _sq = (x**2 + y**2 + z**2)
                                  C    *  two_s(x, y, z, sigma=sigma, center=center, theta0=theta0, phi0=phi0, Z_eff=Z_eff)
             return amplitude * orbital
         models['two_spx'] = two_spx
+
+        def two_s_correct(x, y, z, sigma=None, center=(3,3,3), theta0=0, phi0=0, Z_eff=1):
+            # https://winter.group.shef.ac.uk/orbitron/atomic_orbitals/2s/2s_equations.html
+            n = 2  # principal number
+            x, y, z = center_and_rotate(x, y, z, center=center, theta0=theta0, phi0=phi0, seq='yzy')
+            r_sq = (x**2 + y**2 + z**2)
+            rho = 2 * Z_eff * np.sqrt(r_sq) / a0 / n
+            return  (2 - rho) * np.exp(-rho/2)
+        models['two_s_correct'] = two_s_correct
+
+        def two_px_correct(x, y, z, sigma=None, center=(3,3,3), theta0=0, phi0=0, Z_eff=1):
+            # https://winter.group.shef.ac.uk/orbitron/atomic_orbitals/2p/2p_equations.html
+            n = 2  # principal number
+            x, y, z = center_and_rotate(x, y, z, center=center, theta0=theta0, phi0=phi0, seq='yzy')
+            r_sq = (x**2 + y**2 + z**2)
+            rho = 2 * Z_eff * np.sqrt(r_sq) / a0 / n
+            return  x/np.sqrt(r_sq) * rho * np.exp(-rho/2)
+        models['two_px_correct'] = two_px_correct
+
+        def two_spx_correct(x, y, z, sigma=None, center=(3,3,3), amplitude=0.3, theta0=-1.006, phi0=-0.5933, Z_eff=9.05, Z_eff_s=None, C=0.48):
+            """spx hybrid where C is the weight of the s orbital
+                
+            """
+            # https://winter.group.shef.ac.uk/orbitron/atomic_orbitals/2p/2p_equations.html
+            orbital = np.sqrt(1-C**2) * two_px_correct(x, y, z, sigma=sigma, center=center, theta0=theta0, phi0=phi0, Z_eff=Z_eff) +\
+                                 C    *  two_s_correct(x, y, z, sigma=sigma, center=center, theta0=theta0, phi0=phi0, Z_eff=Z_eff)
+            return amplitude * orbital
+        models['two_spx_correct'] = two_spx_correct     
 
         def four_s(x, y, z, sigma=None, center=(3,3,3), theta0=0, phi0=0, Z_eff=1):
             # https://winter.group.shef.ac.uk/orbitron/atomic_orbitals/4s/4s_equations.html
@@ -484,6 +512,28 @@ _sq = (x**2 + y**2 + z**2)
                                  C    *  four_s(x, y, z, sigma=sigma, center=center, theta0=theta0, phi0=phi0, Z_eff=Z_eff_s)
             return np.sqrt(amplitude) * orbital
         models['dx2y2_with_four_s'] = dx2y2_with_four_s
+
+        def dx2y2_neat(x, y, z, sigma=None, center=(3,3,3), amplitude=1, theta0=-0.99290, phi0=-0.58594, Z_eff=1, C=None):
+            """dxy orbital distribution in 3D space - https://math.stackexchange.com/questions/434629/3-d-generalization-of-the-gaussian-point-spread-function
+
+            Args:
+                x (_type_): Cartesian x coordinate in Angstrom.
+                y (_type_): Cartesian y coordinate in Angstrom.
+                z (_type_): Cartesian z coordinate in Angstrom.
+                sigma (float, optional): _description_. Defaults to 0.5.
+                center (tuple, optional): _description_. Defaults to (3,3,3).
+                sign (int, optional): _description_. Defaults to 1.
+
+            Returns:
+                _type_: _description_
+            """
+            n = 3  # principal number; 3 for d orbitals
+            x, y, z = center_and_rotate(x, y, z, center=center, theta0=theta0, phi0=phi0, seq='yzy')
+            r_sq = (x**2 + y**2 + z**2)
+            r = np.sqrt(r_sq)
+            rho = 2 * Z_eff * r / n / a0
+            return amplitude * (x**2 - y**2)/r_sq * rho**2 * np.exp(-rho/2)
+        models['dx2y2_neat'] = dx2y2_neat
             
 
         # check plot
@@ -1233,10 +1283,10 @@ _sq = (x**2 + y**2 + z**2)
                 # direction cosines
                 gamma_x = self.R_vec[0] / self.R_xy
                 gamma_y = self.R_vec[1] / self.R_xy
-                # R is perpendicular to stripes
+                # 90 deg rotated --> perpendicular the stripes
                 kx_along = kx_center + kx_0_along - gamma_y * k_dist
                 ky_along = ky_center + ky_0_along + gamma_x * k_dist
-                # 90 deg rotated --> along the stripes
+                # R is perpendicular to stripes
                 kx_perp = kx_center + kx_0_perp + gamma_x * k_dist
                 ky_perp = ky_center + ky_0_perp + gamma_y * k_dist
                 return kx_along, ky_along, kx_perp, ky_perp
@@ -1350,7 +1400,7 @@ def workflow(output_folder, site_idx, site_radii, replace_DFT_by_model, paramete
     
     fft_3D = False
     full_range_fft_spectrum_cuts = False
-    zoom_in_fft_spectrum_cuts = True
+    zoom_in_fft_spectrum_cuts = False
 
     write_cube_files = False
 
@@ -1693,7 +1743,7 @@ if __name__ == '__main__':
     # workflow_density_vs_cutoff_radius(site_idx=[0], site_radii_all=[[i] for i in np.arange(0.5, 4.0, 0.5)], plot=True)
     # exit()
 
-    scale_factor = 4.0
+    scale_factor = 1.0
 
     r_mt_Cu = 1.1 #Angstrom
     r_mt_O = 0.9 #Angstrom
@@ -1709,7 +1759,7 @@ if __name__ == '__main__':
         workflow(site_idx=site_idx, site_radii=site_radii, output_folder=output_folder)
 
     # ===== RUN selected cases among the predefined ones =====
-    run_cases = [0, 3, 5, 23] #, 3, 5, 23] #, 3, 5] # None
+    run_cases = [29] #[0, 3, 5, 23] #, 3, 5, 23] #, 3, 5] # None
 
     site_idx_all = [
         [0], #0            
@@ -1736,6 +1786,12 @@ if __name__ == '__main__':
         [0, 25, 40, 9, 16], #21
         [0, 25, 40, 9, 16], #22
         [0, 25, 40, 9, 16, 1, 41, 24, 17, 8], #23
+        [25], #24
+        [40], #25
+        [9], #26
+        [16], #27
+        [0], #28
+        [0, 25, 40, 9, 16], #29
     ]
 
     site_radii_all = [
@@ -1763,6 +1819,12 @@ if __name__ == '__main__':
         [r_mt_Cu]+[r_mt_O]*4, #21
         [r_mt_Cu]+[r_mt_O]*4, #22
         [r_mt_Cu]+[r_mt_O]*4+[r_mt_Cu]+[r_mt_O]*4, #23
+        [r_mt_O], #24
+        [r_mt_O], #25
+        [r_mt_O], #26
+        [r_mt_O], #27
+        [r_mt_Cu], #28
+        [r_mt_Cu]+[r_mt_O]*4, #29
     ]
 
     base_path = './outputs/Cu2AC4/512/'
@@ -1791,6 +1853,12 @@ if __name__ == '__main__':
         base_path+'masked_model_Cu0_and_oxygens_s-dx2y2', #21
         base_path+f'masked_model_Cu0_and_oxygens_purely_bonding_{scale_factor:.2f}', #22
         base_path+f'masked_model_Cu0-1_and_oxygens_purely_bonding_exact_copies_0_and_1_{scale_factor:.2f}_norm', #23
+        base_path+'masked_0_two_spx_correct_rotated_25', #24 - like 15 but with correct n=2 for 2s orbital
+        base_path+'masked_0_two_spx_correct_rotated_40', #25 - like 16 but with correct n=2 for 2s orbital
+        base_path+'masked_0_two_spx_correct_rotated_9', #26 - like 17 but with correct n=2 for 2s orbital
+        base_path+'masked_0_two_spx_correct_rotated_16', #27 - like 18 but with correct n=2 for 2s orbital
+        base_path+'masked_model_Cu0_dx2y2_neat', #28 - like 11 but expression slightly revamped - just change of parameters
+        base_path+'masked_model_Cu0_and_oxygens_purely_bonding_spx_correct', #29 - like 21 but with correct n=2 for 2s orbital
     ]
 
     replace_DFT_by_model_all = [
@@ -1818,6 +1886,12 @@ if __name__ == '__main__':
         True, #21
         True, #22
         True, #23
+        True, #24
+        True, #25
+        True, #26
+        True, #27
+        True, #28
+        True, #29
     ]
 
     fit_model_to_DFT_all = [
@@ -1845,6 +1919,12 @@ if __name__ == '__main__':
         False, #21
         False, #22
         False, #23
+        True, #24
+        True, #25
+        True, #26
+        True, #27
+        True, #28
+        True, #29
     ]
 
     parameters_model_all = [{}]*7 + [
@@ -1884,11 +1964,32 @@ if __name__ == '__main__':
                                                                                 'phi0':[-0.58594, -0.5933, 2.55285232, 0.829267292, -2.0329591, -0.58594, -0.5933, 2.55285232, 0.829267292, -2.0329591,], 
                                                                                 'Z_eff':[12.2132868, 8.5545368, 8.5995384, 8.53154405, 8.57672478, 12.2132868, 8.5545368, 8.5995384, 8.53154405, 8.57672478],
                                                                                 'C':[0.000, 0.50774442, 0.46376494, 0.543582469, 0.50554664, 0.000, 0.50774442, 0.46376494, 0.543582469, 0.50554664]}}, #23 <-------- both Cu0 and Cu1 populated with model 22 (Cu1 with spin down - controlled by 'spin_down_orbital_all' key in parameters_model)
-        ]
-    case = 22
+        
+        
+        {'type':['two_spx_correct'], 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[-0.2926634], 'theta0':[-0.82051673], 'phi0':[-0.5980457], 'Z_eff':[5.01517706], 'C':[0.25951331]}}, #24 (atom 25) - like 15 but correct orbitals <-------- Oxygen 1/4,         --->  R^2 0.853924
+        {'type':['two_spx_correct'], 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[-0.30968292], 'theta0':[1.18435744], 'phi0':[2.55194631], 'Z_eff':[4.94533815], 'C':[0.22725085]}}, #25 (atom 40) - like 16 but correct orbitals <-------- Oxygen 2/4  --->  R^2 0.865949
+        {'type':['two_spx_correct'], 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[0.295919999], 'theta0':[0.00034809], 'phi0':[0.8265912], 'Z_eff':[5.10058135], 'C':[0.291142454]}}, #26 (atom 9) - like 17 but correct orbitals <-------- Oxygen 3/4   --->  R^2 0.842962
+        {'type':['two_spx_correct'], 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[0.30207433], 'theta0':[0.18104707], 'phi0':[-2.03391158], 'Z_eff':[5.04343411], 'C':[0.28161311]}}, #27 (atom 16) - like 18 but correct orbitals <-------- Oxygen 4/4          --->  R^2 0.852591
+        {'type':['dx2y2_neat'],      'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[0.360453056], 'theta0':[-1.011437], 'phi0':[-0.59855408], 'Z_eff':[12.8481725], 'C':[0.00]}}, #28 - like 11 but more neately defined parameters  <------ copper                --->  R^2 0.784286
+        {'type':['dx2y2_neat']+4*['two_spx_correct'], 'sigmas':[0.3]*5, 'centers':[], 'fit_params_init_all':{'amplitude':[0.360453056, -0.2926634, -0.30968292, 0.295919999, 0.30207433], 
+                                                                                'theta0':[-1.011437, -0.82051673, 1.18435744, 0.00034809, 0.18104707], 
+                                                                                'phi0':[-0.59855408, -0.5980457, 2.55194631, 0.8265912, -2.03391158], 
+                                                                                'Z_eff':[12.8481725, 5.01517706, 4.94533815, 5.10058135, 5.04343411],
+                                                                                'C':[0.000, 0.25951331, 0.22725085, 0.291142454, 0.28161311]}}, #29 - like 22 but correct sp orbitals - for fitting
+        # 30 will be like 23 but with parameters from #29
+        {'type':['dx2y2_neat']+4*['two_spx_correct']+['dx2y2_neat']+4*['two_spx_correct'], 'sigmas':[0.3]*10, 'centers':[],
+            'spin_down_orbital_all':[False]*5 + [True]*5,
+                                                                            'fit_params_init_all':{'amplitude':[0.360453056, -0.2926634, -0.30968292, 0.295919999, 0.30207433, 0.360453056, -0.2926634, -0.30968292, 0.295919999, 0.30207433], 
+                                                                                    'theta0':[-1.011437, -0.82051673, 1.18435744, 0.00034809, 0.18104707, -1.011437, -0.82051673, 1.18435744, 0.00034809, 0.18104707], 
+                                                                                    'phi0':[-0.59855408, -0.5980457, 2.55194631, 0.8265912, -2.03391158, -0.59855408, -0.5980457, 2.55194631, 0.8265912, -2.03391158], 
+                                                                                    'Z_eff':[12.8481725, 5.01517706, 4.94533815, 5.10058135, 5.04343411, 12.8481725, 5.01517706, 4.94533815, 5.10058135, 5.04343411],
+                                                                                    'C':[0.000, 0.25951331, 0.22725085, 0.291142454, 0.28161311, 0.000, 0.25951331, 0.22725085, 0.291142454, 0.28161311]}}, #30 <-------- both Cu0 and Cu1 populated with model 29 (Cu1 with spin down - controlled by 'spin_down_orbital_all' key in parameters_model)     
 
-    # scale_R_array = [0.01, 0.03, 0.05, 0.08, 0.1, 0.3, 0.5, 1.0, 1.5, 2.0] #np.arange(0.5, 1.5, 0.05)
-    # workflow_autocorrelation_term(parameters_model_all[case], scale_R_array=scale_R_array, folder_out=output_folders_all[case], site_idx=site_idx_all[case])
+        ]
+    case = 29                                                                                                          
+
+    scale_R_array = [1.0] #[0.01, 0.03, 0.05, 0.08, 0.1, 0.3, 0.5, 1.0, 1.5, 2.0] #np.arange(0.5, 1.5, 0.05)
+    workflow_autocorrelation_term(parameters_model_all[case], scale_R_array=scale_R_array, output_folder=output_folders_all[case], site_idx=site_idx_all[case])
 
     if run_cases:
         for i in run_cases:
