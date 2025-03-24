@@ -1647,7 +1647,9 @@ def workflow_autocorrelation_term(parameters_model, scale_R_array=[1.0], output_
     site_centers = orbital.get_sites_of_atoms(site_idx=site_idx)
     parameters_model['centers'] = site_centers
     orbital.replace_by_model(parameters=parameters_model, leave_as_wavefunction=True)
-    orbital.write_cube_file_rho_sz(fout='orbital.cube')  #- beware - after writing out the cube file, some data is maybe missing in the object
+    
+    # if write_cube_files:
+    #     orbital.write_cube_file_rho_sz(fout='orbital.cube')  #- beware - after writing out the cube file, some data is maybe missing in the object
 
     # conjugate it
     orbital.conjugate()
@@ -1657,7 +1659,10 @@ def workflow_autocorrelation_term(parameters_model, scale_R_array=[1.0], output_
     # make a density out of it
     density = deepcopy(orbital)
     density.square_data()
-    density.integrate_cube_file()
+    # density.integrate_cube_file()
+
+    if write_cube_files:
+        density.write_cube_file_rho_sz(fout='density.cube')
 
     # get its density's FFT (the form factor)
     density.FFT()
@@ -1676,17 +1681,29 @@ def workflow_autocorrelation_term(parameters_model, scale_R_array=[1.0], output_
 
         parameters_model['centers'] = site_centers_plus
         orbital_shifted_plus.replace_by_model(parameters=parameters_model, leave_as_wavefunction=True)
+
+        orbital_shifted_plus.square_data()
+        orbital_shifted_plus.write_cube_file_rho_sz(f'density_shifted_plus_{appendix}.cube')  #- beware - after writing out the cube file, some data is maybe missing in the object
+
+        # if write_cube_files:
+        #     orbital_shifted_plus.write_cube_file_rho_sz(fout=f'orbital_shifted_plus_{appendix}.cube')  #- beware - after writing out the cube file, some data is maybe missing in the object
         # update density_2 by multiplying with density (in-place)
         orbital_shifted_plus.multiply_with(orbital)
-
+        # if write_cube_files:
+        #     orbital_shifted_plus.write_cube_file_rho_sz(fout=f'orbital_shifted_plus_times_orbital_{appendix}.cube')  #- beware - after writing out the cube file, some data is maybe missing in the object
+        
         parameters_model['centers'] = site_centers_minus
         orbital_shifted_minus.replace_by_model(parameters=parameters_model, leave_as_wavefunction=True)
+        if write_cube_files:
+            orbital_shifted_minus.write_cube_file_rho_sz(fout=f'orbital_shifted_minus_{appendix}.cube')  #- beware - after writing out the cube file, some data is maybe missing in the object
         # update density_2 by multiplying with density (in-place)   
         orbital_shifted_minus.multiply_with(orbital)
 
         # scalar
         R_phiphi_plus, _ = orbital_shifted_plus.integrate_cube_file()
+        print('R_phiphi_plus', R_phiphi_plus)
         R_phiphi_minus, _ = orbital_shifted_minus.integrate_cube_file()
+        print('R_phiphi_minus', R_phiphi_minus)
 
         # FFT of R_phiphi
         orbital_shifted_plus.FFT()
@@ -1724,19 +1741,23 @@ def workflow_autocorrelation_term(parameters_model, scale_R_array=[1.0], output_
         E_perp_sq_integrated, _ = density.integrate_cube_file(fft=True)
         E_perp_sq_integrated_all.append(E_perp_sq_integrated)
 
+    # save data
+    with open(f'{output_folder}/E_perp_sq_vs_scale_R.txt', 'w+') as fw:
+        np.savetxt(fw, np.vstack([scale_R, form_factor_term_sq_integrated_all, overlap_term_sq_integrated_all, E_perp_sq_integrated_all]).T, \
+                        header='r/R\t|E_ff|^2\t|E_overlap|^2\t|E_perp|^2', delimiter='\t')
 
     # plotting
-    fig, ax = plt.subplots(1, 1, figsize=(4.5, 3.5))
+    fig, ax = plt.subplots(1, 1, figsize=(4., 3.))
     # semilogy
     plt.semilogy()
-    plt.plot(scale_R_array, form_factor_term_sq_integrated_all, 's-', label='form_factor_term_sq_integrated', markerfacecolor='none')
-    plt.plot(scale_R_array, overlap_term_sq_integrated_all, 'o-', label='overlap_term_sq_integrated', markerfacecolor='none')
-    plt.plot(scale_R_array, E_perp_sq_integrated_all, '^-', label='E_perp_sq_integrated', markerfacecolor='none')
-    plt.xlabel('scale_R')
-    plt.ylabel('|FFT|^2')
+    plt.plot(scale_R_array, form_factor_term_sq_integrated_all, 's-', label=r'$|E_\mathrm{ff}|^2$', markerfacecolor='none')
+    plt.plot(scale_R_array, overlap_term_sq_integrated_all, 'o-', label=r'$|E_\mathrm{overlap}|^2$', markerfacecolor='none')
+    plt.plot(scale_R_array, E_perp_sq_integrated_all, '^-', label=r'$|E_\perp|^2$', markerfacecolor='none')
+    plt.xlabel(r'r/R')
+    plt.ylabel(r'$|E_i|^2$')
     plt.legend()
     plt.tight_layout()
-    plt.show()
+    plt.savefig(f'{output_folder}/E_perp_sq_vs_scale_R.png', dpi=400)
 
 if __name__ == '__main__':
 
@@ -1988,8 +2009,14 @@ if __name__ == '__main__':
         ]
     case = 29                                                                                                          
 
-    scale_R_array = [1.0] #[0.01, 0.03, 0.05, 0.08, 0.1, 0.3, 0.5, 1.0, 1.5, 2.0] #np.arange(0.5, 1.5, 0.05)
-    workflow_autocorrelation_term(parameters_model_all[case], scale_R_array=scale_R_array, output_folder=output_folders_all[case], site_idx=site_idx_all[case])
+    scale_R_array = [0.01, 0.03, 0.05, 0.08, 0.1, 0.3, 0.5, 1.0, 1.5, 2.0] #np.arange(0.5, 1.5, 0.05)
+    workflow_autocorrelation_term(parameters_model_all[case], 
+                                    scale_R_array=scale_R_array, 
+                                    output_folder=output_folders_all[case], 
+                                    site_idx=site_idx_all[case],
+                                    write_cube_files=True)
+
+    exit()
 
     if run_cases:
         for i in run_cases:
