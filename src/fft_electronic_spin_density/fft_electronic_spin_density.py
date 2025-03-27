@@ -1743,7 +1743,7 @@ def workflow_autocorrelation_term(parameters_model, scale_R_array=[1.0], output_
 
     # save data
     with open(f'{output_folder}/E_perp_sq_vs_scale_R.txt', 'w+') as fw:
-        np.savetxt(fw, np.vstack([scale_R, form_factor_term_sq_integrated_all, overlap_term_sq_integrated_all, E_perp_sq_integrated_all]).T, \
+        np.savetxt(fw, np.vstack([scale_R_array, form_factor_term_sq_integrated_all, overlap_term_sq_integrated_all, E_perp_sq_integrated_all]).T, \
                         header='r/R\t|E_ff|^2\t|E_overlap|^2\t|E_perp|^2', delimiter='\t')
 
     # plotting
