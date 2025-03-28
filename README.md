@@ -5,6 +5,8 @@
 pip install fft_electronic_spin_density
 ```
 
+See the [documentation website](https://liborsold.github.io/fft_electronic_spin_density/build/html/index.html).
+
 ## Usage
 
 ```python
