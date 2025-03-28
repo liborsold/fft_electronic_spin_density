@@ -46,9 +46,8 @@ Navigation
    density_class
    api
 
-Indices and tables
+Indices
 ==================
 
 * :ref:`genindex`
 * :ref:`modindex`
-* :ref:`search`
