@@ -10,12 +10,29 @@ Welcome to ``fft_electronic_spin_density``'s documentation!
 
 See the `project on GitHub <https://github.com/liborsold/fft_electronic_spin_density/tree/master>`_.
 
-Contents
---------
+Quickstart
+================
+
+.. code-block:: python
+   
+   pip install fft_electronic_spin_density
+
+then 
+
+.. code-block:: python
+   
+   git clone https://github.com/liborsold/fft_electronic_spin_density.git
+   
+and execute the ``./examples/fft_examples.ipynb`` Jupyter notebook.
+
+
+Navigation
+===============
 
 .. toctree::
    :maxdepth: 2
 
+   examples
    api
    density_class
 
