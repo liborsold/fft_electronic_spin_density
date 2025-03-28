@@ -1,5 +1,5 @@
 # fft_electronic_spin_density
-**<i>Perform FFT on Gaussian .cube files of charge or spin density to obtain the (magnetic) form factor for neutron scattering.</i>**
+**<i>Perform FFT on Gaussian .cube files of charge or spin density, primarily to obtain the (magnetic) form factor for neutron scattering.</i>**
 
 ```
 pip install fft_electronic_spin_density
