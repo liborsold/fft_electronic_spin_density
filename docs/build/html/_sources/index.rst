@@ -8,7 +8,17 @@ Welcome to ``fft_electronic_spin_density``'s documentation!
 
 **fft_electronic_spin_density** is a Python package for performing FFT on Gaussian .cube files of charge or spin density to obtain the (magnetic) form factor for neutron scattering.
 
+
+.. fft_electronic_spin_density example image
+.. image::
+   ./_static/images/example_of_use.png
+   :width: 800px
+   :align: center
+
+\ 
+
 See the `project on GitHub <https://github.com/liborsold/fft_electronic_spin_density/tree/master>`_.
+
 
 Quickstart
 ================

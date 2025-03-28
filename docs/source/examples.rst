@@ -3,9 +3,12 @@ Examples
 
 An example of use is given in ``./examples/fft_example.ipynb``. It uses input files from ...
 
-.. code-block:: python
+.. fft_electronic_spin_density example image
+.. image::
+   ./_static/images/example_of_use.png
+   :width: 800px
+   :align: center
 
-    from fft_electronic_spin_density.utils import Density
 
 
 Load the .cube file charge or spin density
@@ -13,6 +16,7 @@ Load the .cube file charge or spin density
 
 .. code-block:: python
 
+    from fft_electronic_spin_density.utils import Density
     density = Density(fname_cube_file='./cube_files/rho_sz.cube')
 
 
