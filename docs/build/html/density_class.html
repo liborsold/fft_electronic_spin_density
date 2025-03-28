@@ -374,7 +374,16 @@ Replace by a model function if required.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="fft_electronic_spin_density.classes.Density.FFT">
 <span class="sig-name descname"><span class="pre">FFT</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">normalized</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fft_electronic_spin_density.classes.Density.FFT" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
+<dd><p>Perform the 3D FFT of the scalar field.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>verbose</strong> (<em>bool</em><em>, </em><em>optional</em>) – Print information about the FFT. Defaults to True.</p></li>
+<li><p><strong>normalized</strong> (<em>bool</em><em>, </em><em>optional</em>) – Normalize the squared FFT. Defaults to True.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="fft_electronic_spin_density.classes.Density.conjugate">
@@ -397,9 +406,15 @@ Replace by a model function if required.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>cube_data</strong> (<em>_type_</em>) – _description_</p></li>
-<li><p><strong>steps</strong> (<em>int</em><em>, </em><em>optional</em>) – _description_. Defaults to 1.</p></li>
+<li><p><strong>cube_data</strong> (<em>tuple</em>) – Tuple with the numpy array and the metadata.</p></li>
+<li><p><strong>permutation</strong> (<em>list</em><em>, </em><em>optional</em>) – List of integers for the permutation. Defaults to [2,1,0].</p></li>
 </ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Tuple with the numpy array and the metadata.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>tuple</p>
 </dd>
 </dl>
 </dd></dl>
@@ -408,18 +423,39 @@ Replace by a model function if required.</p>
 <dt class="sig sig-object py" id="fft_electronic_spin_density.classes.Density.create_cmap_with_cap">
 <span class="sig-name descname"><span class="pre">create_cmap_with_cap</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">base_cmap_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'viridis'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.7</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_colors</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1024</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fft_electronic_spin_density.classes.Density.create_cmap_with_cap" title="Link to this definition">#</a></dt>
 <dd><p>Creates a colormap where colors remain constant beyond a specified threshold.</p>
-<p>Parameters:
-- base_cmap_name (str): Name of the base colormap (e.g., ‘viridis’, ‘plasma’, etc.).
-- threshold (float): Value (0 to 1) beyond which the color remains constant.
-- num_colors (int): Number of discrete colors in the colormap.</p>
-<p>Returns:
-- matplotlib.colors.ListedColormap: Custom colormap with capped maximum color.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>base_cmap_name</strong> (<em>str</em><em>, </em><em>optional</em>) – Name of the base colormap. Defaults to “viridis”.</p></li>
+<li><p><strong>threshold</strong> (<em>float</em><em>, </em><em>optional</em>) – Threshold value. Defaults to 0.7.</p></li>
+<li><p><strong>num_colors</strong> (<em>int</em><em>, </em><em>optional</em>) – Number of colors in the colormap. Defaults to 1024.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>New colormap.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>matplotlib.colors.ListedColormap</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="fft_electronic_spin_density.classes.Density.get_i_kz">
 <span class="sig-name descname"><span class="pre">get_i_kz</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">kz_target</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fft_electronic_spin_density.classes.Density.get_i_kz" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
+<dd><p>Get the index of the kz plane closest to the target value.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>kz_target</strong> (<em>float</em>) – Target value of kz.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Index of the kz plane.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="fft_electronic_spin_density.classes.Density.get_index_at_kz">
@@ -427,7 +463,13 @@ Replace by a model function if required.</p>
 <dd><p>Return the index at a given k_z value (in Angstrom^-1). Check that the k_z value is in range.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>kz_target</strong> (<em>int</em><em>, </em><em>optional</em>) – _description_. Defaults to 15.</p>
+<dd class="field-odd"><p><strong>kz_target</strong> (<em>int</em><em>, </em><em>optional</em>) – k_z value in Angstrom^-1. Defaults to 15.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Index of the k_z value.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
 </dd>
 </dl>
 </dd></dl>
@@ -437,6 +479,17 @@ Replace by a model function if required.</p>
 <span class="sig-name descname"><span class="pre">get_kz_at_index</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">kz_index</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">30</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fft_electronic_spin_density.classes.Density.get_kz_at_index" title="Link to this definition">#</a></dt>
 <dd><p>Return the k_z value (in Angstrom^-1) at a given index: first or last indices are -+ k_max/2, the middle index is k_z=0 (data is zero-centered; fftshifted after fft was performed).
 Check that index is in range.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>kz_index</strong> (<em>int</em><em>, </em><em>optional</em>) – Index of the k_z value. Defaults to 30.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>k_z value in Angstrom^-1.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
@@ -485,15 +538,15 @@ If density_to_mask is given, mask and return this density instead of the loaded 
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>leave_sites</strong> (<em>_type_</em>) – _description_</p></li>
-<li><p><strong>density_to_mask</strong> (<em>_type_</em><em>, </em><em>optional</em>) – _description_. Defaults to None.</p></li>
+<li><p><strong>leave_sites</strong> (<em>dict</em>) – Dictionary with keys ‘site_centers’ and ‘site_radii’ for the sites to leave in the model.</p></li>
+<li><p><strong>density_to_mask</strong> (<em>np.array</em><em>, </em><em>optional</em>) – Density to mask. Defaults to None.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>_description_</p>
+<dd class="field-even"><p>Masked density.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>_type_</p>
+<dd class="field-odd"><p>np.array</p>
 </dd>
 </dl>
 </dd></dl>
@@ -519,6 +572,26 @@ If density_to_mask is given, mask and return this density instead of the loaded 
 <dt class="sig sig-object py" id="fft_electronic_spin_density.classes.Density.plot_cube_fft">
 <span class="sig-name descname"><span class="pre">plot_cube_fft</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">c_idx_arr</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[0,</span> <span class="pre">1,</span> <span class="pre">-1]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fout_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'rho_sz.png'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">figsize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(8.0,</span> <span class="pre">6)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dpi</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">300</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zeros_transparent</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xlims</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ylims</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zlims</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show_plot</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_folder</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fft_electronic_spin_density.classes.Density.plot_cube_fft" title="Link to this definition">#</a></dt>
 <dd><p>Concrete use of plot_cube_file_general for spin density files.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>c_idx_arr</strong> (<em>list</em><em>, </em><em>optional</em>) – show cuts at these indeces. Defaults to [0,1,-1].</p></li>
+<li><p><strong>fout_name</strong> (<em>str</em><em>, </em><em>optional</em>) – _description_. Defaults to ‘rho_sz.png’.</p></li>
+<li><p><strong>alpha</strong> (<em>float</em><em>, </em><em>optional</em>) – transparency. Defaults to 0.2.</p></li>
+<li><p><strong>figsize</strong> (<em>tuple</em><em>, </em><em>optional</em>) – _description_. Defaults to (8.0, 6).</p></li>
+<li><p><strong>dpi</strong> (<em>int</em><em>, </em><em>optional</em>) – _description_. Defaults to 300.</p></li>
+<li><p><strong>zeros_transparent</strong> (<em>bool</em><em>, </em><em>optional</em>) – _description_. Defaults to True.</p></li>
+<li><p><strong>xlims</strong> (<em>list</em><em>, </em><em>optional</em>) – _description_. Defaults to None.</p></li>
+<li><p><strong>ylims</strong> (<em>list</em><em>, </em><em>optional</em>) – _description_. Defaults to None.</p></li>
+<li><p><strong>zlims</strong> (<em>list</em><em>, </em><em>optional</em>) – _description_. Defaults to None.</p></li>
+<li><p><strong>show_plot</strong> (<em>bool</em><em>, </em><em>optional</em>) – _description_. Defaults to False.</p></li>
+<li><p><strong>output_folder</strong> (<em>str</em><em>, </em><em>optional</em>) – _description_. Defaults to None.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
@@ -532,29 +605,113 @@ If density_to_mask is given, mask and return this density instead of the loaded 
 <li><p><strong>fout_name</strong> (<em>str</em><em>, </em><em>optional</em>) – _description_. Defaults to ‘rho_sz.png’.</p></li>
 </ul>
 </dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
 </dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="fft_electronic_spin_density.classes.Density.plot_cube_file_outer_surface">
 <span class="sig-name descname"><span class="pre">plot_cube_file_outer_surface</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fout_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'rho_sz.png'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fft_electronic_spin_density.classes.Density.plot_cube_file_outer_surface" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
+<dd><p>Plot the outer surface of the scalar field in a 3D plot.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>fout_name</strong> (<em>str</em><em>, </em><em>optional</em>) – Name of the output file. Defaults to ‘rho_sz.png’.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="fft_electronic_spin_density.classes.Density.plot_cube_rho_sz">
 <span class="sig-name descname"><span class="pre">plot_cube_rho_sz</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">c_idx_arr</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[0,</span> <span class="pre">1,</span> <span class="pre">-1]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fout_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'rho_sz.png'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">figsize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(8.0,</span> <span class="pre">6)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dpi</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">300</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zeros_transparent</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xlims</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ylims</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zlims</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show_plot</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_folder</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fft_electronic_spin_density.classes.Density.plot_cube_rho_sz" title="Link to this definition">#</a></dt>
 <dd><p>Concrete use of plot_cube_file_general for spin density files.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>c_idx_arr</strong> (<em>list</em><em>, </em><em>optional</em>) – show cuts at these indeces. Defaults to [0,1,-1].</p></li>
+<li><p><strong>fout_name</strong> (<em>str</em><em>, </em><em>optional</em>) – _description_. Defaults to ‘rho_sz.png’.</p></li>
+<li><p><strong>alpha</strong> (<em>float</em><em>, </em><em>optional</em>) – transparency. Defaults to 0.2.</p></li>
+<li><p><strong>figsize</strong> (<em>tuple</em><em>, </em><em>optional</em>) – _description_. Defaults to (8.0, 6).</p></li>
+<li><p><strong>dpi</strong> (<em>int</em><em>, </em><em>optional</em>) – _description_. Defaults to 300.</p></li>
+<li><p><strong>zeros_transparent</strong> (<em>bool</em><em>, </em><em>optional</em>) – _description_. Defaults to True.</p></li>
+<li><p><strong>xlims</strong> (<em>list</em><em>, </em><em>optional</em>) – _description_. Defaults to None.</p></li>
+<li><p><strong>ylims</strong> (<em>list</em><em>, </em><em>optional</em>) – _description_. Defaults to None.</p></li>
+<li><p><strong>zlims</strong> (<em>list</em><em>, </em><em>optional</em>) – _description_. Defaults to None.</p></li>
+<li><p><strong>show_plot</strong> (<em>bool</em><em>, </em><em>optional</em>) – _description_. Defaults to False.</p></li>
+<li><p><strong>output_folder</strong> (<em>str</em><em>, </em><em>optional</em>) – _description_. Defaults to None.</p></li>
+</ul>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="fft_electronic_spin_density.classes.Density.plot_fft_2D">
 <span class="sig-name descname"><span class="pre">plot_fft_2D</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i_kz</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fft_as_log</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k1_idx</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k2_idx</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fout_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'colormap_2D_out.png'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">figsize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(8.0,</span> <span class="pre">6.0)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dpi</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">500</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fixed_z_scale</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xlims</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ylims</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zlims</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plot_line_cut</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kx_arr_along</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ky_arr_along</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kx_arr_perp</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ky_arr_perp</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cut_along</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'both'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">normalized</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cax_saturation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_folder</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fft_electronic_spin_density.classes.Density.plot_fft_2D" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
+<dd><p>Plot the 2D FFT of the scalar field.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>i_kz</strong> (<em>int</em>) – Index of the kz plane.</p></li>
+<li><p><strong>fft_as_log</strong> (<em>bool</em><em>, </em><em>optional</em>) – Plot the log of the FFT. Defaults to False.</p></li>
+<li><p><strong>k1_idx</strong> (<em>int</em><em>, </em><em>optional</em>) – Index of the first lattice vector. Defaults to 0.</p></li>
+<li><p><strong>k2_idx</strong> (<em>int</em><em>, </em><em>optional</em>) – Index of the second lattice vector. Defaults to 1.</p></li>
+<li><p><strong>fout_name</strong> (<em>str</em><em>, </em><em>optional</em>) – Name of the output file. Defaults to ‘colormap_2D_out.png’.</p></li>
+<li><p><strong>verbose</strong> (<em>bool</em><em>, </em><em>optional</em>) – Print information about the plot. Defaults to True.</p></li>
+<li><p><strong>figsize</strong> (<em>tuple</em><em>, </em><em>optional</em>) – Size of the figure. Defaults to (8.0, 6.0).</p></li>
+<li><p><strong>dpi</strong> (<em>int</em><em>, </em><em>optional</em>) – Dots per inch. Defaults to 500.</p></li>
+<li><p><strong>fixed_z_scale</strong> (<em>bool</em><em>, </em><em>optional</em>) – Fix the z scale. Defaults to True.</p></li>
+<li><p><strong>xlims</strong> (<em>list</em><em>, </em><em>optional</em>) – Limits of the x axis. Defaults to None.</p></li>
+<li><p><strong>ylims</strong> (<em>list</em><em>, </em><em>optional</em>) – Limits of the y axis. Defaults to None.</p></li>
+<li><p><strong>zlims</strong> (<em>list</em><em>, </em><em>optional</em>) – Limits of the z axis. Defaults to None.</p></li>
+<li><p><strong>plot_line_cut</strong> (<em>bool</em><em>, </em><em>optional</em>) – Plot the line cuts. Defaults to False.</p></li>
+<li><p><strong>kx_arr_along</strong> (<em>list</em><em>, </em><em>optional</em>) – List of kx values for the line cut along the lattice vector. Defaults to None.</p></li>
+<li><p><strong>ky_arr_along</strong> (<em>list</em><em>, </em><em>optional</em>) – List of ky values for the line cut along the lattice vector. Defaults to None.</p></li>
+<li><p><strong>kx_arr_perp</strong> (<em>list</em><em>, </em><em>optional</em>) – List of kx values for the line cut perpendicular to the lattice vector. Defaults to None.</p></li>
+<li><p><strong>ky_arr_perp</strong> (<em>list</em><em>, </em><em>optional</em>) – List of ky values for the line cut perpendicular to the lattice vector. Defaults to None.</p></li>
+<li><p><strong>cut_along</strong> (<em>str</em><em>, </em><em>optional</em>) – Direction of the line cut. Defaults to ‘both’.</p></li>
+<li><p><strong>normalized</strong> (<em>bool</em><em>, </em><em>optional</em>) – Normalize the FFT. Defaults to True.</p></li>
+<li><p><strong>cax_saturation</strong> (<em>float</em><em>, </em><em>optional</em>) – Saturation value for the colorbar. Defaults to None.</p></li>
+<li><p><strong>output_folder</strong> (<em>str</em><em>, </em><em>optional</em>) – Output folder. Defaults to None.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="fft_electronic_spin_density.classes.Density.plot_fft_along_line">
 <span class="sig-name descname"><span class="pre">plot_fft_along_line</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i_kz</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cut_along</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'along_stripes'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kx_ky_fun</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k_dist_lim</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">15</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kx_0_along</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ky_0_along</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kx_0_perp</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ky_0_perp</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">N_points</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3001</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fout_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'test_1D_plot_along.png'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">normalized</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">figsize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(4.5,</span> <span class="pre">3.5)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ylim</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.4</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cax_saturation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fft_electronic_spin_density.classes.Density.plot_fft_along_line" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
+<dd><p>Plot the line cut of the FFT along the stripes.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>i_kz</strong> (<em>int</em><em>, </em><em>optional</em>) – Index of the kz plane. Defaults to None.</p></li>
+<li><p><strong>cut_along</strong> (<em>str</em><em>, </em><em>optional</em>) – Direction of the line cut. Defaults to ‘along_stripes’.</p></li>
+<li><p><strong>kx_ky_fun</strong> (<em>function</em><em>, </em><em>optional</em>) – Function to calculate kx, ky for the line cut. Defaults to None.</p></li>
+<li><p><strong>k_dist_lim</strong> (<em>int</em><em>, </em><em>optional</em>) – Limit of the distance from the center. Defaults to 15.</p></li>
+<li><p><strong>kx_0_along</strong> (<em>float</em><em>, </em><em>optional</em>) – Initial kx for the line cut along the stripes. Defaults to None.</p></li>
+<li><p><strong>ky_0_along</strong> (<em>float</em><em>, </em><em>optional</em>) – Initial ky for the line cut along the stripes. Defaults to None.</p></li>
+<li><p><strong>kx_0_perp</strong> (<em>float</em><em>, </em><em>optional</em>) – Initial kx for the line cut perpendicular to the stripes. Defaults to None.</p></li>
+<li><p><strong>ky_0_perp</strong> (<em>float</em><em>, </em><em>optional</em>) – Initial ky for the line cut perpendicular to the stripes. Defaults to None.</p></li>
+<li><p><strong>N_points</strong> (<em>int</em><em>, </em><em>optional</em>) – Number of points in the line cut. Defaults to 3001.</p></li>
+<li><p><strong>fout_name</strong> (<em>str</em><em>, </em><em>optional</em>) – Name of the output file. Defaults to ‘test_1D_plot_along.png’.</p></li>
+<li><p><strong>normalized</strong> (<em>bool</em><em>, </em><em>optional</em>) – Normalize the FFT. Defaults to True.</p></li>
+<li><p><strong>figsize</strong> (<em>tuple</em><em>, </em><em>optional</em>) – Size of the figure. Defaults to (4.5, 3.5).</p></li>
+<li><p><strong>ylim</strong> (<em>float</em><em>, </em><em>optional</em>) – Limit of the y axis. Defaults to 1.4.</p></li>
+<li><p><strong>cax_saturation</strong> (<em>float</em><em>, </em><em>optional</em>) – Saturation value for the colorbar. Defaults to None.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>kx_along, ky_along, F_abs_sq_interp_along, kx_perp, ky_perp, F_abs_sq_interp_per</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>tuple</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="fft_electronic_spin_density.classes.Density.replace_by_model">
@@ -594,7 +751,10 @@ If density_to_mask is given, mask and return this density instead of the loaded 
 <dd><p>Write out the modified rho_sz to a cube file.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>fout</strong> (<em>str</em><em>, </em><em>optional</em>) – _description_. Defaults to ‘rho_sz_modified.cube’.</p>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>fout</strong> (<em>str</em><em>, </em><em>optional</em>) – _description_. Defaults to ‘rho_sz_modified.cube’.</p></li>
+<li><p><strong>output_folder</strong> (<em>str</em><em>, </em><em>optional</em>) – _description_. Defaults to None.</p></li>
+</ul>
 </dd>
 </dl>
 </dd></dl>
@@ -605,7 +765,10 @@ If density_to_mask is given, mask and return this density instead of the loaded 
 <dd><p>Write out the modified rho_sz to a cube file.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>fout</strong> (<em>str</em><em>, </em><em>optional</em>) – _description_. Defaults to ‘rho_sz_modified.cube’.</p>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>fout</strong> (<em>str</em><em>, </em><em>optional</em>) – _description_. Defaults to ‘rho_sz_modified.cube’.</p></li>
+<li><p><strong>output_folder</strong> (<em>str</em><em>, </em><em>optional</em>) – _description_. Defaults to None.</p></li>
+</ul>
 </dd>
 </dl>
 </dd></dl>
