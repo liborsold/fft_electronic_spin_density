@@ -3,7 +3,7 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to ``fft_electronic_spin_density``'s documentation!
+Welcome to ``fft_electronic_spin_density``!
 =================================================================
 
 **fft_electronic_spin_density** is a Python package for performing FFT on Gaussian .cube files of charge or spin density to obtain the (magnetic) form factor for neutron scattering.
