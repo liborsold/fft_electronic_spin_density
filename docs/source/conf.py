@@ -35,6 +35,7 @@ autosummary_generate = True  # This triggers autosummary to auto-create stub fil
 
 templates_path = ['_templates']
 html_static_path = ['_static']
+html_logo = "logo_with_text.png"
 exclude_patterns = []
 
 html_theme = 'sphinx_book_theme'
@@ -42,6 +43,7 @@ html_theme_options = {
     "repository_url": "https://github.com/liborsold/fft_electronic_spin_density",
     "use_source_button": True,
     "use_repository_button": True,
+    'logo_only': True,
     "repository_branch": "master",
     "path_to_docs": "docs/source/",
 }
