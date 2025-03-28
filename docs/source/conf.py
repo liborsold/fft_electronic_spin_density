@@ -28,13 +28,20 @@ extensions = [
     'sphinx_copybutton'
 ]
 
-templates_path = ['_templates']
-exclude_patterns = []
-
-
+autosummary_generate = True  # This triggers autosummary to auto-create stub files
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = 'sphinx_book_theme'
+templates_path = ['_templates']
 html_static_path = ['_static']
+exclude_patterns = []
+
+html_theme = 'sphinx_book_theme'
+html_theme_options = {
+    "repository_url": "https://github.com/liborsold/fft_electronic_spin_density",
+    "use_source_button": True,
+    "use_repository_button": True,
+    "repository_branch": "master",
+    "path_to_docs": "docs/source/",
+}
