@@ -328,6 +328,9 @@ document.write(`
             <nav aria-label="Page">
                 <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#load-the-cube-file-charge-or-spin-density">Load the .cube file charge or spin density</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#visualize-the-density">Visualize the density</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#replace-by-a-model">Replace by a model</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#or-even-fit-model-to-the-original-density"><em>or even</em> Fit model to the original density</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#integrate-density-to-get-the-total-charge-spin">Integrate density to get the total charge (spin)</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#perform-fft-plot-and-write-out-as-a-cube-file">Perform FFT, plot and write out as a .cube file</a></li>
 </ul>
@@ -353,17 +356,58 @@ document.write(`
 </pre></div>
 </div>
 </section>
+<section id="visualize-the-density">
+<h2>Visualize the density<a class="headerlink" href="#visualize-the-density" title="Link to this heading">#</a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># plot 2D</span>
+
+<span class="c1"># ---&gt; show plot</span>
+
+<span class="c1"># plot 3D</span>
+
+<span class="c1"># ---&gt; show plot</span>
+</pre></div>
+</div>
+</section>
+<section id="replace-by-a-model">
+<h2>Replace by a model<a class="headerlink" href="#replace-by-a-model" title="Link to this heading">#</a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># replace by model</span>
+</pre></div>
+</div>
+</section>
+<section id="or-even-fit-model-to-the-original-density">
+<h2><em>or even</em> Fit model to the original density<a class="headerlink" href="#or-even-fit-model-to-the-original-density" title="Link to this heading">#</a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># fit model</span>
+</pre></div>
+</div>
+</section>
 <section id="integrate-density-to-get-the-total-charge-spin">
 <h2>Integrate density to get the total charge (spin)<a class="headerlink" href="#integrate-density-to-get-the-total-charge-spin" title="Link to this heading">#</a></h2>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">rho_sz_tot</span><span class="p">,</span> <span class="n">rho_sz_abs_tot</span> <span class="o">=</span> <span class="n">density</span><span class="o">.</span><span class="n">integrate_cube_file</span><span class="p">()</span>
+
+<span class="c1"># show the output</span>
 </pre></div>
 </div>
 </section>
 <section id="perform-fft-plot-and-write-out-as-a-cube-file">
 <h2>Perform FFT, plot and write out as a .cube file<a class="headerlink" href="#perform-fft-plot-and-write-out-as-a-cube-file" title="Link to this heading">#</a></h2>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">density</span><span class="o">.</span><span class="n">FFT</span><span class="p">()</span>
+
 <span class="n">density</span><span class="o">.</span><span class="n">plot_fft_2D</span><span class="p">(</span><span class="n">i_kz</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+<span class="c1"># ---&gt; show plot</span>
+
+<span class="c1"># plot along cuts in the 2D map</span>
+
+<span class="c1"># ---&gt; show plot</span>
+
+<span class="c1"># PLOT 3D</span>
+<span class="c1"># ---&gt; show plot</span>
+
+<span class="c1"># WRITE OUT</span>
+
 <span class="n">density</span><span class="o">.</span><span class="n">write_cube_file_fft</span><span class="p">(</span><span class="n">fout</span><span class="o">=</span><span class="s1">&#39;fft_rho_sz.cube&#39;</span><span class="p">)</span>
+
+<span class="c1"># ----&gt; show how it&#39;s visualized in VESTA</span>
 </pre></div>
 </div>
 </section>
@@ -415,6 +459,9 @@ document.write(`
   <nav class="bd-toc-nav page-toc">
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#load-the-cube-file-charge-or-spin-density">Load the .cube file charge or spin density</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#visualize-the-density">Visualize the density</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#replace-by-a-model">Replace by a model</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#or-even-fit-model-to-the-original-density"><em>or even</em> Fit model to the original density</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#integrate-density-to-get-the-total-charge-spin">Integrate density to get the total charge (spin)</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#perform-fft-plot-and-write-out-as-a-cube-file">Perform FFT, plot and write out as a .cube file</a></li>
 </ul>
