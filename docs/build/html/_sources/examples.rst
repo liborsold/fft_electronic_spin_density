@@ -1,7 +1,7 @@
 Examples
 ==========================
 
-An example of use is given in ``./examples/fft_example.ipynb``. It uses input files from ...
+An example of use is given in ``./examples/fft_example.ipynb``. It uses input files from the `cube_files folder <https://github.com/liborsold/fft_electronic_spin_density/tree/master/cube_files>`_.
 
 .. fft_electronic_spin_density example image
 .. image::

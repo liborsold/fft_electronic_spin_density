@@ -1,7 +1,7 @@
 Examples
 ==========================
 
-An example of use is given in ``./examples/fft_example.ipynb``. It uses input files from ...
+An example of use is given in ``./examples/fft_example.ipynb``. It uses input files from the `cube_files folder <https://github.com/liborsold/fft_electronic_spin_density/tree/master/cube_files>`_.
 
 .. fft_electronic_spin_density example image
 .. image::
@@ -17,7 +17,7 @@ Load the .cube file charge or spin density
 .. code-block:: python
 
     from fft_electronic_spin_density.utils import Density
-    density = Density(fname_cube_file='./cube_files/rho_sz.cube')
+    density = Density(fname_cube_file='../cube_files/Cu2AC4_rho_sz_256.cube')
 
 
 Integrate density to get the total charge (spin)
