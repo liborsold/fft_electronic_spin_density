@@ -245,11 +245,11 @@ class Density:
         If density_to_mask is given, mask and return this density instead of the loaded density.
 
         Args:
-            leave_sites (_type_): _description_
-            density_to_mask (_type_, optional): _description_. Defaults to None.
+            leave_sites (dict): Dictionary with keys 'site_centers' and 'site_radii' for the sites to leave in the model.
+            density_to_mask (np.array, optional): Density to mask. Defaults to None.
 
         Returns:
-            _type_: _description_
+            np.array: Masked density.
         """
         # initialize true array
         mask = np.zeros_like(self.x_cart_mesh, dtype=bool)
@@ -269,6 +269,12 @@ class Density:
     def get_kz_at_index(self, kz_index=30):
         """Return the k_z value (in Angstrom^-1) at a given index: first or last indices are -+ k_max/2, the middle index is k_z=0 (data is zero-centered; fftshifted after fft was performed).
         Check that index is in range.
+
+        Args:
+            kz_index (int, optional): Index of the k_z value. Defaults to 30.
+
+        Returns:
+            float: k_z value in Angstrom^-1.
         """
         assert kz_index < self.nkc, f'kz_index must be between 0 and {self.nkc-1} (inclusive)'
         kz = (kz_index - self.nkc//2) * self.dkc[2]
@@ -280,7 +286,10 @@ class Density:
         """Return the index at a given k_z value (in Angstrom^-1). Check that the k_z value is in range.
 
         Args:
-            kz_target (int, optional): _description_. Defaults to 15.
+            kz_target (int, optional): k_z value in Angstrom^-1. Defaults to 15.
+
+        Returns:
+            int: Index of the k_z value.
         """
         if kz_target > np.abs(self.kc[2]):
             raise ValueError(f'kz_target must be between 0.00 and {np.abs(self.kc[2]):.6f} 1/Angstrom')
@@ -317,15 +326,15 @@ class Density:
             """Gaussian distribution in 3D space - https://math.stackexchange.com/questions/434629/3-d-generalization-of-the-gaussian-point-spread-function
 
             Args:
-                x (_type_): Cartesian x coordinate in Angstrom.
-                y (_type_): Cartesian y coordinate in Angstrom.
-                z (_type_): Cartesian z coordinate in Angstrom.
+                x (np.array): Array of cartesian x coordinates in Angstrom.
+                y (np.array): Array of cartesian y coordinates in Angstrom.
+                z (np.array): Array of cartesian z coordinates in Angstrom.
                 sigma (float, optional): _description_. Defaults to 0.5.
                 center (tuple, optional): _description_. Defaults to (3,3,3).
                 sign (int, optional): _description_. Defaults to 1.
 
             Returns:
-                _type_: _description_
+                np.array: the gaussian distribution in 3D space
             """
             # normalized gaussian function - see 
             return amplitude * np.exp(-((x-center[0])**2 + (y-center[1])**2 + (z-center[2])**2)/(2*sigma**2)) # * 1/(sigma**3 * (2*np.pi)**(3/2)) 
@@ -335,9 +344,9 @@ class Density:
             """dz2 orbital distribution in 3D space - https://math.stackexchange.com/questions/434629/3-d-generalization-of-the-gaussian-point-spread-function
 
             Args:
-                x (_type_): Cartesian x coordinate in Angstrom.
-                y (_type_): Cartesian y coordinate in Angstrom.
-                z (_type_): Cartesian z coordinate in Angstrom.
+                x (np.array): Array of cartesian x coordinates in Angstrom.
+                y (np.array): Array of cartesian y coordinates in Angstrom.
+                z (np.array): Array of cartesian z coordinates in Angstrom.
                 sigma (float, optional): _description_. Defaults to 0.5.
                 center (tuple, optional): _description_. Defaults to (3,3,3).
                 sign (int, optional): _description_. Defaults to 1.
@@ -354,9 +363,9 @@ class Density:
             """dxy orbital distribution in 3D space - https://math.stackexchange.com/questions/434629/3-d-generalization-of-the-gaussian-point-spread-function
 
             Args:
-                x (_type_): Cartesian x coordinate in Angstrom.
-                y (_type_): Cartesian y coordinate in Angstrom.
-                z (_type_): Cartesian z coordinate in Angstrom.
+                x (np.array): Array of cartesian x coordinates in Angstrom.
+                y (np.array): Array of cartesian y coordinates in Angstrom.
+                z (np.array): Array of cartesian z coordinates in Angstrom.
                 sigma (float, optional): _description_. Defaults to 0.5.
                 center (tuple, optional): _description_. Defaults to (3,3,3).
                 sign (int, optional): _description_. Defaults to 1.
@@ -385,9 +394,9 @@ class Density:
             """dxy orbital distribution in 3D space - https://math.stackexchange.com/questions/434629/3-d-generalization-of-the-gaussian-point-spread-function
 
             Args:
-                x (_type_): Cartesian x coordinate in Angstrom.
-                y (_type_): Cartesian y coordinate in Angstrom.
-                z (_type_): Cartesian z coordinate in Angstrom.
+                x (np.array): Array of cartesian x coordinates in Angstrom.
+                y (np.array): Array of cartesian y coordinates in Angstrom.
+                z (np.array): Array of cartesian z coordinates in Angstrom.
                 sigma (float, optional): _description_. Defaults to 0.5.
                 center (tuple, optional): _description_. Defaults to (3,3,3).
                 sign (int, optional): _description_. Defaults to 1.
@@ -406,9 +415,9 @@ class Density:
             """dxy orbital distribution in 3D space - https://math.stackexchange.com/questions/434629/3-d-generalization-of-the-gaussian-point-spread-function
 
             Args:
-                x (_type_): Cartesian x coordinate in Angstrom.
-                y (_type_): Cartesian y coordinate in Angstrom.
-                z (_type_): Cartesian z coordinate in Angstrom.
+                x (np.array): Array of cartesian x coordinates in Angstrom.
+                y (np.array): Array of cartesian y coordinates in Angstrom.
+                z (np.array): Array of cartesian z coordinates in Angstrom.
                 sigma (float, optional): _description_. Defaults to 0.5.
                 center (tuple, optional): _description_. Defaults to (3,3,3).
                 sign (int, optional): _description_. Defaults to 1.
@@ -563,13 +572,13 @@ _sq = (x**2 + y**2 + z**2)
             fit_params_init_all = {}
 
         def construct_model_density(fit_params_init_all):
-            """convenience function returning the model density depending on the parameters
+            """Convenience function returning the model density depending on the parameters.
 
             Args:
-                fit_params_init_all (_type_): _description_
+                fit_params_init_all (dict): dictionary with the parameters of the model
 
             Returns:
-                _type_: _description_
+                np.array: the model density (or wave function) in 3D space
             """
             model_wavefunction_spinor = [np.zeros_like(self.array), np.zeros_like(self.array)]
 
@@ -599,6 +608,7 @@ _sq = (x**2 + y**2 + z**2)
                 rho_up = np.multiply(model_wavefunction_spinor[0].conj(), model_wavefunction_spinor[0])
                 rho_down = np.multiply(model_wavefunction_spinor[1].conj(), model_wavefunction_spinor[1])
                 return rho_up - rho_down
+            
         if fit:
             def dict_to_list_and_flatten(dict_in):
                 list_out = []
@@ -657,8 +667,11 @@ _sq = (x**2 + y**2 + z**2)
         """Swap in a cyclic way (x,y,z) -> (y,z,x) -> (z,x,y) depending on number of steps (1 or 2).
 
         Args:
-            cube_data (_type_): _description_
-            steps (int, optional): _description_. Defaults to 1.
+            cube_data (tuple): Tuple with the numpy array and the metadata.
+            permutation (list, optional): List of integers for the permutation. Defaults to [2,1,0].
+
+        Returns:
+            tuple: Tuple with the numpy array and the metadata.
         """
         array = cube_data[0]
         xvec = cube_data[1]['xvec']
@@ -677,7 +690,14 @@ _sq = (x**2 + y**2 + z**2)
         
 
     def plot_cube_file_outer_surface(self, fout_name='rho_sz.png'):
-        # plot numpy array as a scalar field
+        """Plot the outer surface of the scalar field in a 3D plot.
+        
+        Args:
+            fout_name (str, optional): Name of the output file. Defaults to 'rho_sz.png'.
+
+        Returns:
+            None
+        """
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
 
@@ -800,6 +820,9 @@ _sq = (x**2 + y**2 + z**2)
         Args:
             c_idx_arr (list, optional): show cuts at these indeces. Defaults to [0,1,-1].
             fout_name (str, optional): _description_. Defaults to 'rho_sz.png'.
+
+        Returns:
+            None
         """
         scale_down_data = 0.02 * 1/np.max(np.abs(scalar3D_data))
 
@@ -912,8 +935,20 @@ _sq = (x**2 + y**2 + z**2)
 
     def plot_cube_rho_sz(self, c_idx_arr=[0,1,-1], fout_name='rho_sz.png', alpha=0.2, figsize=(8.0, 6), dpi=300, zeros_transparent=True,
                        xlims=None, ylims=None, zlims=None, show_plot=False, output_folder=None):
-        
         """Concrete use of plot_cube_file_general for spin density files.
+
+        Args:
+            c_idx_arr (list, optional): show cuts at these indeces. Defaults to [0,1,-1].
+            fout_name (str, optional): _description_. Defaults to 'rho_sz.png'.
+            alpha (float, optional): transparency. Defaults to 0.2.
+            figsize (tuple, optional): _description_. Defaults to (8.0, 6).
+            dpi (int, optional): _description_. Defaults to 300.
+            zeros_transparent (bool, optional): _description_. Defaults to True.
+            xlims (list, optional): _description_. Defaults to None.
+            ylims (list, optional): _description_. Defaults to None.
+            zlims (list, optional): _description_. Defaults to None.
+            show_plot (bool, optional): _description_. Defaults to False.
+            output_folder (str, optional): _description_. Defaults to None.
         """
 
         if output_folder is None:
@@ -938,8 +973,23 @@ _sq = (x**2 + y**2 + z**2)
 
     def plot_cube_fft(self, c_idx_arr=[0,1,-1], fout_name='rho_sz.png', alpha=0.2, figsize=(8.0, 6), dpi=300, zeros_transparent=True,
                        xlims=None, ylims=None, zlims=None, show_plot=False, output_folder=None):
-        
         """Concrete use of plot_cube_file_general for spin density files.
+
+        Args:
+            c_idx_arr (list, optional): show cuts at these indeces. Defaults to [0,1,-1].
+            fout_name (str, optional): _description_. Defaults to 'rho_sz.png'.
+            alpha (float, optional): transparency. Defaults to 0.2.
+            figsize (tuple, optional): _description_. Defaults to (8.0, 6).
+            dpi (int, optional): _description_. Defaults to 300.
+            zeros_transparent (bool, optional): _description_. Defaults to True.
+            xlims (list, optional): _description_. Defaults to None.
+            ylims (list, optional): _description_. Defaults to None.
+            zlims (list, optional): _description_. Defaults to None.
+            show_plot (bool, optional): _description_. Defaults to False.
+            output_folder (str, optional): _description_. Defaults to None.
+
+        Returns:
+            None
         """
 
         if output_folder is None:
@@ -971,8 +1021,13 @@ _sq = (x**2 + y**2 + z**2)
                                     transparent_sigma=0.25, 
                                     colorbar_label=r'$|F|^2$')
 
-
     def FFT(self, verbose=True, normalized=True):
+        """Perform the 3D FFT of the scalar field.
+
+        Args:
+            verbose (bool, optional): Print information about the FFT. Defaults to True.
+            normalized (bool, optional): Normalize the squared FFT. Defaults to True.
+        """
         # norm='backward' means no prefactor applied
 
         # pad array with zeros if scale_factor > 1 (because then self.nka > self.na)s
@@ -1005,6 +1060,15 @@ _sq = (x**2 + y**2 + z**2)
             np.savetxt(os.path.join(self.output_folder,'normalization_constant_FFT_squared.txt'), np.array([self.F_abs_sq_normalization_constant, self.F_abs_sq_max]), delimiter='\t', header='Normalization constant for the squared FFT\tMaximum of FFT', fmt='%.8e')
 
     def get_i_kz(self, kz_target):
+        """Get the index of the kz plane closest to the target value.
+
+        Args:
+            kz_target (float): Target value of kz.
+
+        Returns:
+            int: Index of the kz plane.
+        """
+
                 #    SIMPLE FIRST: just assume c is along z and sum along c axis
         # sum along c
         # !!!!! stupid coordinate system of MnGeO4 -- need to sum along x axis
@@ -1025,16 +1089,15 @@ _sq = (x**2 + y**2 + z**2)
 
 
     def create_cmap_with_cap(self, base_cmap_name="viridis", threshold=0.7, num_colors=1024):
-        """
-        Creates a colormap where colors remain constant beyond a specified threshold.
+        """Creates a colormap where colors remain constant beyond a specified threshold.
 
-        Parameters:
-        - base_cmap_name (str): Name of the base colormap (e.g., 'viridis', 'plasma', etc.).
-        - threshold (float): Value (0 to 1) beyond which the color remains constant.
-        - num_colors (int): Number of discrete colors in the colormap.
+        Args:
+            base_cmap_name (str, optional): Name of the base colormap. Defaults to "viridis".
+            threshold (float, optional): Threshold value. Defaults to 0.7.
+            num_colors (int, optional): Number of colors in the colormap. Defaults to 1024.
 
         Returns:
-        - matplotlib.colors.ListedColormap: Custom colormap with capped maximum color.
+            matplotlib.colors.ListedColormap: New colormap.
         """
         # Get the base colormap
         base_cmap = plt.get_cmap(base_cmap_name)
@@ -1066,6 +1129,31 @@ _sq = (x**2 + y**2 + z**2)
                     normalized=True, 
                     cax_saturation=None,
                     output_folder=None):
+        """Plot the 2D FFT of the scalar field.
+
+        Args:
+            i_kz (int): Index of the kz plane.
+            fft_as_log (bool, optional): Plot the log of the FFT. Defaults to False.
+            k1_idx (int, optional): Index of the first lattice vector. Defaults to 0.
+            k2_idx (int, optional): Index of the second lattice vector. Defaults to 1.
+            fout_name (str, optional): Name of the output file. Defaults to 'colormap_2D_out.png'.
+            verbose (bool, optional): Print information about the plot. Defaults to True.
+            figsize (tuple, optional): Size of the figure. Defaults to (8.0, 6.0).
+            dpi (int, optional): Dots per inch. Defaults to 500.
+            fixed_z_scale (bool, optional): Fix the z scale. Defaults to True.
+            xlims (list, optional): Limits of the x axis. Defaults to None.
+            ylims (list, optional): Limits of the y axis. Defaults to None.
+            zlims (list, optional): Limits of the z axis. Defaults to None.
+            plot_line_cut (bool, optional): Plot the line cuts. Defaults to False.
+            kx_arr_along (list, optional): List of kx values for the line cut along the lattice vector. Defaults to None.
+            ky_arr_along (list, optional): List of ky values for the line cut along the lattice vector. Defaults to None.
+            kx_arr_perp (list, optional): List of kx values for the line cut perpendicular to the lattice vector. Defaults to None.
+            ky_arr_perp (list, optional): List of ky values for the line cut perpendicular to the lattice vector. Defaults to None.
+            cut_along (str, optional): Direction of the line cut. Defaults to 'both'.
+            normalized (bool, optional): Normalize the FFT. Defaults to True.
+            cax_saturation (float, optional): Saturation value for the colorbar. Defaults to None.
+            output_folder (str, optional): Output folder. Defaults to None.
+        """
         
         if output_folder is None:
             output_folder = self.output_folder
@@ -1204,6 +1292,7 @@ _sq = (x**2 + y**2 + z**2)
 
         Args:
             fout (str, optional): _description_. Defaults to 'rho_sz_modified.cube'.
+            output_folder (str, optional): _description_. Defaults to None.
         """
         if output_folder is None:
             output_folder = self.output_folder
@@ -1215,6 +1304,7 @@ _sq = (x**2 + y**2 + z**2)
 
         Args:
             fout (str, optional): _description_. Defaults to 'rho_sz_modified.cube'.
+            output_folder (str, optional): _description_. Defaults to None.
         """
         if output_folder is None:
             output_folder = self.output_folder
@@ -1258,7 +1348,27 @@ _sq = (x**2 + y**2 + z**2)
                             N_points=3001, fout_name='test_1D_plot_along.png',
                             normalized=True, figsize=(4.5, 3.5), 
                             ylim=1.4, cax_saturation=None):
+        """Plot the line cut of the FFT along the stripes.
 
+        Args:
+            i_kz (int, optional): Index of the kz plane. Defaults to None.
+            cut_along (str, optional): Direction of the line cut. Defaults to 'along_stripes'.
+            kx_ky_fun (function, optional): Function to calculate kx, ky for the line cut. Defaults to None.
+            k_dist_lim (int, optional): Limit of the distance from the center. Defaults to 15.
+            kx_0_along (float, optional): Initial kx for the line cut along the stripes. Defaults to None.
+            ky_0_along (float, optional): Initial ky for the line cut along the stripes. Defaults to None.
+            kx_0_perp (float, optional): Initial kx for the line cut perpendicular to the stripes. Defaults to None.
+            ky_0_perp (float, optional): Initial ky for the line cut perpendicular to the stripes. Defaults to None.
+            N_points (int, optional): Number of points in the line cut. Defaults to 3001.
+            fout_name (str, optional): Name of the output file. Defaults to 'test_1D_plot_along.png'.
+            normalized (bool, optional): Normalize the FFT. Defaults to True.
+            figsize (tuple, optional): Size of the figure. Defaults to (4.5, 3.5).
+            ylim (float, optional): Limit of the y axis. Defaults to 1.4.
+            cax_saturation (float, optional): Saturation value for the colorbar. Defaults to None.
+
+        Returns:
+            tuple: kx_along, ky_along, F_abs_sq_interp_along, kx_perp, ky_perp, F_abs_sq_interp_per
+        """
         # --- INTERPOLATION ---
         # input arrays
         if i_kz is None:
@@ -1337,9 +1447,9 @@ _sq = (x**2 + y**2 + z**2)
 
         return (kx_along_arr-kx_center), (ky_along_arr-ky_center), F_abs_sq_interp_along, (kx_perp_arr-kx_center), (ky_perp_arr-ky_center), F_abs_sq_interp_perp
 
-               
-
 def test_shift():
+    """Test the shift of a 3D array using numpy's fftshift function.
+    """
     array_3D = np.zeros((9,9,9), dtype=np.float_)
     idx_3D = np.zeros((9,9,9), dtype=np.bool_)
 
@@ -1389,7 +1499,16 @@ def test_shift():
 
 
 def workflow(output_folder, site_idx, site_radii, replace_DFT_by_model, parameters_model, fit_model_to_DFT):
+    """Main workflow for the analysis of the 3D scalar field.
 
+    Args:
+        output_folder (str): Output folder.
+        site_idx (list): List of site indices.
+        site_radii (list): List of site radii.
+        replace_DFT_by_model (bool): Replace DFT by a model.
+        parameters_model (dict): Parameters of the model.
+        fit_model_to_DFT (bool): Fit the model to the DFT.
+    """
     # --- INPUT ----
 
     fname_cube_file = './cube_files/Cu2AC4_rho_sz_512.cube' #'./cube_files/Mn2GeO4_rho_sz.cube'
@@ -1575,6 +1694,19 @@ def workflow(output_folder, site_idx, site_radii, replace_DFT_by_model, paramete
 
 
 def workflow_density_vs_cutoff_radius(site_idx=[0], site_radii_all=[[i] for i in np.arange(0.1, 2.0, 0.05)], plot=True, save_data=True):
+    """Workflow for the analysis of the density vs. cutoff-radius.
+
+    Args:
+        site_idx (list, optional): List of site indices. Defaults to [0].
+        site_radii_all (list, optional): List of site radii. Defaults to [[i] for i in np.arange(0.1, 2.0, 0.05)].
+        plot (bool, optional): Plot the results. Defaults to True.
+        save_data (bool, optional): Save the data. Defaults to True.
+
+    Returns:
+        tuple: Total charge in the unit cell, total absolute charge in the unit cell
+    """
+    
+
 # ===================== WORKFLOW DENSITY vs. cutoff-radius =====================
     fname_cube_file = './cube_files/Cu2AC4_rho_sz_512.cube' #'./cube_files/Mn2GeO4_rho_sz.cube'
     
@@ -1625,7 +1757,18 @@ def workflow_density_vs_cutoff_radius(site_idx=[0], site_radii_all=[[i] for i in
 
 
 def workflow_autocorrelation_term(parameters_model, scale_R_array=[1.0], output_folder='.', write_cube_files=False, site_idx=[0]):
+    """Workflow for the analysis of the autocorrelation term.
 
+    Args:
+        parameters_model (dict): Parameters of the model.
+        scale_R_array (list, optional): List of scaling factors. Defaults to [1.0].
+        output_folder (str, optional): Output folder. Defaults to '.'.
+        write_cube_files (bool, optional): Write cube files. Defaults to False.
+        site_idx (list, optional): List of site indices. Defaults to [0].
+
+    Returns:
+        tuple: Form factor, overlap term, E_perp term
+    """
     R_base = np.array([3.01571, 6.45289, 4.99992]) - np.array([4.85991, 5.28091, 3.56158]) # Cu1 - Cu0 = (-1.8442, 1.17198, 1.43834)
     R_array=[f*R_base for f in scale_R_array]
 
@@ -1763,7 +1906,6 @@ def workflow_autocorrelation_term(parameters_model, scale_R_array=[1.0], output_
     plt.savefig(f'{output_folder}/E_perp_sq_vs_scale_R.png', dpi=400)
 
 if __name__ == '__main__':
-
     # workflow_density_vs_cutoff_radius(site_idx=[0], site_radii_all=[[i] for i in np.arange(0.5, 4.0, 0.5)], plot=True)
     # exit()
 
