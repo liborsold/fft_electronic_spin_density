@@ -207,50 +207,18 @@
 <div class="article-header-buttons">
 
 
-
-
-
-<div class="dropdown dropdown-source-buttons">
-  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Source repositories">
-    <i class="fab fa-github"></i>
-  </button>
-  <ul class="dropdown-menu">
-      
-      
-      
-      <li><a href="https://github.com/liborsold/fft_electronic_spin_density" target="_blank"
-   class="btn btn-sm btn-source-repository-button dropdown-item"
+<a href="https://github.com/liborsold/fft_electronic_spin_density" target="_blank"
+   class="btn btn-sm btn-source-repository-button"
    title="Source repository"
-   data-bs-placement="left" data-bs-toggle="tooltip"
+   data-bs-placement="bottom" data-bs-toggle="tooltip"
 >
   
 
 <span class="btn__icon-container">
   <i class="fab fa-github"></i>
   </span>
-<span class="btn__text-container">Repository</span>
-</a>
-</li>
-      
-      
-      
-      
-      <li><a href="https://github.com/liborsold/fft_electronic_spin_density/blob/master/docs/source/examples.rst?plain=1" target="_blank"
-   class="btn btn-sm btn-source-file-button dropdown-item"
-   title="Show source"
-   data-bs-placement="left" data-bs-toggle="tooltip"
->
-  
 
-<span class="btn__icon-container">
-  <i class="fas fa-code"></i>
-  </span>
-<span class="btn__text-container">Show source</span>
 </a>
-</li>
-      
-  </ul>
-</div>
 
 
 
@@ -359,7 +327,9 @@ document.write(`
             </div>
             <nav aria-label="Page">
                 <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#load-the">1. Load the ….</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#load-the-cube-file-charge-or-spin-density">Load the .cube file charge or spin density</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#integrate-density-to-get-the-total-charge-spin">Integrate density to get the total charge (spin)</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#perform-fft-plot-and-write-out-as-a-cube-file">Perform FFT, plot and write out as a .cube file</a></li>
 </ul>
             </nav>
         </div>
@@ -374,10 +344,26 @@ document.write(`
   <section id="examples">
 <h1>Examples<a class="headerlink" href="#examples" title="Link to this heading">#</a></h1>
 <p>An example of use is given in <code class="docutils literal notranslate"><span class="pre">./examples/fft_example.ipynb</span></code>. It uses input files from …</p>
-<section id="load-the">
-<h2>1. Load the ….<a class="headerlink" href="#load-the" title="Link to this heading">#</a></h2>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">...</span><span class="w"> </span><span class="kn">import</span> <span class="o">...</span>
-<span class="n">density</span> <span class="o">=</span> <span class="n">Density</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fft_electronic_spin_density.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">Density</span>
+</pre></div>
+</div>
+<section id="load-the-cube-file-charge-or-spin-density">
+<h2>Load the .cube file charge or spin density<a class="headerlink" href="#load-the-cube-file-charge-or-spin-density" title="Link to this heading">#</a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">density</span> <span class="o">=</span> <span class="n">Density</span><span class="p">(</span><span class="n">fname_cube_file</span><span class="o">=</span><span class="s1">&#39;./cube_files/rho_sz.cube&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="integrate-density-to-get-the-total-charge-spin">
+<h2>Integrate density to get the total charge (spin)<a class="headerlink" href="#integrate-density-to-get-the-total-charge-spin" title="Link to this heading">#</a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">rho_sz_tot</span><span class="p">,</span> <span class="n">rho_sz_abs_tot</span> <span class="o">=</span> <span class="n">density</span><span class="o">.</span><span class="n">integrate_cube_file</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
+<section id="perform-fft-plot-and-write-out-as-a-cube-file">
+<h2>Perform FFT, plot and write out as a .cube file<a class="headerlink" href="#perform-fft-plot-and-write-out-as-a-cube-file" title="Link to this heading">#</a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">density</span><span class="o">.</span><span class="n">FFT</span><span class="p">()</span>
+<span class="n">density</span><span class="o">.</span><span class="n">plot_fft_2D</span><span class="p">(</span><span class="n">i_kz</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+<span class="n">density</span><span class="o">.</span><span class="n">write_cube_file_fft</span><span class="p">(</span><span class="n">fout</span><span class="o">=</span><span class="s1">&#39;fft_rho_sz.cube&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
 </section>
@@ -428,7 +414,9 @@ document.write(`
   </div>
   <nav class="bd-toc-nav page-toc">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#load-the">1. Load the ….</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#load-the-cube-file-charge-or-spin-density">Load the .cube file charge or spin density</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#integrate-density-to-get-the-total-charge-spin">Integrate density to get the total charge (spin)</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#perform-fft-plot-and-write-out-as-a-cube-file">Perform FFT, plot and write out as a .cube file</a></li>
 </ul>
   </nav></div>
 

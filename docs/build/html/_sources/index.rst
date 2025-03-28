@@ -23,7 +23,7 @@ then
    
    git clone https://github.com/liborsold/fft_electronic_spin_density.git
    
-and execute the ``./examples/fft_examples.ipynb`` Jupyter notebook.
+and execute the ``./examples/fft_examples.ipynb`` Jupyter notebook in the `examples folder <https://github.com/liborsold/fft_electronic_spin_density/tree/master/examples>`_.
 
 
 Navigation
