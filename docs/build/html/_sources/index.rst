@@ -43,8 +43,8 @@ Navigation
    :maxdepth: 1
 
    examples
-   api
    density_class
+   api
 
 Indices and tables
 ==================
