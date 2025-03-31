@@ -37,6 +37,11 @@ then
 and execute the ``./examples/example_of_use.ipynb`` Jupyter notebook in the `examples folder <https://github.com/liborsold/fft_electronic_spin_density/tree/master/examples>`_.
 
 
+Citation
+===============
+If you find this package useful, please cite *L. Spitz, L. Vojáček, et al., under preparation.*
+
+
 Navigation
 ===============
 
