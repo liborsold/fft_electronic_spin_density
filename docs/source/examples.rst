@@ -2,7 +2,7 @@
 Examples
 ==========================
 
-An example of use is given in ``./examples/fft_example.ipynb``. It uses input files from the `cube_files folder <https://github.com/liborsold/fft_electronic_spin_density/tree/master/cube_files>`_.
+An example of use is given in ``./examples/example_of_use.ipynb``. It uses input files from the `cube_files folder <https://github.com/liborsold/fft_electronic_spin_density/tree/master/cube_files>`_.
 
 .. fft_electronic_spin_density example image
 .. figure::
@@ -21,7 +21,7 @@ Import the ``Density`` class
     from fft_electronic_spin_density.utils import Density
 
 
-Load the (spin) density
+Load the (spin) density .cube file
 -------------------------------------------------------------------
 
 .. code-block:: python
@@ -55,20 +55,32 @@ Filter out only regions around selected sites
 
 .. code-block:: python
 
+    # selected site indices
     site_idx = [0, 1] # atom 0 - Cu0, atom 1 - Cu1
-    site_radii = [1.1]*2 # Angstrom
-    site_centers = density.get_sites_of_atoms(site_idx)
 
-    density.mask_except_sites(leave_sites={'site_centers':site_centers, 'site_radii':site_radii})
+    # muffin-tin radii around the selected sites where density will be kept
+    site_radii = [1.1]*2 # Angstrom
+
+    density.mask_except_sites(leave_sites={
+                                'site_centers':density.get_sites_of_atoms(site_idx), 
+                                'site_radii':site_radii
+                                })
    
 
 .. code-block:: python
    
-   density.plot_cube_rho_sz(c_idx_arr=np.arange(0, density.nc, 1), fout_name='rho_sz_exploded_filtered.jpg', alpha=0.05, figsize=(5.5,5.5), dpi=400, zeros_transparent=True,
+   density.plot_cube_rho_sz(
+                    c_idx_arr=np.arange(0, density.nc, 1), 
+                    fout_name='rho_sz_exploded_filtered.jpg', 
+                    alpha=0.05, 
+                    figsize=(5.5,5.5), 
+                    dpi=400, 
+                    zeros_transparent=True,
                     show_plot=True,
                     xlims=[0, 6], 
                     ylims=[4,10],
-                    zlims=[2,5])  # rho_sz_gauss_exploded_all
+                    zlims=[2,5]
+                    )
 
 .. filtered density
 .. image::
@@ -84,12 +96,25 @@ Perform FFT, visualize and write out as a .cube file itself
 
     density.FFT()
 
+
 .. code-block:: python
 
-    fft_along_line_data = density.plot_fft_along_line(i_kz=density.nkc//2, cut_along='both', kx_ky_fun=None, k_dist_lim=12, N_points=3001, fout_name='cut_1D_both.png', cax_saturation=0.5,)
-    kx_arr_along, ky_arr_along, F_abs_sq_interp_along, kx_arr_perp, ky_arr_perp, F_abs_sq_interp_perp = fft_along_line_data
+    fft_along_line_data = density.plot_fft_along_line(
+                                    i_kz=density.nkc//2, 
+                                    cut_along='both', 
+                                    kx_ky_fun=None, 
+                                    k_dist_lim=12, 
+                                    N_points=3001, 
+                                    fout_name='cut_1D_both.png', 
+                                    cax_saturation=0.5,
+                                    )
 
-    density.plot_fft_2D(i_kz=density.nkc//2, fft_as_log=False, 
+    kx_arr_along, ky_arr_along, F_abs_sq_interp_along, \
+    kx_arr_perp, ky_arr_perp, F_abs_sq_interp_perp = fft_along_line_data
+
+    density.plot_fft_2D(
+                i_kz=density.nkc//2, 
+                fft_as_log=False, 
                 fout_name=f'F_abs_sq-scale_kz_at_idx_{density.nkc//2}_cut_both.png', 
                 figsize=(5.5, 4.5),
                 dpi=400,
@@ -100,7 +125,8 @@ Perform FFT, visualize and write out as a .cube file itself
                 zlims=[0, 1.6e6],
                 plot_line_cut=True, kx_arr_along=kx_arr_along, ky_arr_along=ky_arr_along,
                 kx_arr_perp=kx_arr_perp, ky_arr_perp=ky_arr_perp,
-                cut_along='both')
+                cut_along='both'
+                )
 
 .. FFT 2D plot
 .. image::
@@ -139,23 +165,34 @@ Replace by a d\ :sub:`x2y2`\  orbital model and visualize
                         'centers':density.get_sites_of_atoms(site_idx),
                         'spin_down_orbital_all':[False, True],
                         'fit_params_init_all':{
-                            'amplitude':[0.360453056, 0.360453056], 
-                            'theta0':[-1.011437, -1.011437,], 
-                            'phi0':[-0.59855408, -0.59855408,], 
-                            'Z_eff':[12.8481725, 12.8481725,],
-                            'C':[0.000, 0.000,]}}
+                            'amplitude':[0.3604531, 0.3604531], 
+                            'theta0':   [-1.011437, -1.011437], 
+                            'phi0':     [-0.598554, -0.598554], 
+                            'Z_eff':    [12.848173, 12.848173],
+                            'C':        [0.0000000, 0.0000000]
+                            }
+                        }
 
-    density.replace_by_model(fit=False, parameters=parameters_model, leave_sites=leave_sites)
+    density.replace_by_model(
+                        fit=False, 
+                        parameters=parameters_model
+                        )
 
 
 .. code-block:: python
 
-    density.plot_cube_rho_sz(c_idx_arr=np.arange(0, density.nc, 1), 
-                                fout_name='rho_sz_exploded_model.jpg', alpha=0.05, figsize=(5.5,5.5), dpi=400, zeros_transparent=True,
-                                show_plot=True,
-                                xlims=[0, 6], 
-                                ylims=[4,10],
-                                zlims=[2,5])
+    density.plot_cube_rho_sz(
+                        c_idx_arr=np.arange(0, density.nc, 1), 
+                        fout_name='rho_sz_exploded_model.jpg', 
+                        alpha=0.05, 
+                        figsize=(5.5,5.5), 
+                        dpi=400, 
+                        zeros_transparent=True,
+                        show_plot=True,
+                        xlims=[0, 6], 
+                        ylims=[4,10],
+                        zlims=[2,5]
+                        )
 
 .. filtered density
 .. image::
@@ -176,13 +213,18 @@ Replace by a d\ :sub:`x2y2`\  orbital model and visualize
                         'centers':density.get_sites_of_atoms(site_idx),
                         'spin_down_orbital_all':[False, True],
                         'fit_params_init_all':{
-                            'amplitude':[0.360453056, 0.360453056], 
-                            'theta0':[-1.011437, -1.011437,], 
-                            'phi0':[-0.59855408, -0.59855408,], 
-                            'Z_eff':[12.8481725, 12.8481725,],
-                            'C':[0.000, 0.000,]}}
+                            'amplitude':[0.3604531, 0.3604531], 
+                            'theta0':   [-1.011437, -1.011437], 
+                            'phi0':     [-0.598554, -0.598554], 
+                            'Z_eff':    [12.848173, 12.848173],
+                            'C':        [0.0000000, 0.0000000]
+                            }
+                        }
 
-    density.replace_by_model(fit=True, parameters=parameters_model)
+    density.replace_by_model(
+                        fit=True, 
+                        parameters=parameters_model
+                        )
 
 | **call 1:**   params [ 0.361 0.361 -1.011 -1.011 -0.599 -0.599 12.842 12.848 0. 0.] **R^2 0.805**
 | **call 2:**   params [ 0.379 0.361 -1.011 -1.011 -0.599 -0.599 12.848 12.848 0. 0.] **R^2 0.800**
@@ -218,16 +260,22 @@ Visualize the density as 2D slices
 
 .. code-block:: python
 
-    site_coordinates = density.get_sites_of_atoms(site_idx=[0])
     # z position of atom 0
+    site_coordinates = density.get_sites_of_atoms(site_idx=[0])
     atom_0_z_coordinate = site_coordinates[0][2]
 
     # indices along the c lattice vector where density cuts should be plotted
     c_idx = density.get_c_idx_at_z_coordinates(z_coordinates=[0.0, atom_0_z_coordinate])
 
-    density.plot_cube_rho_sz(c_idx_arr=c_idx, fout_name='rho_sz_exploded_masked.jpg', 
-                                alpha=0.8, figsize=(6.0, 4.5), dpi=400, 
-                                zeros_transparent=False, show_plot=True)
+    density.plot_cube_rho_sz(
+                        c_idx_arr=c_idx, 
+                        fout_name='rho_sz_exploded_masked.jpg', 
+                        alpha=0.8, 
+                        figsize=(6.0, 4.5), 
+                        dpi=400, 
+                        zeros_transparent=False, 
+                        show_plot=True
+                        )
 
 .. 2D slices
 .. image::

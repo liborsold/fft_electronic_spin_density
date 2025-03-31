@@ -45,7 +45,7 @@ Navigation
    examples
    density_class
    api
-   physics_behind
+   motivation
 
 Indices
 ==================
