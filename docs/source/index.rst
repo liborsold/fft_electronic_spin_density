@@ -33,7 +33,7 @@ then
    
    git clone https://github.com/liborsold/fft_electronic_spin_density.git
    
-and execute the ``./examples/fft_examples.ipynb`` Jupyter notebook in the `examples folder <https://github.com/liborsold/fft_electronic_spin_density/tree/master/examples>`_.
+and execute the ``./examples/example_of_use.ipynb`` Jupyter notebook in the `examples folder <https://github.com/liborsold/fft_electronic_spin_density/tree/master/examples>`_.
 
 
 Navigation
@@ -45,7 +45,7 @@ Navigation
    examples
    density_class
    api
-   motivation
+   theory
 
 Indices
 ==================

@@ -49,3 +49,7 @@ html_theme_options = {
 }
 
 html_favicon = '_static/favicon/android-chrome-192x192.png'
+
+html_context = {
+    "default_mode": "auto"
+}

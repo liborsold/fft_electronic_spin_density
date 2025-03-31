@@ -50,7 +50,7 @@ Visualize the density in 3D
    :align: center
 
 
-Filter out only regions around selected sites
+Filter out :math:`\rho_\mathrm{s} (\mathbf{r})` around selected sites
 -------------------------------------------------------------------
 
 .. code-block:: python
@@ -89,7 +89,7 @@ Filter out only regions around selected sites
    :align: center
 
 
-Perform FFT, visualize and write out as a .cube file itself
+Perform FFT, visualize, write out as a .cube file
 -------------------------------------------------------------------
 
 .. code-block:: python
@@ -153,8 +153,12 @@ Perform FFT, visualize and write out as a .cube file itself
    :align: center
 
 
-Replace by a d\ :sub:`x2y2`\  orbital model and visualize
+Replace :math:`\rho_\mathrm{s} (\mathbf{r})` by a model
 -------------------------------------------------------------------
+
+The model is defined as a d\ :sub:`x2y2`\  orbital centered on Cu sites. 
+Possibly, sp orbitals centered on oxygen sites can be added. 
+Any parameterized function (e.g., a Gaussian) can be defined as a model.
 
 .. code-block:: python
 
@@ -201,7 +205,7 @@ Replace by a d\ :sub:`x2y2`\  orbital model and visualize
    :align: center
 
 
-*or even*: Fit the model to the original density 
+*Fit* the model
 -------------------------------------------------------------------
 
 .. code-block:: python
@@ -231,7 +235,7 @@ Replace by a d\ :sub:`x2y2`\  orbital model and visualize
 | **call 3:**   ...
 
 
-Write out modified density to a .cube file
+Write out the *modified* :math:`\rho_\mathrm{s} (\mathbf{r})`
 -------------------------------------------------------------------
 ... to be visualized in VESTA
 
@@ -240,7 +244,7 @@ Write out modified density to a .cube file
     density.write_cube_file_rho_sz(fout='rho_sz_modified.cube')
 
 
-Integral of the density (in the whole unit cell)
+Integrate :math:`\rho_\mathrm{s} (\mathbf{r})` over the unit cell
 -------------------------------------------------------------------
 
 .. code-block:: python

@@ -2,7 +2,7 @@
 <!DOCTYPE html>
 
 
-<html lang="en" data-content_root="./" >
+<html lang="en" data-content_root="./" data-theme="auto">
 
   <head>
     <meta charset="utf-8" />
@@ -13,8 +13,8 @@
   
   
   <script data-cfasync="false">
-    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
-    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "auto";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "auto";
   </script>
   
   <!-- Loaded before other Sphinx assets -->
@@ -53,7 +53,7 @@
   </head>
   
   
-  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="auto">
 
   
   
@@ -166,7 +166,7 @@
 <li class="toctree-l2"><a class="reference internal" href="generated/fft_electronic_spin_density.classes.html">fft_electronic_spin_density.classes</a></li>
 </ul>
 </details></li>
-<li class="toctree-l1"><a class="reference internal" href="motivation.html">Motivation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="theory.html">Theory</a></li>
 </ul>
 
     </div>
@@ -363,7 +363,7 @@ document.write(`
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">clone</span> <span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">liborsold</span><span class="o">/</span><span class="n">fft_electronic_spin_density</span><span class="o">.</span><span class="n">git</span>
 </pre></div>
 </div>
-<p>and execute the <code class="docutils literal notranslate"><span class="pre">./examples/fft_examples.ipynb</span></code> Jupyter notebook in the <a class="reference external" href="https://github.com/liborsold/fft_electronic_spin_density/tree/master/examples">examples folder</a>.</p>
+<p>and execute the <code class="docutils literal notranslate"><span class="pre">./examples/example_of_use.ipynb</span></code> Jupyter notebook in the <a class="reference external" href="https://github.com/liborsold/fft_electronic_spin_density/tree/master/examples">examples folder</a>.</p>
 </section>
 <section id="navigation">
 <h1>Navigation<a class="headerlink" href="#navigation" title="Link to this heading">#</a></h1>
@@ -372,7 +372,7 @@ document.write(`
 <li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="density_class.html"><code class="docutils literal notranslate"><span class="pre">Density</span></code> class</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api.html">API</a></li>
-<li class="toctree-l1"><a class="reference internal" href="motivation.html">Motivation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="theory.html">Theory</a></li>
 </ul>
 </div>
 </section>
