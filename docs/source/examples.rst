@@ -21,7 +21,7 @@ Import the ``Density`` class
     from fft_electronic_spin_density.utils import Density
 
 
-Load the .cube file (spin) density
+Load the (spin) density
 -------------------------------------------------------------------
 
 .. code-block:: python
