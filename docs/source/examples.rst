@@ -5,12 +5,12 @@ Examples
 An example of use is given in ``./examples/fft_example.ipynb``. It uses input files from the `cube_files folder <https://github.com/liborsold/fft_electronic_spin_density/tree/master/cube_files>`_.
 
 .. fft_electronic_spin_density example image
-.. image::
+.. figure::
    ./_static/images/example_of_use.png
    :width: 800px
    :align: center
 
----> ADD CAPTION!
+   Figure: Example of use of the ``fft_electronic_spin_density`` package. Left: The input is a Gaussian .cube file of charge density. Middle: The output is a .cube file of its Fourier transform (---> visualize in VESTA). Right: The Fourier transform is visualized in 3D, 2D, and 1D cuts. The original DFT density can be manipulated by filtering it out only around selected sites, replacing by a model and even fitting this model to the original density.
 
 
 Import the ``Density`` class
@@ -96,7 +96,7 @@ Perform FFT, visualize and write out as a .cube file itself
 .. FFT 3D VESTA
 .. image::
    ./_static/images/FFT_from_VESTA.png
-   :width: 350px
+   :width: 250px
    :align: center
 
 
@@ -123,11 +123,10 @@ Filter out only regions around selected sites
 .. filtered density
 .. image::
    ./_static/images/rho_sz_exploded_filtered.jpg
-   :width: 450px
+   :width: 400px
    :align: center
 
-
-Replace by a dx2y2 orbital model and visualize
+Replace by a d\ :sub:`x2y2`\  orbital model and visualize
 -------------------------------------------------------------------
 
 .. code-block:: python
@@ -160,7 +159,7 @@ Replace by a dx2y2 orbital model and visualize
 .. filtered density
 .. image::
    ./_static/images/rho_sz_exploded_model.jpg
-   :width: 450px
+   :width: 400px
    :align: center
 
 

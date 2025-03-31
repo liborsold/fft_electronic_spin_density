@@ -334,7 +334,7 @@ document.write(`
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#visualize-the-density-in-3d">Visualize the density in 3D</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#perform-fft-visualize-and-write-out-as-a-cube-file-itself">Perform FFT, visualize and write out as a .cube file itself</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#filter-out-only-regions-around-selected-sites">Filter out only regions around selected sites</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#replace-by-a-dx2y2-orbital-model-and-visualize">Replace by a dx2y2 orbital model and visualize</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#replace-by-a-dx2y2-orbital-model-and-visualize">Replace by a d<sub>x2y2</sub> orbital model and visualize</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#or-even-fit-the-model-to-the-original-density"><em>or even</em>: Fit the model to the original density</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#write-out-modified-density-to-a-cube-file">Write out modified density to a .cube file</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#integral-of-the-density-in-the-whole-unit-cell">Integral of the density (in the whole unit cell)</a></li>
@@ -353,9 +353,13 @@ document.write(`
   <section id="examples">
 <h1>Examples<a class="headerlink" href="#examples" title="Link to this heading">#</a></h1>
 <p>An example of use is given in <code class="docutils literal notranslate"><span class="pre">./examples/fft_example.ipynb</span></code>. It uses input files from the <a class="reference external" href="https://github.com/liborsold/fft_electronic_spin_density/tree/master/cube_files">cube_files folder</a>.</p>
-<a class="reference internal image-reference" href="_images/example_of_use.png"><img alt="_images/example_of_use.png" class="align-center" src="_images/example_of_use.png" style="width: 800px;" />
+<figure class="align-center" id="id1">
+<a class="reference internal image-reference" href="_images/example_of_use.png"><img alt="_images/example_of_use.png" src="_images/example_of_use.png" style="width: 800px;" />
 </a>
-<p>—&gt; ADD CAPTION!</p>
+<figcaption>
+<p><span class="caption-text">Figure: Example of use of the <code class="docutils literal notranslate"><span class="pre">fft_electronic_spin_density</span></code> package. Left: The input is a Gaussian .cube file of charge density. Middle: The output is a .cube file of its Fourier transform (—&gt; visualize in VESTA). Right: The Fourier transform is visualized in 3D, 2D, and 1D cuts. The original DFT density can be manipulated by filtering it out only around selected sites, replacing by a model and even fitting this model to the original density.</span><a class="headerlink" href="#id1" title="Link to this image">#</a></p>
+</figcaption>
+</figure>
 <section id="import-the-density-class">
 <h2>Import the <code class="docutils literal notranslate"><span class="pre">Density</span></code> class<a class="headerlink" href="#import-the-density-class" title="Link to this heading">#</a></h2>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fft_electronic_spin_density.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">Density</span>
@@ -413,7 +417,7 @@ document.write(`
 </pre></div>
 </div>
 <p>—&gt; visualize the .cube file in VESTA</p>
-<a class="reference internal image-reference" href="_images/FFT_from_VESTA.png"><img alt="_images/FFT_from_VESTA.png" class="align-center" src="_images/FFT_from_VESTA.png" style="width: 350px;" />
+<a class="reference internal image-reference" href="_images/FFT_from_VESTA.png"><img alt="_images/FFT_from_VESTA.png" class="align-center" src="_images/FFT_from_VESTA.png" style="width: 250px;" />
 </a>
 </section>
 <section id="filter-out-only-regions-around-selected-sites">
@@ -432,11 +436,11 @@ document.write(`
                  <span class="n">zlims</span><span class="o">=</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="mi">5</span><span class="p">])</span>  <span class="c1"># rho_sz_gauss_exploded_all</span>
 </pre></div>
 </div>
-<a class="reference internal image-reference" href="_images/rho_sz_exploded_filtered.jpg"><img alt="_images/rho_sz_exploded_filtered.jpg" class="align-center" src="_images/rho_sz_exploded_filtered.jpg" style="width: 450px;" />
+<a class="reference internal image-reference" href="_images/rho_sz_exploded_filtered.jpg"><img alt="_images/rho_sz_exploded_filtered.jpg" class="align-center" src="_images/rho_sz_exploded_filtered.jpg" style="width: 400px;" />
 </a>
 </section>
 <section id="replace-by-a-dx2y2-orbital-model-and-visualize">
-<h2>Replace by a dx2y2 orbital model and visualize<a class="headerlink" href="#replace-by-a-dx2y2-orbital-model-and-visualize" title="Link to this heading">#</a></h2>
+<h2>Replace by a d<sub>x2y2</sub> orbital model and visualize<a class="headerlink" href="#replace-by-a-dx2y2-orbital-model-and-visualize" title="Link to this heading">#</a></h2>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">site_idx</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>
 
 <span class="n">parameters_model</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;type&#39;</span><span class="p">:[</span><span class="s1">&#39;dx2y2_neat&#39;</span><span class="p">]</span><span class="o">*</span><span class="mi">2</span><span class="p">,</span>
@@ -461,7 +465,7 @@ document.write(`
                             <span class="n">zlims</span><span class="o">=</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="mi">5</span><span class="p">])</span>
 </pre></div>
 </div>
-<a class="reference internal image-reference" href="_images/rho_sz_exploded_model.jpg"><img alt="_images/rho_sz_exploded_model.jpg" class="align-center" src="_images/rho_sz_exploded_model.jpg" style="width: 450px;" />
+<a class="reference internal image-reference" href="_images/rho_sz_exploded_model.jpg"><img alt="_images/rho_sz_exploded_model.jpg" class="align-center" src="_images/rho_sz_exploded_model.jpg" style="width: 400px;" />
 </a>
 </section>
 <section id="or-even-fit-the-model-to-the-original-density">
@@ -577,7 +581,7 @@ document.write(`
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#visualize-the-density-in-3d">Visualize the density in 3D</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#perform-fft-visualize-and-write-out-as-a-cube-file-itself">Perform FFT, visualize and write out as a .cube file itself</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#filter-out-only-regions-around-selected-sites">Filter out only regions around selected sites</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#replace-by-a-dx2y2-orbital-model-and-visualize">Replace by a dx2y2 orbital model and visualize</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#replace-by-a-dx2y2-orbital-model-and-visualize">Replace by a d<sub>x2y2</sub> orbital model and visualize</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#or-even-fit-the-model-to-the-original-density"><em>or even</em>: Fit the model to the original density</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#write-out-modified-density-to-a-cube-file">Write out modified density to a .cube file</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#integral-of-the-density-in-the-whole-unit-cell">Integral of the density (in the whole unit cell)</a></li>
