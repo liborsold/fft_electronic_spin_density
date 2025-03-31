@@ -328,8 +328,10 @@ document.write(`
             </div>
             <nav aria-label="Page">
                 <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#load-the-cube-file-charge-or-spin-density">Load the .cube file charge or spin density</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#visualize-the-density">Visualize the density</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#import-the-density-class">Import the <code class="docutils literal notranslate"><span class="pre">Density</span></code> class</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#load-the-cube-file-spin-density">Load the .cube file (spin) density</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#visualize-the-density-in-2d">Visualize the density in 2D</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#visualize-the-density-in-3d">Visualize the density in 3D</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#replace-by-a-model">Replace by a model</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#or-even-fit-model-to-the-original-density"><em>or even</em> Fit model to the original density</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#integrate-density-to-get-the-total-charge-spin">Integrate density to get the total charge (spin)</a></li>
@@ -350,20 +352,38 @@ document.write(`
 <p>An example of use is given in <code class="docutils literal notranslate"><span class="pre">./examples/fft_example.ipynb</span></code>. It uses input files from the <a class="reference external" href="https://github.com/liborsold/fft_electronic_spin_density/tree/master/cube_files">cube_files folder</a>.</p>
 <a class="reference internal image-reference" href="_images/example_of_use.png"><img alt="_images/example_of_use.png" class="align-center" src="_images/example_of_use.png" style="width: 800px;" />
 </a>
-<section id="load-the-cube-file-charge-or-spin-density">
-<h2>Load the .cube file charge or spin density<a class="headerlink" href="#load-the-cube-file-charge-or-spin-density" title="Link to this heading">#</a></h2>
+<section id="import-the-density-class">
+<h2>Import the <code class="docutils literal notranslate"><span class="pre">Density</span></code> class<a class="headerlink" href="#import-the-density-class" title="Link to this heading">#</a></h2>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fft_electronic_spin_density.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">Density</span>
-<span class="n">density</span> <span class="o">=</span> <span class="n">Density</span><span class="p">(</span><span class="n">fname_cube_file</span><span class="o">=</span><span class="s1">&#39;../cube_files/Cu2AC4_rho_sz_256.cube&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
 </section>
-<section id="visualize-the-density">
-<h2>Visualize the density<a class="headerlink" href="#visualize-the-density" title="Link to this heading">#</a></h2>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># plot 2D</span>
+<section id="load-the-cube-file-spin-density">
+<h2>Load the .cube file (spin) density<a class="headerlink" href="#load-the-cube-file-spin-density" title="Link to this heading">#</a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">density</span> <span class="o">=</span> <span class="n">Density</span><span class="p">(</span><span class="n">fname_cube_file</span><span class="o">=</span><span class="s1">&#39;../cube_files/Cu2AC4_rho_sz_256.cube&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="visualize-the-density-in-2d">
+<h2>Visualize the density in 2D<a class="headerlink" href="#visualize-the-density-in-2d" title="Link to this heading">#</a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">site_coordinates</span> <span class="o">=</span> <span class="n">density</span><span class="o">.</span><span class="n">get_sites_of_atoms</span><span class="p">(</span><span class="n">site_idx</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+<span class="c1"># z position of atom 0</span>
+<span class="n">atom_0_z_coordinate</span> <span class="o">=</span> <span class="n">site_coordinates</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span>
 
-<span class="c1"># ---&gt; show plot</span>
+<span class="c1"># indices along the c lattice vector where density cuts should be plotted</span>
+<span class="n">c_idx</span> <span class="o">=</span> <span class="n">density</span><span class="o">.</span><span class="n">get_c_idx_at_z_coordinates</span><span class="p">(</span><span class="n">z_coordinates</span><span class="o">=</span><span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">atom_0_z_coordinate</span><span class="p">])</span>
 
-<span class="c1"># plot 3D</span>
+<span class="n">density</span><span class="o">.</span><span class="n">plot_cube_rho_sz</span><span class="p">(</span><span class="n">c_idx_arr</span><span class="o">=</span><span class="n">c_idx</span><span class="p">,</span> <span class="n">fout_name</span><span class="o">=</span><span class="sa">f</span><span class="s1">&#39;rho_sz_exploded_masked.jpg&#39;</span><span class="p">,</span>
+                            <span class="n">alpha</span><span class="o">=</span><span class="mf">0.8</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mf">6.0</span><span class="p">,</span> <span class="mf">4.5</span><span class="p">),</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">400</span><span class="p">,</span>
+                            <span class="n">zeros_transparent</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">show_plot</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<a class="reference internal image-reference" href="_images/plot_2D_example_figure.png"><img alt="_images/plot_2D_example_figure.png" class="align-center" src="_images/plot_2D_example_figure.png" style="width: 800px;" />
+</a>
+</section>
+<section id="visualize-the-density-in-3d">
+<h2>Visualize the density in 3D<a class="headerlink" href="#visualize-the-density-in-3d" title="Link to this heading">#</a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># --- 3D plot ---</span>
 
 <span class="c1"># ---&gt; show plot</span>
 </pre></div>
@@ -459,8 +479,10 @@ document.write(`
   </div>
   <nav class="bd-toc-nav page-toc">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#load-the-cube-file-charge-or-spin-density">Load the .cube file charge or spin density</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#visualize-the-density">Visualize the density</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#import-the-density-class">Import the <code class="docutils literal notranslate"><span class="pre">Density</span></code> class</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#load-the-cube-file-spin-density">Load the .cube file (spin) density</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#visualize-the-density-in-2d">Visualize the density in 2D</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#visualize-the-density-in-3d">Visualize the density in 3D</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#replace-by-a-model">Replace by a model</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#or-even-fit-model-to-the-original-density"><em>or even</em> Fit model to the original density</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#integrate-density-to-get-the-total-charge-spin">Integrate density to get the total charge (spin)</a></li>

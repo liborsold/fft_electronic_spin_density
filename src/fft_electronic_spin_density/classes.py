@@ -237,7 +237,9 @@ class Density:
         for idx in site_idx:
             # self.metadata['atoms'][idx] is a tuple with the atomic mass and the coordinates of the atom in the unit cell
             #   coordinates is a map object -> convert to list: first element is again the atomic mass -> take the rest: units are in Bohr radii -> convert to Angstrom -> convert to tuple -> add to list
-            site_centers.append(tuple(np.array(list(self.metadata['atoms'][idx][1])[1:])*physical_constants['Bohr radius'][0]*1e10))
+            #     need to make a deepcopy of the list, otherwise would be destroyed and unable to read a second time
+            coords_map = deepcopy(self.metadata['atoms'][idx])
+            site_centers.append(tuple(np.array(list(coords_map[1])[1:])*physical_constants['Bohr radius'][0]*1e10))
         return site_centers
 
     def mask_except_sites(self, leave_sites, density_to_mask=None):
@@ -852,7 +854,7 @@ _sq = (x**2 + y**2 + z**2)
         my_cmap[:,-1] = alpha
         cmap = ListedColormap(my_cmap)
 
-        fig = plt.figure(figsize=figsize)
+        fig = plt.figure(figsize=figsize, layout="constrained")
         ax = fig.add_subplot(111, projection='3d')
 
         # Create a 3D grid
@@ -885,6 +887,17 @@ _sq = (x**2 + y**2 + z**2)
         else:
             colorbar_min = 0
             colorbar_max = z_max_abs_unscaled
+
+            # add colorbar that doesn't overlap
+
+    # cbar_kwargs={
+    #     "label":"MLD in m ",
+    #     "shrink": 0.8,
+    #     "aspect": 30,
+    #     "fraction": 0.5,
+    #     "anchor": (1.0,0.5),
+    #     "location": "right",
+            
         fig.colorbar(mpl.cm.ScalarMappable(norm=mpl.colors.Normalize(colorbar_min, colorbar_max), cmap=cmap),
              ax=ax, orientation='vertical', label=colorbar_label)
         # manually make a colorbar with limits -z_max_abs, z_max_abs and cmap coolwarm
@@ -924,8 +937,9 @@ _sq = (x**2 + y**2 + z**2)
 
         ax.set_aspect('equal', adjustable='box')
         # plot colorbar the colorbar
-        plt.tight_layout()
-
+        # colorbar overlaps with axis label! use constrained_layout instead
+        # plt.gcf().set_constrained_layout(True)
+        
         if show_plot:
             plt.show()
         else:
@@ -1339,8 +1353,8 @@ _sq = (x**2 + y**2 + z**2)
         rho_tot = np.sum(data_array) * volume / data_array.size
         abs_rho_tot = np.sum(np.abs(data_array)) * volume / data_array.size
         if verbose:
-            print(f'\nTotal charge in the volume: {rho_tot:.6f} e')
-            print(f'Total absolute charge in the volume: {abs_rho_tot:.6f} e\n')
+            print(f'\nTotal (spin) charge in the volume: {rho_tot:.6f} e')
+            print(f'Total absolute (spin) charge in the volume: {abs_rho_tot:.6f} e\n')
         return rho_tot, abs_rho_tot
     
     def plot_fft_along_line(self, i_kz=None, cut_along='along_stripes', kx_ky_fun=None, k_dist_lim=15, 
@@ -1446,6 +1460,26 @@ _sq = (x**2 + y**2 + z**2)
             plt.savefig('.'.join(fout_name.split('.')[:-1])+'.pdf', dpi=400)
 
         return (kx_along_arr-kx_center), (ky_along_arr-ky_center), F_abs_sq_interp_along, (kx_perp_arr-kx_center), (ky_perp_arr-ky_center), F_abs_sq_interp_perp
+
+    def get_c_idx_at_z_coordinates(self, z_coordinates):
+        """Get the indices of the z coordinates.
+
+        Args:
+            z_coordinates (list): List of z coordinates.
+
+        Returns:
+            list: List of indices.
+        """
+        # check if z_coordinates are in the range of (0, self.c)
+        if not np.all(0 <= z <= self.c for z in z_coordinates):
+            raise ValueError(f'z_coordinates must lie within the unit cell range (0, {self.c}) Angstrom.')
+        
+        # an array of all possible z levels
+        z_levels_cart = np.arange(0, self.nc) * self.dc[2]
+        idx_z = []
+        for z in z_coordinates:
+            idx_z.append(np.argmin(np.abs(z_levels_cart - z)))
+        return idx_z
 
 def test_shift():
     """Test the shift of a 3D array using numpy's fftshift function.

@@ -333,6 +333,7 @@ document.write(`
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fft_electronic_spin_density.classes.Density.conjugate"><code class="docutils literal notranslate"><span class="pre">Density.conjugate()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fft_electronic_spin_density.classes.Density.coordinate_permutation"><code class="docutils literal notranslate"><span class="pre">Density.coordinate_permutation()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fft_electronic_spin_density.classes.Density.create_cmap_with_cap"><code class="docutils literal notranslate"><span class="pre">Density.create_cmap_with_cap()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fft_electronic_spin_density.classes.Density.get_c_idx_at_z_coordinates"><code class="docutils literal notranslate"><span class="pre">Density.get_c_idx_at_z_coordinates()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fft_electronic_spin_density.classes.Density.get_i_kz"><code class="docutils literal notranslate"><span class="pre">Density.get_i_kz()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fft_electronic_spin_density.classes.Density.get_index_at_kz"><code class="docutils literal notranslate"><span class="pre">Density.get_index_at_kz()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fft_electronic_spin_density.classes.Density.get_kz_at_index"><code class="docutils literal notranslate"><span class="pre">Density.get_kz_at_index()</span></code></a></li>
@@ -437,6 +438,23 @@ Replace by a model function if required.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>matplotlib.colors.ListedColormap</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="fft_electronic_spin_density.classes.Density.get_c_idx_at_z_coordinates">
+<span class="sig-name descname"><span class="pre">get_c_idx_at_z_coordinates</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">z_coordinates</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fft_electronic_spin_density.classes.Density.get_c_idx_at_z_coordinates" title="Link to this definition">#</a></dt>
+<dd><p>Get the indices of the z coordinates.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>z_coordinates</strong> (<em>list</em>) – List of z coordinates.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>List of indices.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list</p>
 </dd>
 </dl>
 </dd></dl>
@@ -828,6 +846,7 @@ If density_to_mask is given, mask and return this density instead of the loaded 
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fft_electronic_spin_density.classes.Density.conjugate"><code class="docutils literal notranslate"><span class="pre">Density.conjugate()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fft_electronic_spin_density.classes.Density.coordinate_permutation"><code class="docutils literal notranslate"><span class="pre">Density.coordinate_permutation()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fft_electronic_spin_density.classes.Density.create_cmap_with_cap"><code class="docutils literal notranslate"><span class="pre">Density.create_cmap_with_cap()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fft_electronic_spin_density.classes.Density.get_c_idx_at_z_coordinates"><code class="docutils literal notranslate"><span class="pre">Density.get_c_idx_at_z_coordinates()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fft_electronic_spin_density.classes.Density.get_i_kz"><code class="docutils literal notranslate"><span class="pre">Density.get_i_kz()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fft_electronic_spin_density.classes.Density.get_index_at_kz"><code class="docutils literal notranslate"><span class="pre">Density.get_index_at_kz()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fft_electronic_spin_density.classes.Density.get_kz_at_index"><code class="docutils literal notranslate"><span class="pre">Density.get_kz_at_index()</span></code></a></li>

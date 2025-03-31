@@ -1,3 +1,4 @@
+==========================
 Examples
 ==========================
 
@@ -10,26 +11,51 @@ An example of use is given in ``./examples/fft_example.ipynb``. It uses input fi
    :align: center
 
 
-
-Load the .cube file charge or spin density
+Import the ``Density`` class
 -------------------------------------------------------------------
 
 .. code-block:: python
 
     from fft_electronic_spin_density.utils import Density
-    density = Density(fname_cube_file='../cube_files/Cu2AC4_rho_sz_256.cube')
 
 
-Visualize the density
+Load the .cube file (spin) density
 -------------------------------------------------------------------
 
 .. code-block:: python
 
-    # plot 2D
+    density = Density(fname_cube_file='../cube_files/Cu2AC4_rho_sz_256.cube')
 
-    # ---> show plot
 
-    # plot 3D
+Visualize the density as 2D slices
+-------------------------------------------------------------------
+
+.. code-block:: python
+
+    site_coordinates = density.get_sites_of_atoms(site_idx=[0])
+    # z position of atom 0
+    atom_0_z_coordinate = site_coordinates[0][2]
+
+    # indices along the c lattice vector where density cuts should be plotted
+    c_idx = density.get_c_idx_at_z_coordinates(z_coordinates=[0.0, atom_0_z_coordinate])
+
+    density.plot_cube_rho_sz(c_idx_arr=c_idx, fout_name=f'rho_sz_exploded_masked.jpg', 
+                                alpha=0.8, figsize=(6.0, 4.5), dpi=400, 
+                                zeros_transparent=False, show_plot=True)
+
+
+.. CrXY example image
+.. image::
+   ./_static/images/plot_2D_example_figure.png
+   :width: 800px
+   :align: center
+
+Visualize the density in 3D
+-------------------------------------------------------------------
+
+.. code-block:: python
+
+    # --- 3D plot ---
 
     # ---> show plot
 
@@ -42,7 +68,7 @@ Replace by a model
     # replace by model
 
 
-*or even* Fit model to the original density 
+*or even*: Fit model to the original density 
 -------------------------------------------------------------------
 
 .. code-block:: python
