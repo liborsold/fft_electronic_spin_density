@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Physics background &#8212; fft_electronic_spin_density 0.0.1 documentation</title>
+    <title>Motivation &#8212; fft_electronic_spin_density 0.0.1 documentation</title>
   
   
   
@@ -43,6 +43,7 @@
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="_static/copybutton.js?v=f281be69"></script>
     <script src="_static/scripts/sphinx-book-theme.js?v=887ef09a"></script>
+    <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'physics_behind';</script>
     <link rel="icon" href="_static/android-chrome-192x192.png"/>
     <link rel="index" title="Index" href="genindex.html" />
@@ -164,7 +165,7 @@
 <li class="toctree-l2"><a class="reference internal" href="generated/fft_electronic_spin_density.classes.html">fft_electronic_spin_density.classes</a></li>
 </ul>
 </details></li>
-<li class="toctree-l1 current active"><a class="current reference internal" href="#">Physics background</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Motivation</a></li>
 </ul>
 
     </div>
@@ -318,7 +319,7 @@ document.write(`
               
 
 <div id="jb-print-docs-body" class="onlyprint">
-    <h1>Physics background</h1>
+    <h1>Motivation</h1>
     <!-- Table of contents -->
     <div id="print-main-content">
         <div id="jb-print-toc">
@@ -341,17 +342,25 @@ document.write(`
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="physics-background">
-<h1>Physics background<a class="headerlink" href="#physics-background" title="Link to this heading">#</a></h1>
+  <section id="motivation">
+<h1>Motivation<a class="headerlink" href="#motivation" title="Link to this heading">#</a></h1>
 <ul class="simple">
-<li><p>introduce</p></li>
+<li><p>motivation for cuprates</p></li>
 </ul>
 <section id="neutron-scattering">
 <h2>Neutron scattering<a class="headerlink" href="#neutron-scattering" title="Link to this heading">#</a></h2>
-<ul class="simple">
-<li><p>form-factor approximation leads to a Fourier transform</p></li>
-<li><p>motivation for cuprates?</p></li>
-</ul>
+<p>The Fourier transform of the spin density manifests itself in the spectra of inelastic neutron scattering on copper dimers.</p>
+<p>The spectral function of the neutron scattering experiment</p>
+<div class="math notranslate nohighlight">
+\[\begin{equation}
+    S_{zz}=\frac{1}{2}|F(\vec{k})|^2\left(1-\cos \left(\vec{k} \cdot \vec{r}_{a b}\right) \delta\left(\hbar \omega+E_S-E_{T_0}\right)\right.
+\end{equation}\]</div>
+<p>includes the magnetic form factor</p>
+<div class="math notranslate nohighlight">
+\[\begin{equation}
+    F(\mathbf{\kappa}) \equiv e^{i \mathbf{\kappa} \cdot \mathbf{r}} \rho_\mathrm{s} (\mathbf{r}) d\mathbf{r} = \int e^{i \mathbf{\kappa} \cdot \mathbf{r}} \rho_\mathrm{s} (\mathbf{r})
+\end{equation}\]</div>
+<p>which is the <strong>Fourier transform of the spin density</strong> <span class="math notranslate nohighlight">\(\rho_\mathrm{s} (\mathbf{r})\)</span>.</p>
 <p>vs</p>
 <ul class="simple">
 <li><p>full including overlap term</p></li>

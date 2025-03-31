@@ -165,7 +165,7 @@
 <li class="toctree-l2"><a class="reference internal" href="generated/fft_electronic_spin_density.classes.html">fft_electronic_spin_density.classes</a></li>
 </ul>
 </details></li>
-<li class="toctree-l1"><a class="reference internal" href="physics_behind.html">Physics background</a></li>
+<li class="toctree-l1"><a class="reference internal" href="physics_behind.html">Motivation</a></li>
 </ul>
 
     </div>
@@ -332,8 +332,8 @@ document.write(`
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#import-the-density-class">Import the <code class="docutils literal notranslate"><span class="pre">Density</span></code> class</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#load-the-spin-density">Load the (spin) density</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#visualize-the-density-in-3d">Visualize the density in 3D</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#perform-fft-visualize-and-write-out-as-a-cube-file-itself">Perform FFT, visualize and write out as a .cube file itself</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#filter-out-only-regions-around-selected-sites">Filter out only regions around selected sites</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#perform-fft-visualize-and-write-out-as-a-cube-file-itself">Perform FFT, visualize and write out as a .cube file itself</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#replace-by-a-dx2y2-orbital-model-and-visualize">Replace by a d<sub>x2y2</sub> orbital model and visualize</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#or-even-fit-the-model-to-the-original-density"><em>or even</em>: Fit the model to the original density</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#write-out-modified-density-to-a-cube-file">Write out modified density to a .cube file</a></li>
@@ -387,6 +387,25 @@ document.write(`
 <a class="reference internal image-reference" href="_images/rho_sz_exploded.jpg"><img alt="_images/rho_sz_exploded.jpg" class="align-center" src="_images/rho_sz_exploded.jpg" style="width: 500px;" />
 </a>
 </section>
+<section id="filter-out-only-regions-around-selected-sites">
+<h2>Filter out only regions around selected sites<a class="headerlink" href="#filter-out-only-regions-around-selected-sites" title="Link to this heading">#</a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">site_idx</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="c1"># atom 0 - Cu0, atom 1 - Cu1</span>
+<span class="n">site_radii</span> <span class="o">=</span> <span class="p">[</span><span class="mf">1.1</span><span class="p">]</span><span class="o">*</span><span class="mi">2</span> <span class="c1"># Angstrom</span>
+<span class="n">site_centers</span> <span class="o">=</span> <span class="n">density</span><span class="o">.</span><span class="n">get_sites_of_atoms</span><span class="p">(</span><span class="n">site_idx</span><span class="p">)</span>
+
+<span class="n">density</span><span class="o">.</span><span class="n">mask_except_sites</span><span class="p">(</span><span class="n">leave_sites</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;site_centers&#39;</span><span class="p">:</span><span class="n">site_centers</span><span class="p">,</span> <span class="s1">&#39;site_radii&#39;</span><span class="p">:</span><span class="n">site_radii</span><span class="p">})</span>
+</pre></div>
+</div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">density</span><span class="o">.</span><span class="n">plot_cube_rho_sz</span><span class="p">(</span><span class="n">c_idx_arr</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">density</span><span class="o">.</span><span class="n">nc</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">fout_name</span><span class="o">=</span><span class="s1">&#39;rho_sz_exploded_filtered.jpg&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mf">5.5</span><span class="p">,</span><span class="mf">5.5</span><span class="p">),</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">400</span><span class="p">,</span> <span class="n">zeros_transparent</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                 <span class="n">show_plot</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                 <span class="n">xlims</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">6</span><span class="p">],</span>
+                 <span class="n">ylims</span><span class="o">=</span><span class="p">[</span><span class="mi">4</span><span class="p">,</span><span class="mi">10</span><span class="p">],</span>
+                 <span class="n">zlims</span><span class="o">=</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="mi">5</span><span class="p">])</span>  <span class="c1"># rho_sz_gauss_exploded_all</span>
+</pre></div>
+</div>
+<a class="reference internal image-reference" href="_images/rho_sz_exploded_filtered.jpg"><img alt="_images/rho_sz_exploded_filtered.jpg" class="align-center" src="_images/rho_sz_exploded_filtered.jpg" style="width: 400px;" />
+</a>
+</section>
 <section id="perform-fft-visualize-and-write-out-as-a-cube-file-itself">
 <h2>Perform FFT, visualize and write out as a .cube file itself<a class="headerlink" href="#perform-fft-visualize-and-write-out-as-a-cube-file-itself" title="Link to this heading">#</a></h2>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">density</span><span class="o">.</span><span class="n">FFT</span><span class="p">()</span>
@@ -418,25 +437,6 @@ document.write(`
 </div>
 <p>—&gt; visualize the .cube file in VESTA</p>
 <a class="reference internal image-reference" href="_images/FFT_from_VESTA.png"><img alt="_images/FFT_from_VESTA.png" class="align-center" src="_images/FFT_from_VESTA.png" style="width: 250px;" />
-</a>
-</section>
-<section id="filter-out-only-regions-around-selected-sites">
-<h2>Filter out only regions around selected sites<a class="headerlink" href="#filter-out-only-regions-around-selected-sites" title="Link to this heading">#</a></h2>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">site_idx</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="c1"># atom 0 - Cu0, atom 1 - Cu1</span>
-<span class="n">site_radii</span> <span class="o">=</span> <span class="p">[</span><span class="mf">1.1</span><span class="p">]</span><span class="o">*</span><span class="mi">2</span> <span class="c1"># Angstrom</span>
-<span class="n">site_centers</span> <span class="o">=</span> <span class="n">density</span><span class="o">.</span><span class="n">get_sites_of_atoms</span><span class="p">(</span><span class="n">site_idx</span><span class="p">)</span>
-
-<span class="n">density</span><span class="o">.</span><span class="n">mask_except_sites</span><span class="p">(</span><span class="n">leave_sites</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;site_centers&#39;</span><span class="p">:</span><span class="n">site_centers</span><span class="p">,</span> <span class="s1">&#39;site_radii&#39;</span><span class="p">:</span><span class="n">site_radii</span><span class="p">})</span>
-</pre></div>
-</div>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">density</span><span class="o">.</span><span class="n">plot_cube_rho_sz</span><span class="p">(</span><span class="n">c_idx_arr</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">density</span><span class="o">.</span><span class="n">nc</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">fout_name</span><span class="o">=</span><span class="s1">&#39;rho_sz_exploded_filtered.jpg&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mf">5.5</span><span class="p">,</span><span class="mf">5.5</span><span class="p">),</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">400</span><span class="p">,</span> <span class="n">zeros_transparent</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-                 <span class="n">show_plot</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-                 <span class="n">xlims</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">6</span><span class="p">],</span>
-                 <span class="n">ylims</span><span class="o">=</span><span class="p">[</span><span class="mi">4</span><span class="p">,</span><span class="mi">10</span><span class="p">],</span>
-                 <span class="n">zlims</span><span class="o">=</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="mi">5</span><span class="p">])</span>  <span class="c1"># rho_sz_gauss_exploded_all</span>
-</pre></div>
-</div>
-<a class="reference internal image-reference" href="_images/rho_sz_exploded_filtered.jpg"><img alt="_images/rho_sz_exploded_filtered.jpg" class="align-center" src="_images/rho_sz_exploded_filtered.jpg" style="width: 400px;" />
 </a>
 </section>
 <section id="replace-by-a-dx2y2-orbital-model-and-visualize">
@@ -579,8 +579,8 @@ document.write(`
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#import-the-density-class">Import the <code class="docutils literal notranslate"><span class="pre">Density</span></code> class</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#load-the-spin-density">Load the (spin) density</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#visualize-the-density-in-3d">Visualize the density in 3D</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#perform-fft-visualize-and-write-out-as-a-cube-file-itself">Perform FFT, visualize and write out as a .cube file itself</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#filter-out-only-regions-around-selected-sites">Filter out only regions around selected sites</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#perform-fft-visualize-and-write-out-as-a-cube-file-itself">Perform FFT, visualize and write out as a .cube file itself</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#replace-by-a-dx2y2-orbital-model-and-visualize">Replace by a d<sub>x2y2</sub> orbital model and visualize</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#or-even-fit-the-model-to-the-original-density"><em>or even</em>: Fit the model to the original density</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#write-out-modified-density-to-a-cube-file">Write out modified density to a .cube file</a></li>

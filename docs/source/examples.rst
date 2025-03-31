@@ -50,6 +50,33 @@ Visualize the density in 3D
    :align: center
 
 
+Filter out only regions around selected sites
+-------------------------------------------------------------------
+
+.. code-block:: python
+
+    site_idx = [0, 1] # atom 0 - Cu0, atom 1 - Cu1
+    site_radii = [1.1]*2 # Angstrom
+    site_centers = density.get_sites_of_atoms(site_idx)
+
+    density.mask_except_sites(leave_sites={'site_centers':site_centers, 'site_radii':site_radii})
+   
+
+.. code-block:: python
+   
+   density.plot_cube_rho_sz(c_idx_arr=np.arange(0, density.nc, 1), fout_name='rho_sz_exploded_filtered.jpg', alpha=0.05, figsize=(5.5,5.5), dpi=400, zeros_transparent=True,
+                    show_plot=True,
+                    xlims=[0, 6], 
+                    ylims=[4,10],
+                    zlims=[2,5])  # rho_sz_gauss_exploded_all
+
+.. filtered density
+.. image::
+   ./_static/images/rho_sz_exploded_filtered.jpg
+   :width: 400px
+   :align: center
+
+
 Perform FFT, visualize and write out as a .cube file itself
 -------------------------------------------------------------------
 
@@ -99,32 +126,6 @@ Perform FFT, visualize and write out as a .cube file itself
    :width: 250px
    :align: center
 
-
-Filter out only regions around selected sites
--------------------------------------------------------------------
-
-.. code-block:: python
-
-    site_idx = [0, 1] # atom 0 - Cu0, atom 1 - Cu1
-    site_radii = [1.1]*2 # Angstrom
-    site_centers = density.get_sites_of_atoms(site_idx)
-
-    density.mask_except_sites(leave_sites={'site_centers':site_centers, 'site_radii':site_radii})
-   
-
-.. code-block:: python
-   
-   density.plot_cube_rho_sz(c_idx_arr=np.arange(0, density.nc, 1), fout_name='rho_sz_exploded_filtered.jpg', alpha=0.05, figsize=(5.5,5.5), dpi=400, zeros_transparent=True,
-                    show_plot=True,
-                    xlims=[0, 6], 
-                    ylims=[4,10],
-                    zlims=[2,5])  # rho_sz_gauss_exploded_all
-
-.. filtered density
-.. image::
-   ./_static/images/rho_sz_exploded_filtered.jpg
-   :width: 400px
-   :align: center
 
 Replace by a d\ :sub:`x2y2`\  orbital model and visualize
 -------------------------------------------------------------------
