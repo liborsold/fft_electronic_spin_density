@@ -1,4 +1,4 @@
-# fft_electronic_spin_density
+# ``fft_electronic_spin_density``
 **<i>Perform FFT on Gaussian .cube files of charge or spin density, primarily to obtain the (magnetic) form factor for neutron scattering.</i>**
 
 See the [documentation website](https://liborsold.github.io/fft_electronic_spin_density/build/html/index.html).
