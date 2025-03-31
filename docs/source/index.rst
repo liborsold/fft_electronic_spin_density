@@ -21,7 +21,7 @@ See the `project on GitHub <https://github.com/liborsold/fft_electronic_spin_den
 
 \ 
 
-Quickstart
+Quick start
 ================
 
 .. code-block:: python
