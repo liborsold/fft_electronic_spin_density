@@ -12,13 +12,14 @@ Welcome to ``fft_electronic_spin_density``!
 .. fft_electronic_spin_density example image
 .. image::
    ./_static/images/example_of_use.png
-   :width: 800px
+   :width: 500px
    :align: center
 
 \ 
 
 See the `project on GitHub <https://github.com/liborsold/fft_electronic_spin_density/tree/master>`_.
 
+\ 
 
 Quickstart
 ================
