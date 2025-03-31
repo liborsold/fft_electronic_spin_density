@@ -10,6 +10,8 @@ An example of use is given in ``./examples/fft_example.ipynb``. It uses input fi
    :width: 800px
    :align: center
 
+---> ADD CAPTION!
+
 
 Import the ``Density`` class
 -------------------------------------------------------------------
@@ -27,6 +29,190 @@ Load the .cube file (spin) density
     density = Density(fname_cube_file='../cube_files/Cu2AC4_rho_sz_256.cube')
 
 
+Visualize the density in 3D
+-------------------------------------------------------------------
+
+.. code-block:: python
+
+    density.plot_cube_rho_sz(c_idx_arr=np.arange(0, density.nc),
+                             fout_name='rho_sz_exploded.jpg', 
+                             alpha=0.05, 
+                             figsize=(5.5,5.5), 
+                             dpi=400, 
+                             zeros_transparent=True, 
+                             show_plot=True
+                             )
+
+.. 3D density
+.. image::
+   ./_static/images/rho_sz_exploded.jpg
+   :width: 500px
+   :align: center
+
+
+Perform FFT, visualize and write out as a .cube file itself
+-------------------------------------------------------------------
+
+.. code-block:: python
+
+    density.FFT()
+
+.. code-block:: python
+
+    fft_along_line_data = density.plot_fft_along_line(i_kz=density.nkc//2, cut_along='both', kx_ky_fun=None, k_dist_lim=12, N_points=3001, fout_name='cut_1D_both.png', cax_saturation=0.5,)
+    kx_arr_along, ky_arr_along, F_abs_sq_interp_along, kx_arr_perp, ky_arr_perp, F_abs_sq_interp_perp = fft_along_line_data
+
+    density.plot_fft_2D(i_kz=density.nkc//2, fft_as_log=False, 
+                fout_name=f'F_abs_sq-scale_kz_at_idx_{density.nkc//2}_cut_both.png', 
+                figsize=(5.5, 4.5),
+                dpi=400,
+                fixed_z_scale=True,
+                cax_saturation=0.5,
+                xlims=[-19, 19],
+                ylims=[-19, 19],
+                zlims=[0, 1.6e6],
+                plot_line_cut=True, kx_arr_along=kx_arr_along, ky_arr_along=ky_arr_along,
+                kx_arr_perp=kx_arr_perp, ky_arr_perp=ky_arr_perp,
+                cut_along='both')
+
+.. FFT 2D plot
+.. image::
+   ./_static/images/F_abs_sq-scale_kz_at_idx_72_cut_both_fix-scale.png
+   :width: 500px
+   :align: center
+
+.. FFT 1D cuts
+.. image::
+   ./_static/images/cut_1D_both.png
+   :width: 450px
+   :align: center
+
+.. code-block:: python
+
+    density.write_cube_file_fft(fout='fft_rho_sz.cube')
+
+---> visualize the .cube file in VESTA
+
+.. FFT 3D VESTA
+.. image::
+   ./_static/images/FFT_from_VESTA.png
+   :width: 350px
+   :align: center
+
+
+Filter out only regions around selected sites
+-------------------------------------------------------------------
+
+.. code-block:: python
+
+    site_idx = [0, 1] # atom 0 - Cu0, atom 1 - Cu1
+    site_radii = [1.1]*2 # Angstrom
+    site_centers = density.get_sites_of_atoms(site_idx)
+
+    density.mask_except_sites(leave_sites={'site_centers':site_centers, 'site_radii':site_radii})
+   
+
+.. code-block:: python
+   
+   density.plot_cube_rho_sz(c_idx_arr=np.arange(0, density.nc, 1), fout_name='rho_sz_exploded_filtered.jpg', alpha=0.05, figsize=(5.5,5.5), dpi=400, zeros_transparent=True,
+                    show_plot=True,
+                    xlims=[0, 6], 
+                    ylims=[4,10],
+                    zlims=[2,5])  # rho_sz_gauss_exploded_all
+
+.. filtered density
+.. image::
+   ./_static/images/rho_sz_exploded_filtered.jpg
+   :width: 450px
+   :align: center
+
+
+Replace by a dx2y2 orbital model and visualize
+-------------------------------------------------------------------
+
+.. code-block:: python
+
+    site_idx = [0, 1]
+
+    parameters_model = {'type':['dx2y2_neat']*2, 
+                        'sigmas':[None]*2, 
+                        'centers':density.get_sites_of_atoms(site_idx),
+                        'spin_down_orbital_all':[False, True],
+                        'fit_params_init_all':{
+                            'amplitude':[0.360453056, 0.360453056], 
+                            'theta0':[-1.011437, -1.011437,], 
+                            'phi0':[-0.59855408, -0.59855408,], 
+                            'Z_eff':[12.8481725, 12.8481725,],
+                            'C':[0.000, 0.000,]}}
+
+    density.replace_by_model(fit=False, parameters=parameters_model, leave_sites=leave_sites)
+
+
+.. code-block:: python
+
+    density.plot_cube_rho_sz(c_idx_arr=np.arange(0, density.nc, 1), 
+                                fout_name='rho_sz_exploded_model.jpg', alpha=0.05, figsize=(5.5,5.5), dpi=400, zeros_transparent=True,
+                                show_plot=True,
+                                xlims=[0, 6], 
+                                ylims=[4,10],
+                                zlims=[2,5])
+
+.. filtered density
+.. image::
+   ./_static/images/rho_sz_exploded_model.jpg
+   :width: 450px
+   :align: center
+
+
+*or even*: Fit the model to the original density 
+-------------------------------------------------------------------
+
+.. code-block:: python
+
+    site_idx = [0, 1]
+
+    parameters_model = {'type':['dx2y2_neat']*2, 
+                        'sigmas':[None]*2, 
+                        'centers':density.get_sites_of_atoms(site_idx),
+                        'spin_down_orbital_all':[False, True],
+                        'fit_params_init_all':{
+                            'amplitude':[0.360453056, 0.360453056], 
+                            'theta0':[-1.011437, -1.011437,], 
+                            'phi0':[-0.59855408, -0.59855408,], 
+                            'Z_eff':[12.8481725, 12.8481725,],
+                            'C':[0.000, 0.000,]}}
+
+    density.replace_by_model(fit=True, parameters=parameters_model)
+
+| **call 1:**   params [ 0.361 0.361 -1.011 -1.011 -0.599 -0.599 12.842 12.848 0. 0.] **R^2 0.805**
+| **call 2:**   params [ 0.379 0.361 -1.011 -1.011 -0.599 -0.599 12.848 12.848 0. 0.] **R^2 0.800**
+| **call 3:**   ...
+
+
+Write out modified density to a .cube file
+-------------------------------------------------------------------
+... to be visualized in VESTA
+
+.. code-block:: python
+
+    density.write_cube_file_rho_sz(fout='rho_sz_modified.cube')
+
+
+Integral of the density (in the whole unit cell)
+-------------------------------------------------------------------
+
+.. code-block:: python
+
+   rho_tot_unitcell, rho_abs_tot_unitcell = density.integrate_cube_file(verbose=False)
+
+   print(f"""Total charge in the unit cell {rho_tot_unitcell:.4f} e.
+   Total absolute charge in the unit cell {rho_abs_tot_unitcell:.4f} e.""")
+
+| Total charge in the unit cell 0.0000 e.
+| Total absolute charge in the unit cell 8.1414 e.
+
+
+
 Visualize the density as 2D slices
 -------------------------------------------------------------------
 
@@ -39,77 +225,15 @@ Visualize the density as 2D slices
     # indices along the c lattice vector where density cuts should be plotted
     c_idx = density.get_c_idx_at_z_coordinates(z_coordinates=[0.0, atom_0_z_coordinate])
 
-    density.plot_cube_rho_sz(c_idx_arr=c_idx, fout_name=f'rho_sz_exploded_masked.jpg', 
+    density.plot_cube_rho_sz(c_idx_arr=c_idx, fout_name='rho_sz_exploded_masked.jpg', 
                                 alpha=0.8, figsize=(6.0, 4.5), dpi=400, 
                                 zeros_transparent=False, show_plot=True)
 
-
-.. CrXY example image
+.. 2D slices
 .. image::
    ./_static/images/plot_2D_example_figure.png
-   :width: 800px
+   :width: 500px
    :align: center
-
-Visualize the density in 3D
--------------------------------------------------------------------
-
-.. code-block:: python
-
-    # --- 3D plot ---
-
-    # ---> show plot
-
-
-Replace by a model
--------------------------------------------------------------------
-
-.. code-block:: python
-
-    # replace by model
-
-
-*or even*: Fit model to the original density 
--------------------------------------------------------------------
-
-.. code-block:: python
-
-    # fit model
-
-
-Integrate density to get the total charge (spin)
--------------------------------------------------------------------
-
-.. code-block:: python
-
-    rho_sz_tot, rho_sz_abs_tot = density.integrate_cube_file()
-
-    # show the output
-    
-
-Perform FFT, plot and write out as a .cube file
--------------------------------------------------------------------
-
-.. code-block:: python
-
-    density.FFT()
-
-    density.plot_fft_2D(i_kz=0)
-
-    # ---> show plot
-
-    # plot along cuts in the 2D map
-    
-    # ---> show plot
-
-    # PLOT 3D
-    # ---> show plot
-
-    # WRITE OUT
-
-    density.write_cube_file_fft(fout='fft_rho_sz.cube')
-
-    # ----> show how it's visualized in VESTA
-
 
 
     

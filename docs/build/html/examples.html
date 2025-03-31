@@ -330,12 +330,14 @@ document.write(`
                 <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#import-the-density-class">Import the <code class="docutils literal notranslate"><span class="pre">Density</span></code> class</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#load-the-cube-file-spin-density">Load the .cube file (spin) density</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#visualize-the-density-in-2d">Visualize the density in 2D</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#visualize-the-density-in-3d">Visualize the density in 3D</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#replace-by-a-model">Replace by a model</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#or-even-fit-model-to-the-original-density"><em>or even</em> Fit model to the original density</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#integrate-density-to-get-the-total-charge-spin">Integrate density to get the total charge (spin)</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#perform-fft-plot-and-write-out-as-a-cube-file">Perform FFT, plot and write out as a .cube file</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#perform-fft-visualize-and-write-out-as-a-cube-file-itself">Perform FFT, visualize and write out as a .cube file itself</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#filter-out-only-regions-around-selected-sites">Filter out only regions around selected sites</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#replace-by-a-dx2y2-orbital-model-and-visualize">Replace by a dx2y2 orbital model and visualize</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#or-even-fit-the-model-to-the-original-density"><em>or even</em>: Fit the model to the original density</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#write-out-modified-density-to-a-cube-file">Write out modified density to a .cube file</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#integral-of-the-density-in-the-whole-unit-cell">Integral of the density (in the whole unit cell)</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#visualize-the-density-as-2d-slices">Visualize the density as 2D slices</a></li>
 </ul>
             </nav>
         </div>
@@ -352,6 +354,7 @@ document.write(`
 <p>An example of use is given in <code class="docutils literal notranslate"><span class="pre">./examples/fft_example.ipynb</span></code>. It uses input files from the <a class="reference external" href="https://github.com/liborsold/fft_electronic_spin_density/tree/master/cube_files">cube_files folder</a>.</p>
 <a class="reference internal image-reference" href="_images/example_of_use.png"><img alt="_images/example_of_use.png" class="align-center" src="_images/example_of_use.png" style="width: 800px;" />
 </a>
+<p>—&gt; ADD CAPTION!</p>
 <section id="import-the-density-class">
 <h2>Import the <code class="docutils literal notranslate"><span class="pre">Density</span></code> class<a class="headerlink" href="#import-the-density-class" title="Link to this heading">#</a></h2>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fft_electronic_spin_density.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">Density</span>
@@ -364,8 +367,148 @@ document.write(`
 </pre></div>
 </div>
 </section>
-<section id="visualize-the-density-in-2d">
-<h2>Visualize the density in 2D<a class="headerlink" href="#visualize-the-density-in-2d" title="Link to this heading">#</a></h2>
+<section id="visualize-the-density-in-3d">
+<h2>Visualize the density in 3D<a class="headerlink" href="#visualize-the-density-in-3d" title="Link to this heading">#</a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">density</span><span class="o">.</span><span class="n">plot_cube_rho_sz</span><span class="p">(</span><span class="n">c_idx_arr</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">density</span><span class="o">.</span><span class="n">nc</span><span class="p">),</span>
+                         <span class="n">fout_name</span><span class="o">=</span><span class="s1">&#39;rho_sz_exploded.jpg&#39;</span><span class="p">,</span>
+                         <span class="n">alpha</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span>
+                         <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mf">5.5</span><span class="p">,</span><span class="mf">5.5</span><span class="p">),</span>
+                         <span class="n">dpi</span><span class="o">=</span><span class="mi">400</span><span class="p">,</span>
+                         <span class="n">zeros_transparent</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                         <span class="n">show_plot</span><span class="o">=</span><span class="kc">True</span>
+                         <span class="p">)</span>
+</pre></div>
+</div>
+<a class="reference internal image-reference" href="_images/rho_sz_exploded.jpg"><img alt="_images/rho_sz_exploded.jpg" class="align-center" src="_images/rho_sz_exploded.jpg" style="width: 500px;" />
+</a>
+</section>
+<section id="perform-fft-visualize-and-write-out-as-a-cube-file-itself">
+<h2>Perform FFT, visualize and write out as a .cube file itself<a class="headerlink" href="#perform-fft-visualize-and-write-out-as-a-cube-file-itself" title="Link to this heading">#</a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">density</span><span class="o">.</span><span class="n">FFT</span><span class="p">()</span>
+</pre></div>
+</div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">fft_along_line_data</span> <span class="o">=</span> <span class="n">density</span><span class="o">.</span><span class="n">plot_fft_along_line</span><span class="p">(</span><span class="n">i_kz</span><span class="o">=</span><span class="n">density</span><span class="o">.</span><span class="n">nkc</span><span class="o">//</span><span class="mi">2</span><span class="p">,</span> <span class="n">cut_along</span><span class="o">=</span><span class="s1">&#39;both&#39;</span><span class="p">,</span> <span class="n">kx_ky_fun</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">k_dist_lim</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span> <span class="n">N_points</span><span class="o">=</span><span class="mi">3001</span><span class="p">,</span> <span class="n">fout_name</span><span class="o">=</span><span class="s1">&#39;cut_1D_both.png&#39;</span><span class="p">,</span> <span class="n">cax_saturation</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,)</span>
+<span class="n">kx_arr_along</span><span class="p">,</span> <span class="n">ky_arr_along</span><span class="p">,</span> <span class="n">F_abs_sq_interp_along</span><span class="p">,</span> <span class="n">kx_arr_perp</span><span class="p">,</span> <span class="n">ky_arr_perp</span><span class="p">,</span> <span class="n">F_abs_sq_interp_perp</span> <span class="o">=</span> <span class="n">fft_along_line_data</span>
+
+<span class="n">density</span><span class="o">.</span><span class="n">plot_fft_2D</span><span class="p">(</span><span class="n">i_kz</span><span class="o">=</span><span class="n">density</span><span class="o">.</span><span class="n">nkc</span><span class="o">//</span><span class="mi">2</span><span class="p">,</span> <span class="n">fft_as_log</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="n">fout_name</span><span class="o">=</span><span class="sa">f</span><span class="s1">&#39;F_abs_sq-scale_kz_at_idx_</span><span class="si">{</span><span class="n">density</span><span class="o">.</span><span class="n">nkc</span><span class="o">//</span><span class="mi">2</span><span class="si">}</span><span class="s1">_cut_both.png&#39;</span><span class="p">,</span>
+            <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mf">5.5</span><span class="p">,</span> <span class="mf">4.5</span><span class="p">),</span>
+            <span class="n">dpi</span><span class="o">=</span><span class="mi">400</span><span class="p">,</span>
+            <span class="n">fixed_z_scale</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">cax_saturation</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span>
+            <span class="n">xlims</span><span class="o">=</span><span class="p">[</span><span class="o">-</span><span class="mi">19</span><span class="p">,</span> <span class="mi">19</span><span class="p">],</span>
+            <span class="n">ylims</span><span class="o">=</span><span class="p">[</span><span class="o">-</span><span class="mi">19</span><span class="p">,</span> <span class="mi">19</span><span class="p">],</span>
+            <span class="n">zlims</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mf">1.6e6</span><span class="p">],</span>
+            <span class="n">plot_line_cut</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">kx_arr_along</span><span class="o">=</span><span class="n">kx_arr_along</span><span class="p">,</span> <span class="n">ky_arr_along</span><span class="o">=</span><span class="n">ky_arr_along</span><span class="p">,</span>
+            <span class="n">kx_arr_perp</span><span class="o">=</span><span class="n">kx_arr_perp</span><span class="p">,</span> <span class="n">ky_arr_perp</span><span class="o">=</span><span class="n">ky_arr_perp</span><span class="p">,</span>
+            <span class="n">cut_along</span><span class="o">=</span><span class="s1">&#39;both&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<a class="reference internal image-reference" href="_images/F_abs_sq-scale_kz_at_idx_72_cut_both_fix-scale.png"><img alt="_images/F_abs_sq-scale_kz_at_idx_72_cut_both_fix-scale.png" class="align-center" src="_images/F_abs_sq-scale_kz_at_idx_72_cut_both_fix-scale.png" style="width: 500px;" />
+</a>
+<a class="reference internal image-reference" href="_images/cut_1D_both.png"><img alt="_images/cut_1D_both.png" class="align-center" src="_images/cut_1D_both.png" style="width: 450px;" />
+</a>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">density</span><span class="o">.</span><span class="n">write_cube_file_fft</span><span class="p">(</span><span class="n">fout</span><span class="o">=</span><span class="s1">&#39;fft_rho_sz.cube&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>—&gt; visualize the .cube file in VESTA</p>
+<a class="reference internal image-reference" href="_images/FFT_from_VESTA.png"><img alt="_images/FFT_from_VESTA.png" class="align-center" src="_images/FFT_from_VESTA.png" style="width: 350px;" />
+</a>
+</section>
+<section id="filter-out-only-regions-around-selected-sites">
+<h2>Filter out only regions around selected sites<a class="headerlink" href="#filter-out-only-regions-around-selected-sites" title="Link to this heading">#</a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">site_idx</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="c1"># atom 0 - Cu0, atom 1 - Cu1</span>
+<span class="n">site_radii</span> <span class="o">=</span> <span class="p">[</span><span class="mf">1.1</span><span class="p">]</span><span class="o">*</span><span class="mi">2</span> <span class="c1"># Angstrom</span>
+<span class="n">site_centers</span> <span class="o">=</span> <span class="n">density</span><span class="o">.</span><span class="n">get_sites_of_atoms</span><span class="p">(</span><span class="n">site_idx</span><span class="p">)</span>
+
+<span class="n">density</span><span class="o">.</span><span class="n">mask_except_sites</span><span class="p">(</span><span class="n">leave_sites</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;site_centers&#39;</span><span class="p">:</span><span class="n">site_centers</span><span class="p">,</span> <span class="s1">&#39;site_radii&#39;</span><span class="p">:</span><span class="n">site_radii</span><span class="p">})</span>
+</pre></div>
+</div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">density</span><span class="o">.</span><span class="n">plot_cube_rho_sz</span><span class="p">(</span><span class="n">c_idx_arr</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">density</span><span class="o">.</span><span class="n">nc</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">fout_name</span><span class="o">=</span><span class="s1">&#39;rho_sz_exploded_filtered.jpg&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mf">5.5</span><span class="p">,</span><span class="mf">5.5</span><span class="p">),</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">400</span><span class="p">,</span> <span class="n">zeros_transparent</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                 <span class="n">show_plot</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                 <span class="n">xlims</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">6</span><span class="p">],</span>
+                 <span class="n">ylims</span><span class="o">=</span><span class="p">[</span><span class="mi">4</span><span class="p">,</span><span class="mi">10</span><span class="p">],</span>
+                 <span class="n">zlims</span><span class="o">=</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="mi">5</span><span class="p">])</span>  <span class="c1"># rho_sz_gauss_exploded_all</span>
+</pre></div>
+</div>
+<a class="reference internal image-reference" href="_images/rho_sz_exploded_filtered.jpg"><img alt="_images/rho_sz_exploded_filtered.jpg" class="align-center" src="_images/rho_sz_exploded_filtered.jpg" style="width: 450px;" />
+</a>
+</section>
+<section id="replace-by-a-dx2y2-orbital-model-and-visualize">
+<h2>Replace by a dx2y2 orbital model and visualize<a class="headerlink" href="#replace-by-a-dx2y2-orbital-model-and-visualize" title="Link to this heading">#</a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">site_idx</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>
+
+<span class="n">parameters_model</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;type&#39;</span><span class="p">:[</span><span class="s1">&#39;dx2y2_neat&#39;</span><span class="p">]</span><span class="o">*</span><span class="mi">2</span><span class="p">,</span>
+                    <span class="s1">&#39;sigmas&#39;</span><span class="p">:[</span><span class="kc">None</span><span class="p">]</span><span class="o">*</span><span class="mi">2</span><span class="p">,</span>
+                    <span class="s1">&#39;centers&#39;</span><span class="p">:</span><span class="n">density</span><span class="o">.</span><span class="n">get_sites_of_atoms</span><span class="p">(</span><span class="n">site_idx</span><span class="p">),</span>
+                    <span class="s1">&#39;spin_down_orbital_all&#39;</span><span class="p">:[</span><span class="kc">False</span><span class="p">,</span> <span class="kc">True</span><span class="p">],</span>
+                    <span class="s1">&#39;fit_params_init_all&#39;</span><span class="p">:{</span>
+                        <span class="s1">&#39;amplitude&#39;</span><span class="p">:[</span><span class="mf">0.360453056</span><span class="p">,</span> <span class="mf">0.360453056</span><span class="p">],</span>
+                        <span class="s1">&#39;theta0&#39;</span><span class="p">:[</span><span class="o">-</span><span class="mf">1.011437</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.011437</span><span class="p">,],</span>
+                        <span class="s1">&#39;phi0&#39;</span><span class="p">:[</span><span class="o">-</span><span class="mf">0.59855408</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.59855408</span><span class="p">,],</span>
+                        <span class="s1">&#39;Z_eff&#39;</span><span class="p">:[</span><span class="mf">12.8481725</span><span class="p">,</span> <span class="mf">12.8481725</span><span class="p">,],</span>
+                        <span class="s1">&#39;C&#39;</span><span class="p">:[</span><span class="mf">0.000</span><span class="p">,</span> <span class="mf">0.000</span><span class="p">,]}}</span>
+
+<span class="n">density</span><span class="o">.</span><span class="n">replace_by_model</span><span class="p">(</span><span class="n">fit</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">parameters</span><span class="o">=</span><span class="n">parameters_model</span><span class="p">,</span> <span class="n">leave_sites</span><span class="o">=</span><span class="n">leave_sites</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">density</span><span class="o">.</span><span class="n">plot_cube_rho_sz</span><span class="p">(</span><span class="n">c_idx_arr</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">density</span><span class="o">.</span><span class="n">nc</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+                            <span class="n">fout_name</span><span class="o">=</span><span class="s1">&#39;rho_sz_exploded_model.jpg&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mf">5.5</span><span class="p">,</span><span class="mf">5.5</span><span class="p">),</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">400</span><span class="p">,</span> <span class="n">zeros_transparent</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                            <span class="n">show_plot</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                            <span class="n">xlims</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">6</span><span class="p">],</span>
+                            <span class="n">ylims</span><span class="o">=</span><span class="p">[</span><span class="mi">4</span><span class="p">,</span><span class="mi">10</span><span class="p">],</span>
+                            <span class="n">zlims</span><span class="o">=</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="mi">5</span><span class="p">])</span>
+</pre></div>
+</div>
+<a class="reference internal image-reference" href="_images/rho_sz_exploded_model.jpg"><img alt="_images/rho_sz_exploded_model.jpg" class="align-center" src="_images/rho_sz_exploded_model.jpg" style="width: 450px;" />
+</a>
+</section>
+<section id="or-even-fit-the-model-to-the-original-density">
+<h2><em>or even</em>: Fit the model to the original density<a class="headerlink" href="#or-even-fit-the-model-to-the-original-density" title="Link to this heading">#</a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">site_idx</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>
+
+<span class="n">parameters_model</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;type&#39;</span><span class="p">:[</span><span class="s1">&#39;dx2y2_neat&#39;</span><span class="p">]</span><span class="o">*</span><span class="mi">2</span><span class="p">,</span>
+                    <span class="s1">&#39;sigmas&#39;</span><span class="p">:[</span><span class="kc">None</span><span class="p">]</span><span class="o">*</span><span class="mi">2</span><span class="p">,</span>
+                    <span class="s1">&#39;centers&#39;</span><span class="p">:</span><span class="n">density</span><span class="o">.</span><span class="n">get_sites_of_atoms</span><span class="p">(</span><span class="n">site_idx</span><span class="p">),</span>
+                    <span class="s1">&#39;spin_down_orbital_all&#39;</span><span class="p">:[</span><span class="kc">False</span><span class="p">,</span> <span class="kc">True</span><span class="p">],</span>
+                    <span class="s1">&#39;fit_params_init_all&#39;</span><span class="p">:{</span>
+                        <span class="s1">&#39;amplitude&#39;</span><span class="p">:[</span><span class="mf">0.360453056</span><span class="p">,</span> <span class="mf">0.360453056</span><span class="p">],</span>
+                        <span class="s1">&#39;theta0&#39;</span><span class="p">:[</span><span class="o">-</span><span class="mf">1.011437</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.011437</span><span class="p">,],</span>
+                        <span class="s1">&#39;phi0&#39;</span><span class="p">:[</span><span class="o">-</span><span class="mf">0.59855408</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.59855408</span><span class="p">,],</span>
+                        <span class="s1">&#39;Z_eff&#39;</span><span class="p">:[</span><span class="mf">12.8481725</span><span class="p">,</span> <span class="mf">12.8481725</span><span class="p">,],</span>
+                        <span class="s1">&#39;C&#39;</span><span class="p">:[</span><span class="mf">0.000</span><span class="p">,</span> <span class="mf">0.000</span><span class="p">,]}}</span>
+
+<span class="n">density</span><span class="o">.</span><span class="n">replace_by_model</span><span class="p">(</span><span class="n">fit</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">parameters</span><span class="o">=</span><span class="n">parameters_model</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="line-block">
+<div class="line"><strong>call 1:</strong>   params [ 0.361 0.361 -1.011 -1.011 -0.599 -0.599 12.842 12.848 0. 0.] <strong>R^2 0.805</strong></div>
+<div class="line"><strong>call 2:</strong>   params [ 0.379 0.361 -1.011 -1.011 -0.599 -0.599 12.848 12.848 0. 0.] <strong>R^2 0.800</strong></div>
+<div class="line"><strong>call 3:</strong>   …</div>
+</div>
+</section>
+<section id="write-out-modified-density-to-a-cube-file">
+<h2>Write out modified density to a .cube file<a class="headerlink" href="#write-out-modified-density-to-a-cube-file" title="Link to this heading">#</a></h2>
+<p>… to be visualized in VESTA</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">density</span><span class="o">.</span><span class="n">write_cube_file_rho_sz</span><span class="p">(</span><span class="n">fout</span><span class="o">=</span><span class="s1">&#39;rho_sz_modified.cube&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="integral-of-the-density-in-the-whole-unit-cell">
+<h2>Integral of the density (in the whole unit cell)<a class="headerlink" href="#integral-of-the-density-in-the-whole-unit-cell" title="Link to this heading">#</a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">rho_tot_unitcell</span><span class="p">,</span> <span class="n">rho_abs_tot_unitcell</span> <span class="o">=</span> <span class="n">density</span><span class="o">.</span><span class="n">integrate_cube_file</span><span class="p">(</span><span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;&quot;&quot;Total charge in the unit cell </span><span class="si">{</span><span class="n">rho_tot_unitcell</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2"> e.</span>
+<span class="s2">Total absolute charge in the unit cell </span><span class="si">{</span><span class="n">rho_abs_tot_unitcell</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2"> e.&quot;&quot;&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="line-block">
+<div class="line">Total charge in the unit cell 0.0000 e.</div>
+<div class="line">Total absolute charge in the unit cell 8.1414 e.</div>
+</div>
+</section>
+<section id="visualize-the-density-as-2d-slices">
+<h2>Visualize the density as 2D slices<a class="headerlink" href="#visualize-the-density-as-2d-slices" title="Link to this heading">#</a></h2>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">site_coordinates</span> <span class="o">=</span> <span class="n">density</span><span class="o">.</span><span class="n">get_sites_of_atoms</span><span class="p">(</span><span class="n">site_idx</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
 <span class="c1"># z position of atom 0</span>
 <span class="n">atom_0_z_coordinate</span> <span class="o">=</span> <span class="n">site_coordinates</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span>
@@ -373,64 +516,13 @@ document.write(`
 <span class="c1"># indices along the c lattice vector where density cuts should be plotted</span>
 <span class="n">c_idx</span> <span class="o">=</span> <span class="n">density</span><span class="o">.</span><span class="n">get_c_idx_at_z_coordinates</span><span class="p">(</span><span class="n">z_coordinates</span><span class="o">=</span><span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">atom_0_z_coordinate</span><span class="p">])</span>
 
-<span class="n">density</span><span class="o">.</span><span class="n">plot_cube_rho_sz</span><span class="p">(</span><span class="n">c_idx_arr</span><span class="o">=</span><span class="n">c_idx</span><span class="p">,</span> <span class="n">fout_name</span><span class="o">=</span><span class="sa">f</span><span class="s1">&#39;rho_sz_exploded_masked.jpg&#39;</span><span class="p">,</span>
+<span class="n">density</span><span class="o">.</span><span class="n">plot_cube_rho_sz</span><span class="p">(</span><span class="n">c_idx_arr</span><span class="o">=</span><span class="n">c_idx</span><span class="p">,</span> <span class="n">fout_name</span><span class="o">=</span><span class="s1">&#39;rho_sz_exploded_masked.jpg&#39;</span><span class="p">,</span>
                             <span class="n">alpha</span><span class="o">=</span><span class="mf">0.8</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mf">6.0</span><span class="p">,</span> <span class="mf">4.5</span><span class="p">),</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">400</span><span class="p">,</span>
                             <span class="n">zeros_transparent</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">show_plot</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </pre></div>
 </div>
-<a class="reference internal image-reference" href="_images/plot_2D_example_figure.png"><img alt="_images/plot_2D_example_figure.png" class="align-center" src="_images/plot_2D_example_figure.png" style="width: 800px;" />
+<a class="reference internal image-reference" href="_images/plot_2D_example_figure.png"><img alt="_images/plot_2D_example_figure.png" class="align-center" src="_images/plot_2D_example_figure.png" style="width: 500px;" />
 </a>
-</section>
-<section id="visualize-the-density-in-3d">
-<h2>Visualize the density in 3D<a class="headerlink" href="#visualize-the-density-in-3d" title="Link to this heading">#</a></h2>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># --- 3D plot ---</span>
-
-<span class="c1"># ---&gt; show plot</span>
-</pre></div>
-</div>
-</section>
-<section id="replace-by-a-model">
-<h2>Replace by a model<a class="headerlink" href="#replace-by-a-model" title="Link to this heading">#</a></h2>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># replace by model</span>
-</pre></div>
-</div>
-</section>
-<section id="or-even-fit-model-to-the-original-density">
-<h2><em>or even</em> Fit model to the original density<a class="headerlink" href="#or-even-fit-model-to-the-original-density" title="Link to this heading">#</a></h2>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># fit model</span>
-</pre></div>
-</div>
-</section>
-<section id="integrate-density-to-get-the-total-charge-spin">
-<h2>Integrate density to get the total charge (spin)<a class="headerlink" href="#integrate-density-to-get-the-total-charge-spin" title="Link to this heading">#</a></h2>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">rho_sz_tot</span><span class="p">,</span> <span class="n">rho_sz_abs_tot</span> <span class="o">=</span> <span class="n">density</span><span class="o">.</span><span class="n">integrate_cube_file</span><span class="p">()</span>
-
-<span class="c1"># show the output</span>
-</pre></div>
-</div>
-</section>
-<section id="perform-fft-plot-and-write-out-as-a-cube-file">
-<h2>Perform FFT, plot and write out as a .cube file<a class="headerlink" href="#perform-fft-plot-and-write-out-as-a-cube-file" title="Link to this heading">#</a></h2>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">density</span><span class="o">.</span><span class="n">FFT</span><span class="p">()</span>
-
-<span class="n">density</span><span class="o">.</span><span class="n">plot_fft_2D</span><span class="p">(</span><span class="n">i_kz</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-
-<span class="c1"># ---&gt; show plot</span>
-
-<span class="c1"># plot along cuts in the 2D map</span>
-
-<span class="c1"># ---&gt; show plot</span>
-
-<span class="c1"># PLOT 3D</span>
-<span class="c1"># ---&gt; show plot</span>
-
-<span class="c1"># WRITE OUT</span>
-
-<span class="n">density</span><span class="o">.</span><span class="n">write_cube_file_fft</span><span class="p">(</span><span class="n">fout</span><span class="o">=</span><span class="s1">&#39;fft_rho_sz.cube&#39;</span><span class="p">)</span>
-
-<span class="c1"># ----&gt; show how it&#39;s visualized in VESTA</span>
-</pre></div>
-</div>
 </section>
 </section>
 
@@ -481,12 +573,14 @@ document.write(`
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#import-the-density-class">Import the <code class="docutils literal notranslate"><span class="pre">Density</span></code> class</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#load-the-cube-file-spin-density">Load the .cube file (spin) density</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#visualize-the-density-in-2d">Visualize the density in 2D</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#visualize-the-density-in-3d">Visualize the density in 3D</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#replace-by-a-model">Replace by a model</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#or-even-fit-model-to-the-original-density"><em>or even</em> Fit model to the original density</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#integrate-density-to-get-the-total-charge-spin">Integrate density to get the total charge (spin)</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#perform-fft-plot-and-write-out-as-a-cube-file">Perform FFT, plot and write out as a .cube file</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#perform-fft-visualize-and-write-out-as-a-cube-file-itself">Perform FFT, visualize and write out as a .cube file itself</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#filter-out-only-regions-around-selected-sites">Filter out only regions around selected sites</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#replace-by-a-dx2y2-orbital-model-and-visualize">Replace by a dx2y2 orbital model and visualize</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#or-even-fit-the-model-to-the-original-density"><em>or even</em>: Fit the model to the original density</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#write-out-modified-density-to-a-cube-file">Write out modified density to a .cube file</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#integral-of-the-density-in-the-whole-unit-cell">Integral of the density (in the whole unit cell)</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#visualize-the-density-as-2d-slices">Visualize the density as 2D slices</a></li>
 </ul>
   </nav></div>
 

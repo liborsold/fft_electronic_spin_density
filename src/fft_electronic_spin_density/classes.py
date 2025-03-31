@@ -899,7 +899,7 @@ _sq = (x**2 + y**2 + z**2)
     #     "location": "right",
             
         fig.colorbar(mpl.cm.ScalarMappable(norm=mpl.colors.Normalize(colorbar_min, colorbar_max), cmap=cmap),
-             ax=ax, orientation='vertical', label=colorbar_label)
+             ax=ax, orientation='vertical', label=colorbar_label, shrink=0.5)
         # manually make a colorbar with limits -z_max_abs, z_max_abs and cmap coolwarm
         
         # cbar.set_clim(-z_max_abs, z_max_abs)
@@ -936,16 +936,10 @@ _sq = (x**2 + y**2 + z**2)
             ax.set_zlim(min(zlims), max(zlims))
 
         ax.set_aspect('equal', adjustable='box')
-        # plot colorbar the colorbar
-        # colorbar overlaps with axis label! use constrained_layout instead
-        # plt.gcf().set_constrained_layout(True)
-        
+    
+        plt.savefig(fout_name, dpi=dpi)
         if show_plot:
             plt.show()
-        else:
-            plt.savefig(fout_name, dpi=dpi)
-            plt.close()
-
 
     def plot_cube_rho_sz(self, c_idx_arr=[0,1,-1], fout_name='rho_sz.png', alpha=0.2, figsize=(8.0, 6), dpi=300, zeros_transparent=True,
                        xlims=None, ylims=None, zlims=None, show_plot=False, output_folder=None):
@@ -1132,7 +1126,10 @@ _sq = (x**2 + y**2 + z**2)
         return mcolors.ListedColormap(new_colors)
 
 
-    def plot_fft_2D(self, i_kz, fft_as_log=False, k1_idx=0, k2_idx=1, fout_name='colormap_2D_out.png', verbose=True, figsize=(8.0, 6.0), 
+    def plot_fft_2D(self, i_kz, fft_as_log=False, k1_idx=0, k2_idx=1, 
+                    fout_name='fft_2D_out.png', 
+                    verbose=True, 
+                    figsize=(6.0, 6.0), 
                     dpi=500,
                     fixed_z_scale=True, 
                     xlims=None, ylims=None,zlims=None,
@@ -1142,7 +1139,8 @@ _sq = (x**2 + y**2 + z**2)
                     cut_along='both',
                     normalized=True, 
                     cax_saturation=None,
-                    output_folder=None):
+                    output_folder=None,
+                    show_plot=False):
         """Plot the 2D FFT of the scalar field.
 
         Args:
@@ -1150,7 +1148,7 @@ _sq = (x**2 + y**2 + z**2)
             fft_as_log (bool, optional): Plot the log of the FFT. Defaults to False.
             k1_idx (int, optional): Index of the first lattice vector. Defaults to 0.
             k2_idx (int, optional): Index of the second lattice vector. Defaults to 1.
-            fout_name (str, optional): Name of the output file. Defaults to 'colormap_2D_out.png'.
+            fout_name (str, optional): Name of the output file. Defaults to 'fft_2D_out.png'.
             verbose (bool, optional): Print information about the plot. Defaults to True.
             figsize (tuple, optional): Size of the figure. Defaults to (8.0, 6.0).
             dpi (int, optional): Dots per inch. Defaults to 500.
@@ -1233,7 +1231,7 @@ _sq = (x**2 + y**2 + z**2)
             return f"{base}e{exponent}"
         # format string which keeps fixed length of the number, scientific format
         format = None if normalized else FuncFormatter(fmt)
-        cbar = plt.colorbar(label=label, format=format)
+        cbar = plt.colorbar(label=label, format=format, shrink=0.7)
 
         if fixed_z_scale and not normalized:
             plt.clim(0, np.max(self.F_abs_sq))
@@ -1299,7 +1297,9 @@ _sq = (x**2 + y**2 + z**2)
             fsplit = fout_name.split('.')
             fout_name = '.'.join(fsplit[:-1]) + '_fix-scale.' + fsplit[-1]
         plt.savefig(fout_name, dpi=dpi)
-        plt.close()
+
+        if show_plot:
+            plt.show()
 
     def write_cube_file_rho_sz(self, fout='rho_sz_modified.cube', output_folder=None):
         """Write out the modified rho_sz to a cube file.
