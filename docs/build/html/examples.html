@@ -337,7 +337,7 @@ document.write(`
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#perform-fft-visualize-in-2d-and-1d">Perform FFT, visualize in 2D and 1D</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#write-out-mathcal-f-rho-mathrm-s-as-a-cube-file">Write out <span class="math notranslate nohighlight">\(\mathcal{F}\{ \rho_\mathrm{s} \}\)</span> as a .cube file</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#replace-rho-mathrm-s-mathbf-r-by-a-model">Replace <span class="math notranslate nohighlight">\(\rho_\mathrm{s} (\mathbf{r})\)</span> by a model</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fit-the-model"><em>Fit</em> the model</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fit-a-model-to-the-original-density"><em>Fit</em> a model to the original density</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#write-out-the-modified-rho-mathrm-s-mathbf-r">Write out the <em>modified</em> <span class="math notranslate nohighlight">\(\rho_\mathrm{s} (\mathbf{r})\)</span></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#integrate-rho-mathrm-s-mathbf-r-over-the-unit-cell">Integrate <span class="math notranslate nohighlight">\(\rho_\mathrm{s} (\mathbf{r})\)</span> over the unit cell</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#visualize-the-density-as-2d-slices">Visualize the density as 2D slices</a></li>
@@ -427,6 +427,7 @@ document.write(`
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">density</span><span class="o">.</span><span class="n">FFT</span><span class="p">()</span>
 </pre></div>
 </div>
+<p>and visualize:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">fft_along_line_data</span> <span class="o">=</span> <span class="n">density</span><span class="o">.</span><span class="n">plot_fft_along_line</span><span class="p">(</span>
                                 <span class="n">i_kz</span><span class="o">=</span><span class="n">density</span><span class="o">.</span><span class="n">nkc</span><span class="o">//</span><span class="mi">2</span><span class="p">,</span>
                                 <span class="n">cut_along</span><span class="o">=</span><span class="s1">&#39;both&#39;</span><span class="p">,</span>
@@ -514,8 +515,8 @@ Any parameterized function (e.g., a Gaussian) can be defined as a model.</p>
 <a class="reference internal image-reference" href="_images/rho_sz_exploded_model.jpg"><img alt="_images/rho_sz_exploded_model.jpg" class="align-center" src="_images/rho_sz_exploded_model.jpg" style="width: 400px;" />
 </a>
 </section>
-<section id="fit-the-model">
-<h2><em>Fit</em> the model<a class="headerlink" href="#fit-the-model" title="Link to this heading">#</a></h2>
+<section id="fit-a-model-to-the-original-density">
+<h2><em>Fit</em> a model to the original density<a class="headerlink" href="#fit-a-model-to-the-original-density" title="Link to this heading">#</a></h2>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">site_idx</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>
 
 <span class="n">parameters_model</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;type&#39;</span><span class="p">:[</span><span class="s1">&#39;dx2y2_neat&#39;</span><span class="p">]</span><span class="o">*</span><span class="mi">2</span><span class="p">,</span>
@@ -545,6 +546,7 @@ Any parameterized function (e.g., a Gaussian) can be defined as a model.</p>
 </section>
 <section id="write-out-the-modified-rho-mathrm-s-mathbf-r">
 <h2>Write out the <em>modified</em> <span class="math notranslate nohighlight">\(\rho_\mathrm{s} (\mathbf{r})\)</span><a class="headerlink" href="#write-out-the-modified-rho-mathrm-s-mathbf-r" title="Link to this heading">#</a></h2>
+<p>At any stage of filtering out, replacing by a model or fitting:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">density</span><span class="o">.</span><span class="n">write_cube_file_rho_sz</span><span class="p">(</span><span class="n">fout</span><span class="o">=</span><span class="s1">&#39;rho_sz_modified.cube&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
@@ -644,7 +646,7 @@ Any parameterized function (e.g., a Gaussian) can be defined as a model.</p>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#perform-fft-visualize-in-2d-and-1d">Perform FFT, visualize in 2D and 1D</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#write-out-mathcal-f-rho-mathrm-s-as-a-cube-file">Write out <span class="math notranslate nohighlight">\(\mathcal{F}\{ \rho_\mathrm{s} \}\)</span> as a .cube file</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#replace-rho-mathrm-s-mathbf-r-by-a-model">Replace <span class="math notranslate nohighlight">\(\rho_\mathrm{s} (\mathbf{r})\)</span> by a model</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fit-the-model"><em>Fit</em> the model</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fit-a-model-to-the-original-density"><em>Fit</em> a model to the original density</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#write-out-the-modified-rho-mathrm-s-mathbf-r">Write out the <em>modified</em> <span class="math notranslate nohighlight">\(\rho_\mathrm{s} (\mathbf{r})\)</span></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#integrate-rho-mathrm-s-mathbf-r-over-the-unit-cell">Integrate <span class="math notranslate nohighlight">\(\rho_\mathrm{s} (\mathbf{r})\)</span> over the unit cell</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#visualize-the-density-as-2d-slices">Visualize the density as 2D slices</a></li>

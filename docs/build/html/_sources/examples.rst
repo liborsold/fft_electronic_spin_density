@@ -100,6 +100,7 @@ Perform FFT, visualize in 2D and 1D
 
     density.FFT()
 
+and visualize:
 
 .. code-block:: python
 
@@ -212,7 +213,7 @@ Any parameterized function (e.g., a Gaussian) can be defined as a model.
    :align: center
 
 
-*Fit* the model
+*Fit* a model to the original density
 -------------------------------------------------------------------
 
 .. code-block:: python
@@ -244,6 +245,8 @@ Any parameterized function (e.g., a Gaussian) can be defined as a model.
 
 Write out the *modified* :math:`\rho_\mathrm{s} (\mathbf{r})`
 -------------------------------------------------------------------
+
+At any stage of filtering out, replacing by a model or fitting:
 
 .. code-block:: python
 
