@@ -49,7 +49,7 @@ See the ``fourier_transform_behavior.ipynb`` notebook in the `examples folder <h
 
 
 Resolution and system size
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ... *as reciprocal quantities*:
 
@@ -71,7 +71,7 @@ space. This is achieved by setting ``scale_factor`` of the ``Density`` object la
 
 
 Phase due to displacement
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The dominant feature in the INS spectra, which is the stratification 
 due to the :math:`\left(1-\cos \left(\vec{k} \cdot \vec{r}_{a b}\right)\right)` term, 

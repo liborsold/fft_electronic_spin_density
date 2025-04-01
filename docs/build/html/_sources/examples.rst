@@ -256,7 +256,7 @@ At any stage of filtering out, replacing by a model or fitting:
 
 
 Integrate :math:`\rho_\mathrm{s} (\mathbf{r})` over the unit cell
--------------------------------------------------------------------
+-----------------------------------------------------------------------
 
 .. code-block:: python
 
