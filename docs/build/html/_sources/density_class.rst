@@ -1,5 +1,5 @@
 ``Density`` class
-==============
+==================================
 
 Everything is taken care of by the ``Density`` class.
     

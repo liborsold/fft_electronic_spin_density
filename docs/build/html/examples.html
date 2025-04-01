@@ -334,7 +334,8 @@ document.write(`
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#load-the-spin-density-cube-file">Load the (spin) density .cube file</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#visualize-the-density-in-3d">Visualize the density in 3D</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#filter-out-rho-mathrm-s-mathbf-r-around-selected-sites">Filter out <span class="math notranslate nohighlight">\(\rho_\mathrm{s} (\mathbf{r})\)</span> around selected sites</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#perform-fft-visualize-write-out-as-a-cube-file">Perform FFT, visualize, write out as a .cube file</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#perform-fft-visualize-in-2d-and-1d">Perform FFT, visualize in 2D and 1D</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#write-out-mathcal-f-rho-mathrm-s-as-a-cube-file">Write out <span class="math notranslate nohighlight">\(\mathcal{F}\{ \rho_\mathrm{s} \}\)</span> as a .cube file</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#replace-rho-mathrm-s-mathbf-r-by-a-model">Replace <span class="math notranslate nohighlight">\(\rho_\mathrm{s} (\mathbf{r})\)</span> by a model</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fit-the-model"><em>Fit</em> the model</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#write-out-the-modified-rho-mathrm-s-mathbf-r">Write out the <em>modified</em> <span class="math notranslate nohighlight">\(\rho_\mathrm{s} (\mathbf{r})\)</span></a></li>
@@ -363,7 +364,7 @@ document.write(`
 </figure>
 <section id="import-the-density-class">
 <h2>Import the <code class="docutils literal notranslate"><span class="pre">Density</span></code> class<a class="headerlink" href="#import-the-density-class" title="Link to this heading">#</a></h2>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fft_electronic_spin_density.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">Density</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fft_electronic_spin_density.classes</span><span class="w"> </span><span class="kn">import</span> <span class="n">Density</span>
 </pre></div>
 </div>
 </section>
@@ -375,14 +376,15 @@ document.write(`
 </section>
 <section id="visualize-the-density-in-3d">
 <h2>Visualize the density in 3D<a class="headerlink" href="#visualize-the-density-in-3d" title="Link to this heading">#</a></h2>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">density</span><span class="o">.</span><span class="n">plot_cube_rho_sz</span><span class="p">(</span><span class="n">c_idx_arr</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">density</span><span class="o">.</span><span class="n">nc</span><span class="p">),</span>
-                         <span class="n">fout_name</span><span class="o">=</span><span class="s1">&#39;rho_sz_exploded.jpg&#39;</span><span class="p">,</span>
-                         <span class="n">alpha</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span>
-                         <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mf">5.5</span><span class="p">,</span><span class="mf">5.5</span><span class="p">),</span>
-                         <span class="n">dpi</span><span class="o">=</span><span class="mi">400</span><span class="p">,</span>
-                         <span class="n">zeros_transparent</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-                         <span class="n">show_plot</span><span class="o">=</span><span class="kc">True</span>
-                         <span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">density</span><span class="o">.</span><span class="n">plot_cube_rho_sz</span><span class="p">(</span>
+                    <span class="n">c_idx_arr</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">density</span><span class="o">.</span><span class="n">nc</span><span class="p">),</span>
+                    <span class="n">fout_name</span><span class="o">=</span><span class="s1">&#39;rho_sz_exploded.jpg&#39;</span><span class="p">,</span>
+                    <span class="n">alpha</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span>
+                    <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mf">5.5</span><span class="p">,</span><span class="mf">5.5</span><span class="p">),</span>
+                    <span class="n">dpi</span><span class="o">=</span><span class="mi">400</span><span class="p">,</span>
+                    <span class="n">zeros_transparent</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                    <span class="n">show_plot</span><span class="o">=</span><span class="kc">True</span>
+                    <span class="p">)</span>
 </pre></div>
 </div>
 <a class="reference internal image-reference" href="_images/rho_sz_exploded.jpg"><img alt="_images/rho_sz_exploded.jpg" class="align-center" src="_images/rho_sz_exploded.jpg" style="width: 500px;" />
@@ -402,6 +404,7 @@ document.write(`
                             <span class="p">})</span>
 </pre></div>
 </div>
+<p>and visualize…</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">density</span><span class="o">.</span><span class="n">plot_cube_rho_sz</span><span class="p">(</span>
                  <span class="n">c_idx_arr</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">density</span><span class="o">.</span><span class="n">nc</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
                  <span class="n">fout_name</span><span class="o">=</span><span class="s1">&#39;rho_sz_exploded_filtered.jpg&#39;</span><span class="p">,</span>
@@ -419,8 +422,8 @@ document.write(`
 <a class="reference internal image-reference" href="_images/rho_sz_exploded_filtered.jpg"><img alt="_images/rho_sz_exploded_filtered.jpg" class="align-center" src="_images/rho_sz_exploded_filtered.jpg" style="width: 400px;" />
 </a>
 </section>
-<section id="perform-fft-visualize-write-out-as-a-cube-file">
-<h2>Perform FFT, visualize, write out as a .cube file<a class="headerlink" href="#perform-fft-visualize-write-out-as-a-cube-file" title="Link to this heading">#</a></h2>
+<section id="perform-fft-visualize-in-2d-and-1d">
+<h2>Perform FFT, visualize in 2D and 1D<a class="headerlink" href="#perform-fft-visualize-in-2d-and-1d" title="Link to this heading">#</a></h2>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">density</span><span class="o">.</span><span class="n">FFT</span><span class="p">()</span>
 </pre></div>
 </div>
@@ -458,10 +461,13 @@ document.write(`
 </a>
 <a class="reference internal image-reference" href="_images/cut_1D_both.png"><img alt="_images/cut_1D_both.png" class="align-center" src="_images/cut_1D_both.png" style="width: 450px;" />
 </a>
+</section>
+<section id="write-out-mathcal-f-rho-mathrm-s-as-a-cube-file">
+<h2>Write out <span class="math notranslate nohighlight">\(\mathcal{F}\{ \rho_\mathrm{s} \}\)</span> as a .cube file<a class="headerlink" href="#write-out-mathcal-f-rho-mathrm-s-as-a-cube-file" title="Link to this heading">#</a></h2>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">density</span><span class="o">.</span><span class="n">write_cube_file_fft</span><span class="p">(</span><span class="n">fout</span><span class="o">=</span><span class="s1">&#39;fft_rho_sz.cube&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>—&gt; visualize the .cube file in VESTA</p>
+<p>→ visualize the .cube file in VESTA</p>
 <a class="reference internal image-reference" href="_images/FFT_from_VESTA.png"><img alt="_images/FFT_from_VESTA.png" class="align-center" src="_images/FFT_from_VESTA.png" style="width: 250px;" />
 </a>
 </section>
@@ -539,10 +545,10 @@ Any parameterized function (e.g., a Gaussian) can be defined as a model.</p>
 </section>
 <section id="write-out-the-modified-rho-mathrm-s-mathbf-r">
 <h2>Write out the <em>modified</em> <span class="math notranslate nohighlight">\(\rho_\mathrm{s} (\mathbf{r})\)</span><a class="headerlink" href="#write-out-the-modified-rho-mathrm-s-mathbf-r" title="Link to this heading">#</a></h2>
-<p>… to be visualized in VESTA</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">density</span><span class="o">.</span><span class="n">write_cube_file_rho_sz</span><span class="p">(</span><span class="n">fout</span><span class="o">=</span><span class="s1">&#39;rho_sz_modified.cube&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
+<p>… to be visualized in VESTA</p>
 </section>
 <section id="integrate-rho-mathrm-s-mathbf-r-over-the-unit-cell">
 <h2>Integrate <span class="math notranslate nohighlight">\(\rho_\mathrm{s} (\mathbf{r})\)</span> over the unit cell<a class="headerlink" href="#integrate-rho-mathrm-s-mathbf-r-over-the-unit-cell" title="Link to this heading">#</a></h2>
@@ -556,9 +562,13 @@ Any parameterized function (e.g., a Gaussian) can be defined as a model.</p>
 <div class="line">Total charge in the unit cell 0.0000 e.</div>
 <div class="line">Total absolute charge in the unit cell 8.1414 e.</div>
 </div>
+<div class="line-block">
+<div class="line">(clearly a magnetically compensated antiferromagnetic spin density in this example unit cell)</div>
+</div>
 </section>
 <section id="visualize-the-density-as-2d-slices">
 <h2>Visualize the density as 2D slices<a class="headerlink" href="#visualize-the-density-as-2d-slices" title="Link to this heading">#</a></h2>
+<p>at selected heights (z-coordinates) along the $c$ lattice vector:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># z position of atom 0</span>
 <span class="n">site_coordinates</span> <span class="o">=</span> <span class="n">density</span><span class="o">.</span><span class="n">get_sites_of_atoms</span><span class="p">(</span><span class="n">site_idx</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
 <span class="n">atom_0_z_coordinate</span> <span class="o">=</span> <span class="n">site_coordinates</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span>
@@ -631,7 +641,8 @@ Any parameterized function (e.g., a Gaussian) can be defined as a model.</p>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#load-the-spin-density-cube-file">Load the (spin) density .cube file</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#visualize-the-density-in-3d">Visualize the density in 3D</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#filter-out-rho-mathrm-s-mathbf-r-around-selected-sites">Filter out <span class="math notranslate nohighlight">\(\rho_\mathrm{s} (\mathbf{r})\)</span> around selected sites</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#perform-fft-visualize-write-out-as-a-cube-file">Perform FFT, visualize, write out as a .cube file</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#perform-fft-visualize-in-2d-and-1d">Perform FFT, visualize in 2D and 1D</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#write-out-mathcal-f-rho-mathrm-s-as-a-cube-file">Write out <span class="math notranslate nohighlight">\(\mathcal{F}\{ \rho_\mathrm{s} \}\)</span> as a .cube file</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#replace-rho-mathrm-s-mathbf-r-by-a-model">Replace <span class="math notranslate nohighlight">\(\rho_\mathrm{s} (\mathbf{r})\)</span> by a model</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fit-the-model"><em>Fit</em> the model</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#write-out-the-modified-rho-mathrm-s-mathbf-r">Write out the <em>modified</em> <span class="math notranslate nohighlight">\(\rho_\mathrm{s} (\mathbf{r})\)</span></a></li>

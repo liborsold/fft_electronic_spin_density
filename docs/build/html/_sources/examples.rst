@@ -20,7 +20,7 @@ Import the ``Density`` class
 
 .. code-block:: python
 
-    from fft_electronic_spin_density.utils import Density
+    from fft_electronic_spin_density.classes import Density
 
 
 Load the (spin) density .cube file
@@ -36,14 +36,15 @@ Visualize the density in 3D
 
 .. code-block:: python
 
-    density.plot_cube_rho_sz(c_idx_arr=np.arange(0, density.nc),
-                             fout_name='rho_sz_exploded.jpg', 
-                             alpha=0.05, 
-                             figsize=(5.5,5.5), 
-                             dpi=400, 
-                             zeros_transparent=True, 
-                             show_plot=True
-                             )
+    density.plot_cube_rho_sz(
+                        c_idx_arr=np.arange(0, density.nc),
+                        fout_name='rho_sz_exploded.jpg', 
+                        alpha=0.05, 
+                        figsize=(5.5,5.5), 
+                        dpi=400, 
+                        zeros_transparent=True, 
+                        show_plot=True
+                        )
 
 .. 3D density
 .. image::
@@ -53,7 +54,7 @@ Visualize the density in 3D
 
 
 Filter out :math:`\rho_\mathrm{s} (\mathbf{r})` around selected sites
--------------------------------------------------------------------
+---------------------------------------------------------------------------------
 
 .. code-block:: python
 
@@ -68,6 +69,7 @@ Filter out :math:`\rho_\mathrm{s} (\mathbf{r})` around selected sites
                                 'site_radii':site_radii
                                 })
    
+and visualize...
 
 .. code-block:: python
    
@@ -91,7 +93,7 @@ Filter out :math:`\rho_\mathrm{s} (\mathbf{r})` around selected sites
    :align: center
 
 
-Perform FFT, visualize, write out as a .cube file
+Perform FFT, visualize in 2D and 1D
 -------------------------------------------------------------------
 
 .. code-block:: python
@@ -142,11 +144,14 @@ Perform FFT, visualize, write out as a .cube file
    :width: 450px
    :align: center
 
+Write out :math:`\mathcal{F}\{ \rho_\mathrm{s} \}` as a .cube file
+--------------------------------------------------------------------------------------------
+
 .. code-block:: python
 
     density.write_cube_file_fft(fout='fft_rho_sz.cube')
 
----> visualize the .cube file in VESTA
+→ visualize the .cube file in VESTA
 
 .. FFT 3D VESTA
 .. image::
@@ -239,11 +244,12 @@ Any parameterized function (e.g., a Gaussian) can be defined as a model.
 
 Write out the *modified* :math:`\rho_\mathrm{s} (\mathbf{r})`
 -------------------------------------------------------------------
-... to be visualized in VESTA
 
 .. code-block:: python
 
     density.write_cube_file_rho_sz(fout='rho_sz_modified.cube')
+
+... to be visualized in VESTA
 
 
 Integrate :math:`\rho_\mathrm{s} (\mathbf{r})` over the unit cell
@@ -260,9 +266,13 @@ Integrate :math:`\rho_\mathrm{s} (\mathbf{r})` over the unit cell
 | Total absolute charge in the unit cell 8.1414 e.
 
 
+| (clearly a magnetically compensated antiferromagnetic spin density in this example unit cell)
+
 
 Visualize the density as 2D slices
 -------------------------------------------------------------------
+
+at selected heights (z-coordinates) along the $c$ lattice vector:
 
 .. code-block:: python
 

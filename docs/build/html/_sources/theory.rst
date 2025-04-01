@@ -48,6 +48,28 @@ Fourier transform
 See the ``fourier_transform_behavior.ipynb`` notebook in the `examples folder <https://github.com/liborsold/fft_electronic_spin_density/tree/master/examples/>`_ to get a better understanding of FFT.
 
 
+Resolution and system size
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+... *as reciprocal quantities*:
+
+Due to the design of the fast Fourier transform (FFT), the resolution 
+of  :math:`\rho_\mathrm{s} (\mathbf{r})` is limited by the size of 
+the  :math:`\mathcal{F}\{\rho_\mathrm{s} (\mathbf{r})\}` space. 
+The resolution of :math:`\mathcal{F}\{\rho_\mathrm{s} (\mathbf{r})\}` can be increased by zero-padding the  :math:`\rho_\mathrm{s} (\mathbf{r})` 
+space. This is achieved by setting ``scale_factor`` of the ``Density`` object larger than 1.0.
+
+.. FFT system size and resolution
+.. figure::
+   ./_static/images/FFT_resolution_vs_size.png
+   :width: 550px
+   :align: center
+
+   Figure: Larger real space size (achieved possibly by zero padding via the ``scale_factor`` 
+   attribute) results in a higher resolution in the Fourier reciprocal space.  
+
+
+
 Phase due to displacement
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -62,28 +84,7 @@ arises in general for any Fourier transform of a repeated displaced object.
    :width: 550px
    :align: center
 
-   Figure: Displacement results in a plane-wave phase after a Fourier transform. 
+   Figure: Displacement results in a plane-wave *phase* after a Fourier transform. 
    While the FFT amplitude is unchanged if only a single displaced object is present, 
    the interference between the phase of such two objects introduces 
    a plane-wave term in the amplitude.
-
-
-Resolution and system size
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-... *as reciprocal quantities*:
-
-Due to the design of the fast Fourier transform (FFT), the resolution 
-of  :math:`\rho_\mathrm{s} (\mathbf{r})` is limited by the size of 
-the  :math:`\mathcal{F}\{\rho_\mathrm{s} (\mathbf{r})\}` space. 
-The resolution of can be increased by zero-padding the  :math:`\rho_\mathrm{s} (\mathbf{r})` 
-space. This is achieved by setting ``scale_factor`` of the ``Density`` object larger than 1.0.
-
-.. FFT system size and resolution
-.. figure::
-   ./_static/images/FFT_resolution_vs_size.png
-   :width: 550px
-   :align: center
-
-   Figure: Larger real space size (achieved possibly by zero padding via the ``scale_factor`` 
-   attribute) results in a higher resolution in the Fourier reciprocal space.  

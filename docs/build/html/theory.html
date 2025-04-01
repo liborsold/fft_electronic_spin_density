@@ -335,8 +335,8 @@ document.write(`
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fourier-transform">Fourier transform</a><ul class="nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phase-due-to-displacement">Phase due to displacement</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#resolution-and-system-size">Resolution and system size</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phase-due-to-displacement">Phase due to displacement</a></li>
 </ul>
 </li>
 </ul>
@@ -381,36 +381,36 @@ Such model is very useful to, e.g., study the <span class="math notranslate nohi
 <section id="fourier-transform">
 <h2>Fourier transform<a class="headerlink" href="#fourier-transform" title="Link to this heading">#</a></h2>
 <p>See the <code class="docutils literal notranslate"><span class="pre">fourier_transform_behavior.ipynb</span></code> notebook in the <a class="reference external" href="https://github.com/liborsold/fft_electronic_spin_density/tree/master/examples/">examples folder</a> to get a better understanding of FFT.</p>
-<section id="phase-due-to-displacement">
-<h3>Phase due to displacement<a class="headerlink" href="#phase-due-to-displacement" title="Link to this heading">#</a></h3>
-<p>The dominant feature in the INS spectra, which is the stratification
-due to the <span class="math notranslate nohighlight">\(\left(1-\cos \left(\vec{k} \cdot \vec{r}_{a b}\right)\right)\)</span> term,
-arises in general for any Fourier transform of a repeated displaced object.</p>
-<figure class="align-center" id="id1">
-<a class="reference internal image-reference" href="_images/FFT_general.png"><img alt="_images/FFT_general.png" src="_images/FFT_general.png" style="width: 550px;" />
-</a>
-<figcaption>
-<p><span class="caption-text">Figure: Displacement results in a plane-wave phase after a Fourier transform.
-While the FFT amplitude is unchanged if only a single displaced object is present,
-the interference between the phase of such two objects introduces
-a plane-wave term in the amplitude.</span><a class="headerlink" href="#id1" title="Link to this image">#</a></p>
-</figcaption>
-</figure>
-</section>
 <section id="resolution-and-system-size">
 <h3>Resolution and system size<a class="headerlink" href="#resolution-and-system-size" title="Link to this heading">#</a></h3>
 <p>… <em>as reciprocal quantities</em>:</p>
 <p>Due to the design of the fast Fourier transform (FFT), the resolution
 of  <span class="math notranslate nohighlight">\(\rho_\mathrm{s} (\mathbf{r})\)</span> is limited by the size of
 the  <span class="math notranslate nohighlight">\(\mathcal{F}\{\rho_\mathrm{s} (\mathbf{r})\}\)</span> space.
-The resolution of can be increased by zero-padding the  <span class="math notranslate nohighlight">\(\rho_\mathrm{s} (\mathbf{r})\)</span>
+The resolution of <span class="math notranslate nohighlight">\(\mathcal{F}\{\rho_\mathrm{s} (\mathbf{r})\}\)</span> can be increased by zero-padding the  <span class="math notranslate nohighlight">\(\rho_\mathrm{s} (\mathbf{r})\)</span>
 space. This is achieved by setting <code class="docutils literal notranslate"><span class="pre">scale_factor</span></code> of the <code class="docutils literal notranslate"><span class="pre">Density</span></code> object larger than 1.0.</p>
-<figure class="align-center" id="id2">
+<figure class="align-center" id="id1">
 <a class="reference internal image-reference" href="_images/FFT_resolution_vs_size.png"><img alt="_images/FFT_resolution_vs_size.png" src="_images/FFT_resolution_vs_size.png" style="width: 550px;" />
 </a>
 <figcaption>
 <p><span class="caption-text">Figure: Larger real space size (achieved possibly by zero padding via the <code class="docutils literal notranslate"><span class="pre">scale_factor</span></code>
-attribute) results in a higher resolution in the Fourier reciprocal space.</span><a class="headerlink" href="#id2" title="Link to this image">#</a></p>
+attribute) results in a higher resolution in the Fourier reciprocal space.</span><a class="headerlink" href="#id1" title="Link to this image">#</a></p>
+</figcaption>
+</figure>
+</section>
+<section id="phase-due-to-displacement">
+<h3>Phase due to displacement<a class="headerlink" href="#phase-due-to-displacement" title="Link to this heading">#</a></h3>
+<p>The dominant feature in the INS spectra, which is the stratification
+due to the <span class="math notranslate nohighlight">\(\left(1-\cos \left(\vec{k} \cdot \vec{r}_{a b}\right)\right)\)</span> term,
+arises in general for any Fourier transform of a repeated displaced object.</p>
+<figure class="align-center" id="id2">
+<a class="reference internal image-reference" href="_images/FFT_general.png"><img alt="_images/FFT_general.png" src="_images/FFT_general.png" style="width: 550px;" />
+</a>
+<figcaption>
+<p><span class="caption-text">Figure: Displacement results in a plane-wave <em>phase</em> after a Fourier transform.
+While the FFT amplitude is unchanged if only a single displaced object is present,
+the interference between the phase of such two objects introduces
+a plane-wave term in the amplitude.</span><a class="headerlink" href="#id2" title="Link to this image">#</a></p>
 </figcaption>
 </figure>
 </section>
@@ -459,8 +459,8 @@ attribute) results in a higher resolution in the Fourier reciprocal space.</span
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fourier-transform">Fourier transform</a><ul class="nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phase-due-to-displacement">Phase due to displacement</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#resolution-and-system-size">Resolution and system size</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phase-due-to-displacement">Phase due to displacement</a></li>
 </ul>
 </li>
 </ul>
