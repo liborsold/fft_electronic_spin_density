@@ -50,9 +50,9 @@ Navigation
    :maxdepth: 1
 
    examples
+   theory
    density_class
    api
-   theory
 
 Indices
 ==================
