@@ -141,3 +141,9 @@ using the identity :math:`\mathrm{sin}^2(x) = \frac{1}{2} (1 - \mathrm{cos}(2x))
     \begin{align*}
         \left|\mathcal{F}\left\{\rho_\mathrm{s} (\mathbf{r}) - \rho_\mathrm{s} (\mathbf{r}-\mathbf{r}_{a b}) \right\}\right|^2 = 2 \, \left(1 - \mathrm{cos}(\mathbf{k} \cdot \mathbf{r}_{a b})\right) \; |\mathcal{F}\left\{\rho_\mathrm{s} (\mathbf{r}) \right\}|^2 \,.
     \end{align*}
+
+
+Further details
+-----------------------------------------------------------------------------------
+
+Please see *L. Spitz, L. Vojáček, et al., under preparation.* for further details on the theory and the implementation of the present package.
