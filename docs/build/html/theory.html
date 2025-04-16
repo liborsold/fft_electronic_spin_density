@@ -337,7 +337,11 @@ document.write(`
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fourier-transform">Fourier transform</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#resolution-and-system-size">Resolution and system size</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phase-due-to-displacement">Phase due to displacement</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phase-due-to-displacement">Phase due to displacement</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#numerically">Numerically</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#analytically">Analytically</a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
@@ -359,12 +363,12 @@ document.write(`
 <p>The INS spectra of a copper dimer with non-overlapping magnetic orbitals</p>
 <div class="math notranslate nohighlight">
 \[\begin{equation}
-    S_{zz}=\frac{1}{2} |F(\vec{k})|^2 \left(1-\cos \left(\vec{k} \cdot \vec{r}_{a b}\right)\right) \, \delta\left(\hbar \omega+E_S-E_{T_0}\right).
+    S_{zz}=\frac{1}{2} |F(\mathbf{k})|^2 \left(1-\cos \left(\mathbf{k} \cdot \mathbf{r}_{a b}\right)\right) \, \delta\left(\hbar \omega+E_S-E_{T_0}\right).
 \end{equation}\]</div>
 <p>includes the <em>magnetic form factor</em></p>
 <div class="math notranslate nohighlight">
 \[\begin{equation}
-    F(\mathbf{\kappa}) \equiv e^{i \mathbf{\kappa} \cdot \mathbf{r}} \rho_\mathrm{s} (\mathbf{r}) d\mathbf{r} = \int e^{i \mathbf{\kappa} \cdot \mathbf{r}} \rho_\mathrm{s} (\mathbf{r})
+    F(\mathbf{k}) \equiv e^{i \mathbf{k} \cdot \mathbf{r}} \rho_\mathrm{s} (\mathbf{r}) d\mathbf{r} = \int e^{i \mathbf{k} \cdot \mathbf{r}} \rho_\mathrm{s} (\mathbf{r})
 \end{equation}\]</div>
 <p>which is the <strong>Fourier transform of the spin density</strong> <span class="math notranslate nohighlight">\(\rho_\mathrm{s} (\mathbf{r})\)</span>.</p>
 <p>The spin density is obtained from a density functional theory (DFT) calculation and usually output as a Gaussian .cube file.</p>
@@ -391,10 +395,10 @@ the  <span class="math notranslate nohighlight">\(\mathcal{F}\{\rho_\mathrm{s} (
 The resolution of <span class="math notranslate nohighlight">\(\mathcal{F}\{\rho_\mathrm{s} (\mathbf{r})\}\)</span> can be increased by zero-padding the  <span class="math notranslate nohighlight">\(\rho_\mathrm{s} (\mathbf{r})\)</span>
 space. This is achieved by setting <code class="docutils literal notranslate"><span class="pre">scale_factor</span></code> of the <code class="docutils literal notranslate"><span class="pre">Density</span></code> object larger than 1.0.</p>
 <figure class="align-center" id="id1">
-<a class="reference internal image-reference" href="_images/FFT_resolution_vs_size.png"><img alt="_images/FFT_resolution_vs_size.png" src="_images/FFT_resolution_vs_size.png" style="width: 550px;" />
+<a class="reference internal image-reference" href="_images/FFT_resolution_vs_size.png"><img alt="_images/FFT_resolution_vs_size.png" src="_images/FFT_resolution_vs_size.png" style="width: 650px;" />
 </a>
 <figcaption>
-<p><span class="caption-text">Figure: Larger real space size (achieved possibly by zero padding via the <code class="docutils literal notranslate"><span class="pre">scale_factor</span></code>
+<p><span class="caption-text">Figure: Larger real space size (achieved for instance by zero padding via the <code class="docutils literal notranslate"><span class="pre">scale_factor</span></code>
 attribute) results in a higher resolution in the Fourier reciprocal space.</span><a class="headerlink" href="#id1" title="Link to this image">#</a></p>
 </figcaption>
 </figure>
@@ -402,10 +406,12 @@ attribute) results in a higher resolution in the Fourier reciprocal space.</span
 <section id="phase-due-to-displacement">
 <h3>Phase due to displacement<a class="headerlink" href="#phase-due-to-displacement" title="Link to this heading">#</a></h3>
 <p>The dominant feature in the INS spectra, which is the stratification
-due to the <span class="math notranslate nohighlight">\(\left(1-\cos \left(\vec{k} \cdot \vec{r}_{a b}\right)\right)\)</span> term,
+due to the <span class="math notranslate nohighlight">\(\left(1-\cos \left(\mathbf{k} \cdot \mathbf{r}_{a b}\right)\right)\)</span> term,
 arises in general for any Fourier transform of a repeated displaced object.</p>
+<section id="numerically">
+<h4>Numerically<a class="headerlink" href="#numerically" title="Link to this heading">#</a></h4>
 <figure class="align-center" id="id2">
-<a class="reference internal image-reference" href="_images/FFT_general.png"><img alt="_images/FFT_general.png" src="_images/FFT_general.png" style="width: 550px;" />
+<a class="reference internal image-reference" href="_images/FFT_general.png"><img alt="_images/FFT_general.png" src="_images/FFT_general.png" style="width: 650px;" />
 </a>
 <figcaption>
 <p><span class="caption-text">Figure: Displacement results in a plane-wave <em>phase</em> after a Fourier transform.
@@ -414,6 +420,44 @@ the interference between the phase of such two objects introduces
 a plane-wave term in the amplitude.</span><a class="headerlink" href="#id2" title="Link to this image">#</a></p>
 </figcaption>
 </figure>
+</section>
+<section id="analytically">
+<h4>Analytically<a class="headerlink" href="#analytically" title="Link to this heading">#</a></h4>
+<p>The origin of the <span class="math notranslate nohighlight">\(\left(1-\cos \left(\mathbf{k} \cdot \mathbf{r}_{a b}\right)\right)\)</span> term can be easily shown to come from the Fourier transform of
+two identical functions with opposite sign displaced in space by vector <span class="math notranslate nohighlight">\(\mathbf{r}_{a b}\)</span> relative to each other</p>
+<div class="math notranslate nohighlight">
+\[\begin{align*}
+    \mathcal{F}\left\{ \; \rho_\mathrm{s} (\mathbf{r}) - \rho_\mathrm{s} (\mathbf{r}-\mathbf{r}_{a b}) \; \right\} = \mathcal{F}\left\{\rho_\mathrm{s} (\mathbf{r})\right\} - \mathcal{F}\left\{\rho_\mathrm{s} (\mathbf{r}-\mathbf{r}_{a b}) \right\}
+\end{align*}\]</div>
+<p>By substitution <span class="math notranslate nohighlight">\(\mathbf{r'} \equiv \mathbf{r}-\mathbf{r}_{a b}\)</span> we have</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\begin{align*}
+    \mathcal{F}\left\{\rho_\mathrm{s} (\mathbf{r}-\mathbf{r}_{a b}) \right\} &amp;= \int e^{i \mathbf{k} \cdot \mathbf{r}} \rho_\mathrm{s} (\mathbf{r}-\mathbf{r}_{a b}) \mathrm{d}\mathbf{r} = \int e^{i \mathbf{k} \cdot (\mathbf{r'}+\mathbf{r}_{a b})} \rho_\mathrm{s} (\mathbf{r'}) \mathrm{d}\mathbf{r'} \\
+                                                                             &amp;= e^{i \mathbf{k} \cdot \mathbf{r}_{a b}} \; \mathcal{F}\left\{\rho_\mathrm{s} (\mathbf{r}) \right\}
+\end{align*}\end{split}\]</div>
+<p>so that</p>
+<div class="math notranslate nohighlight">
+\[\begin{align*}
+    \mathcal{F}\left\{\rho_\mathrm{s} (\mathbf{r}) - \rho_\mathrm{s} (\mathbf{r}-\mathbf{r}_{a b}) \right\} = \left( 1 - e^{i \mathbf{k} \cdot \mathbf{r}_{a b}} \right) \mathcal{F}\left\{\rho_\mathrm{s} (\mathbf{r}) \right\}
+\end{align*}\]</div>
+<p>and because</p>
+<div class="math notranslate nohighlight">
+\[\begin{align*}
+        \left( 1 - e^{i \mathbf{k} \cdot \mathbf{r}_{a b}} \right) = e^{i \mathbf{k} \cdot \frac{\mathbf{r}_{a b}}{2}} \left( e^{-i \mathbf{k} \cdot \frac{\mathbf{r}_{a b}}{2}} - e^{i \mathbf{k} \cdot \frac{\mathbf{r}_{a b}}{2}}\right) = e^{i \mathbf{k} \cdot \frac{\mathbf{r}_{a b}}{2}} \left(-2i \, \mathrm{sin}(\mathbf{k} \cdot \frac{\mathbf{r}_{a b}}{2})\right)
+\end{align*}\]</div>
+<p>it follows that</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\begin{align*}
+    \left| \left( 1 + e^{i \mathbf{k} \cdot \mathbf{r}_{a b}} \right) \right|^2 &amp;= \left|e^{i \mathbf{k} \cdot \frac{\mathbf{r}_{a b}}{2}}\right|^2 \cdot \left| -2i \, \mathrm{sin}(\mathbf{k} \cdot \frac{\mathbf{r}_{a b}}{2}) \right|^2 \\
+                                                                          &amp;= 1 \cdot 4 \, \mathrm{sin}^2(\mathbf{k} \cdot \frac{\mathbf{r}_{a b}}{2}) \\
+                                                                          &amp;= 1 \cdot 2 \left(1 - \mathrm{cos}(\mathbf{k} \cdot \mathbf{r}_{a b})\right)
+\end{align*}\end{split}\]</div>
+<p>using the identity <span class="math notranslate nohighlight">\(\mathrm{sin}^2(x) = \frac{1}{2} (1 - \mathrm{cos}(2x))\)</span>; hence</p>
+<div class="math notranslate nohighlight">
+\[\begin{align*}
+    \left|\mathcal{F}\left\{\rho_\mathrm{s} (\mathbf{r}) - \rho_\mathrm{s} (\mathbf{r}-\mathbf{r}_{a b}) \right\}\right|^2 = 2 \, \left(1 - \mathrm{cos}(\mathbf{k} \cdot \mathbf{r}_{a b})\right) \; |\mathcal{F}\left\{\rho_\mathrm{s} (\mathbf{r}) \right\}|^2 \,.
+\end{align*}\]</div>
+</section>
 </section>
 </section>
 </section>
@@ -470,7 +514,11 @@ a plane-wave term in the amplitude.</span><a class="headerlink" href="#id2" titl
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fourier-transform">Fourier transform</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#resolution-and-system-size">Resolution and system size</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phase-due-to-displacement">Phase due to displacement</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phase-due-to-displacement">Phase due to displacement</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#numerically">Numerically</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#analytically">Analytically</a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
