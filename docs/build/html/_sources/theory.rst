@@ -146,4 +146,4 @@ using the identity :math:`\mathrm{sin}^2(x) = \frac{1}{2} (1 - \mathrm{cos}(2x))
 Further details
 -----------------------------------------------------------------------------------
 
-Please see *L. Spitz, L. Vojáček, et al., under preparation.* for further details on the theory and the implementation of the present package.
+Please see *L. Spitz, L. Vojáček, et al., under preparation* for further details on the theory and the implementation of the present package.
