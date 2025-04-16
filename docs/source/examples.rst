@@ -255,6 +255,13 @@ At any stage of filtering out, replacing by a model or fitting:
 ... to be visualized in VESTA
 
 
+.. modified density VESTA
+.. image::
+   ./_static/images/modified_density_VESTA.png
+   :width: 800px
+   :align: center
+
+
 Integrate :math:`\rho_\mathrm{s} (\mathbf{r})` over the unit cell
 -----------------------------------------------------------------------
 
