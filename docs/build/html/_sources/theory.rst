@@ -28,7 +28,7 @@ The spin density is obtained from a density functional theory (DFT) calculation 
 **The (spin) density from a .cube file can then be loaded, filtered out, Fourier transformed, and visualized by the present** ``fft_electronic_spin_density`` **package.**
 
 
-Filtering-out :math:`\rho_\mathrm{s} (\mathbf{r})`
+Filtering-out :math:`\rho_\mathrm{s} (\mathbf{r})` around selected sites
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Keeping the spin density only around selected sites is important to get rid of spurious spectra and evaluate the effect of the oxygen ligands.
