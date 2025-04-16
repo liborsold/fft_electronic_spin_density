@@ -272,8 +272,8 @@ Integrate :math:`\rho_\mathrm{s} (\mathbf{r})` over the unit cell
    print(f"""Total charge in the unit cell {rho_tot_unitcell:.4f} e.
    Total absolute charge in the unit cell {rho_abs_tot_unitcell:.4f} e.""")
 
-| Total charge in the unit cell 0.0000 e.
-| Total absolute charge in the unit cell 8.1414 e.
+| **Total charge in the unit cell 0.0000 e.**
+| **Total absolute charge in the unit cell 8.1414 e.**
 
 
 | (clearly a magnetically compensated antiferromagnetic spin density in this example unit cell)
