@@ -1140,7 +1140,9 @@ _sq = (x**2 + y**2 + z**2)
                     normalized=True, 
                     cax_saturation=None,
                     output_folder=None,
-                    show_plot=False):
+                    show_plot=False, 
+                    data_to_plot=None,
+                    quantity_name=r'$|F|^2$'):
         """Plot the 2D FFT of the scalar field.
 
         Args:
@@ -1165,6 +1167,9 @@ _sq = (x**2 + y**2 + z**2)
             normalized (bool, optional): Normalize the FFT. Defaults to True.
             cax_saturation (float, optional): Saturation value for the colorbar. Defaults to None.
             output_folder (str, optional): Output folder. Defaults to None.
+            show_plot (bool, optional): Show the plot. Defaults to False.
+            data_to_plot (np.ndarray, optional): Data to plot. Defaults to None, in which case the data will be a cut of np.abs(F_abs_sq) at index i_kz.
+            quantity_name (str, optional): Name of the quantity to plot. Defaults to r'$|F|^2$'.
         """
         
         if output_folder is None:
@@ -1210,9 +1215,12 @@ _sq = (x**2 + y**2 + z**2)
         X = I * k1[0] + J * k2[0]
         Y = I * k1[1] + J * k2[1]  
 
-        plot_array = np.abs(F_abs_sq_cut)
-        if fft_as_log:
-            plot_array = np.log(plot_array)
+        if data_to_plot is None:
+            plot_array = np.abs(F_abs_sq_cut)
+            if fft_as_log:
+                plot_array = np.log(plot_array)
+        else:
+            plot_array = data_to_plot
 
         # 'SATURATED' colormap
         #     - custom cmap that will have 'viridis' from 0 to cax_lim and the max color of 'viridis' from cax_lim to 1.0
@@ -1224,7 +1232,7 @@ _sq = (x**2 + y**2 + z**2)
         plt.pcolormesh(X, Y, plot_array, shading='auto', cmap=cmap)
 
         # colorbar
-        label = r'$\mathrm{log}\(|F|^2\)_{xy}$' if fft_as_log else '$|F|^2$'
+        label = 'log of '+quantity_name if fft_as_log else quantity_name #r'$\mathrm{log}\(|F|^2\)_{xy}$'
         def fmt(x, pos): 
             base, exponent = f"{x:2.1e}".split('e')
             exponent = f"{int(exponent):+01d}"  # Format exponent with a sign and 3 digits
@@ -1276,7 +1284,7 @@ _sq = (x**2 + y**2 + z**2)
         # Formatting
         plt.xlabel(r"$k_x$ ($\mathrm{\AA}^{-1}$)", fontsize=12)
         plt.ylabel(r"$k_y$ ($\mathrm{\AA}^{-1}$)", fontsize=12)
-        plt.title(r"$|F|^2$($k_x$, $k_y$; $k_z$ = " + f'{self.get_kz_at_index(i_kz):.4f} '+r'$\mathrm{\AA}^{-1})$', fontsize=12)
+        plt.title(quantity_name+r"($k_x$, $k_y$; $k_z$ = " + f'{self.get_kz_at_index(i_kz):.4f} '+r'$\mathrm{\AA}^{-1})$', fontsize=12)
 
         ax.set_aspect('equal', adjustable='box')  # Keep aspect ratio
 
@@ -1558,7 +1566,7 @@ def workflow(output_folder, site_idx, site_radii, replace_DFT_by_model, paramete
     full_range_fft_spectrum_cuts = False
     zoom_in_fft_spectrum_cuts = False
 
-    write_cube_files = False
+    write_cube_files = True
 
     # ---- PARAMETERS -----
 
@@ -1751,7 +1759,7 @@ def workflow_density_vs_cutoff_radius(site_idx=[0], site_radii_all=[[i] for i in
 
     for site_radii in site_radii_all:
             # ---- READ CUBE FILE -----
-        density = Density(permutation=permutation, verbose=True, fname_cube_file=fname_cube_file)
+        density = Density(permutation=permutation, verbose=True, fname_cube_file=fname_cube_file, scale_factor=scale_factor,)
 
         rho_tot_unitcell, rho_abs_tot_unitcell = density.integrate_cube_file()
 
@@ -1806,7 +1814,7 @@ def workflow_autocorrelation_term(parameters_model, scale_R_array=[1.0], output_
     R_base = np.array([3.01571, 6.45289, 4.99992]) - np.array([4.85991, 5.28091, 3.56158]) # Cu1 - Cu0 = (-1.8442, 1.17198, 1.43834)
     R_array=[f*R_base for f in scale_R_array]
 
-    fname_cube_file = './cube_files/Cu2AC4_rho_sz_512.cube' #'./cube_files/Mn2GeO4_rho_sz.cube'
+    fname_cube_file = './cube_files/Cu2AC4_rho_sz_256.cube' #'./cube_files/Mn2GeO4_rho_sz.cube'
     permutation = None #!! for Mn2GeO4 need to use [2,1,0] to swap x,y,z -> z,y,x
     # output_folder = './outputs/Cu2AC4/E_perp/case_23' #_and_oxygens' # 'Mn2GeO4_kz_tomography_64' #'./gaussian/sigma_0.3_distance_1.0' # Mn2GeO4_kz_tomography_64
 
@@ -1815,7 +1823,7 @@ def workflow_autocorrelation_term(parameters_model, scale_R_array=[1.0], output_
         os.makedirs(output_folder)
 
     # ---- READ CUBE FILE -----
-    orbital = Density(permutation=permutation, verbose=True, fname_cube_file=fname_cube_file, output_folder=output_folder)
+    orbital = Density(permutation=permutation, verbose=True, fname_cube_file=fname_cube_file, output_folder=output_folder, scale_factor=scale_factor, )
     # orbital.plot_fft_along_line(i_kz=orbital.nc//2, cut_along='stripes', kx_ky_fun=None, k_dist_lim=15, N_points=3001, fout_name=f'{output_folder}/test_1D_plot_along.png')
 
 
@@ -1833,7 +1841,7 @@ def workflow_autocorrelation_term(parameters_model, scale_R_array=[1.0], output_
 
     # conjugate it
     orbital.conjugate()
-    orbital_conj_array = deepcopy(orbital.array)
+    # orbital_conj_array = deepcopy(orbital.array)
     # orbital.write_cube_file_rho_sz(fout=folder_out + '/orbital_conjugate.cube')
 
     # make a density out of it
@@ -1853,7 +1861,7 @@ def workflow_autocorrelation_term(parameters_model, scale_R_array=[1.0], output_
     E_perp_sq_integrated_all = []
 
     for scale_R, R in zip(scale_R_array, R_array):
-        appendix = f'scale-R_{scale_R:.2f}'
+        appendix = f'scale-R_{scale_R:.2f}_scale-factor_{scale_factor:.2f}'
         # ---- REPLACE 2 BY MODEL -----
         # add the displacement R to all site centers
         site_centers_plus = [tuple(np.array(r) + np.array(R)) for r in site_centers]
@@ -1863,7 +1871,8 @@ def workflow_autocorrelation_term(parameters_model, scale_R_array=[1.0], output_
         orbital_shifted_plus.replace_by_model(parameters=parameters_model, leave_as_wavefunction=True)
 
         orbital_shifted_plus.square_data()
-        orbital_shifted_plus.write_cube_file_rho_sz(f'density_shifted_plus_{appendix}.cube')  #- beware - after writing out the cube file, some data is maybe missing in the object
+        if write_cube_files:
+            orbital_shifted_plus.write_cube_file_rho_sz(f'density_shifted_plus_{appendix}.cube')  #- beware - after writing out the cube file, some data is maybe missing in the object
 
         # if write_cube_files:
         #     orbital_shifted_plus.write_cube_file_rho_sz(fout=f'orbital_shifted_plus_{appendix}.cube')  #- beware - after writing out the cube file, some data is maybe missing in the object
@@ -1900,7 +1909,6 @@ def workflow_autocorrelation_term(parameters_model, scale_R_array=[1.0], output_
         density.F_abs_sq = np.abs(form_factor_term)**2
         if write_cube_files:
             density.write_cube_file_fft(f'cos_prefactor_times_form_factor_squared_{appendix}.cube')   # density here is just a surrogate to save the relevant data
-        # cut maps
         
         form_factor_term_sq_integrated, _ = density.integrate_cube_file(fft=True)
         form_factor_term_sq_integrated_all.append(form_factor_term_sq_integrated)
@@ -1920,6 +1928,44 @@ def workflow_autocorrelation_term(parameters_model, scale_R_array=[1.0], output_
             density.write_cube_file_fft(f'E_perp_squared_{appendix}.cube')   # density here is just a surrogate to save the relevant data
         E_perp_sq_integrated, _ = density.integrate_cube_file(fft=True)
         E_perp_sq_integrated_all.append(E_perp_sq_integrated)
+
+        # colormaps
+        # plot the 2D FFT
+        fft_figsize = (4.5, 4.5)
+        fft_dpi = 400
+        kmax = 19
+        fft_xlims = list( kmax * np.array([-1,1]) ) # 1/Angstrom
+        fft_ylims = list( kmax * np.array([-1,1]) ) # 1/Angstrom
+
+        i_kz_center = density.nkc//2 # density.get_i_kz(kz_target=density.nkc/2)
+
+        i_kz_array =  [ i_kz_center + i for i in range(-4,5) ] # + i for i in range(-10, 10, 2) ] #range(density.nkc)
+        
+        for i_kz in i_kz_array:
+            density.plot_fft_2D(i_kz=i_kz, 
+                                fout_name=f'F_abs_sq_{appendix}_overlap-term_kz_{density.get_kz_at_index(i_kz):.4f}.png', 
+                                figsize=fft_figsize,
+                                dpi=fft_dpi, 
+                                fixed_z_scale=False,
+                                xlims=fft_xlims,
+                                ylims=fft_ylims,
+                                data_to_plot=(np.abs(overlap_term)**2)[:,:,i_kz],
+                                normalized=False,
+                                quantity_name=r'$|E_\mathrm{overlap}|^2$',
+                                )
+            
+            density.plot_fft_2D(i_kz=i_kz, 
+                                fout_name=f'F_abs_sq_{appendix}_form-factor_term_kz_{density.get_kz_at_index(i_kz):.4f}.png', 
+                                figsize=fft_figsize,
+                                dpi=fft_dpi, 
+                                fixed_z_scale=False,
+                                xlims=fft_xlims,
+                                ylims=fft_ylims,
+                                data_to_plot=(np.abs(form_factor_term)**2)[:,:,i_kz],
+                                normalized=False,
+                                quantity_name=r'$|F|^2$',
+                                )
+
 
     # save data
     with open(f'{output_folder}/E_perp_sq_vs_scale_R.txt', 'w+') as fw:
@@ -1943,7 +1989,7 @@ if __name__ == '__main__':
     # workflow_density_vs_cutoff_radius(site_idx=[0], site_radii_all=[[i] for i in np.arange(0.5, 4.0, 0.5)], plot=True)
     # exit()
 
-    scale_factor = 1.0
+    scale_factor = 3.0
 
     r_mt_Cu = 1.1 #Angstrom
     r_mt_O = 0.9 #Angstrom
@@ -2186,7 +2232,18 @@ if __name__ == '__main__':
                                                                                     'C':[0.000, 0.25951331, 0.22725085, 0.291142454, 0.28161311, 0.000, 0.25951331, 0.22725085, 0.291142454, 0.28161311]}}, #30 <-------- both Cu0 and Cu1 populated with model 29 (Cu1 with spin down - controlled by 'spin_down_orbital_all' key in parameters_model)     
 
         ]
-    case = 29                                                                                                          
+    case = 29      
+
+
+    # plotting the 2D maps
+    scale_R_array = [1.0] #[1.00]
+    workflow_autocorrelation_term(parameters_model_all[case], 
+                                    scale_R_array=scale_R_array, 
+                                    output_folder=base_path+'masked_model_Cu0_and_oxygens_purely_bonding_spx_correct_overlap_map', 
+                                    site_idx=site_idx_all[case],
+                                    write_cube_files=False)
+
+    exit()                                                                                                
 
     scale_R_array = [0.01, 0.03, 0.05, 0.08, 0.1, 0.3, 0.5, 1.0, 1.5, 2.0] #np.arange(0.5, 1.5, 0.05)
     workflow_autocorrelation_term(parameters_model_all[case], 
