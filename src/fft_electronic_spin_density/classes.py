@@ -1566,7 +1566,7 @@ def workflow(output_folder, site_idx, site_radii, replace_DFT_by_model, paramete
     full_range_fft_spectrum_cuts = False
     zoom_in_fft_spectrum_cuts = False
 
-    write_cube_files = True
+    write_cube_files = False
 
     # ---- PARAMETERS -----
 
@@ -1989,7 +1989,7 @@ if __name__ == '__main__':
     # workflow_density_vs_cutoff_radius(site_idx=[0], site_radii_all=[[i] for i in np.arange(0.5, 4.0, 0.5)], plot=True)
     # exit()
 
-    scale_factor = 3.0
+    scale_factor = 5.0
 
     r_mt_Cu = 1.1 #Angstrom
     r_mt_O = 0.9 #Angstrom
