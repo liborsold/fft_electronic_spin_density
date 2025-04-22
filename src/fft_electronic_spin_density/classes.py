@@ -1553,7 +1553,7 @@ def workflow(output_folder, site_idx, site_radii, replace_DFT_by_model, paramete
     """
     # --- INPUT ----
 
-    fname_cube_file = './cube_files/Cu2AC4_rho_sz_512.cube' #'./cube_files/Mn2GeO4_rho_sz.cube'
+    fname_cube_file = './cube_files/Cu2AC4_rho_sz_256.cube' #'./cube_files/Mn2GeO4_rho_sz.cube'
     
     permutation = None #!! for Mn2GeO4 need to use [2,1,0] to swap x,y,z -> z,y,x
 
@@ -1942,6 +1942,13 @@ def workflow_autocorrelation_term(parameters_model, scale_R_array=[1.0], output_
         i_kz_array =  [ i_kz_center + i for i in range(-4,5) ] # + i for i in range(-10, 10, 2) ] #range(density.nkc)
         
         for i_kz in i_kz_array:
+
+            cut_along = 'along_stripes' # 'perpendicular_to_stripes' # 'both'
+            cax_saturation = None
+            N_kpoints = 101 # 3001
+
+            kx_arr_along, ky_arr_along, F_abs_sq_interp_along, kx_arr_perp, ky_arr_perp, F_abs_sq_interp_perp = density.plot_fft_along_line(i_kz=i_kz, cut_along=cut_along, kx_ky_fun=None, k_dist_lim=12, N_points=N_kpoints, fout_name=f'{density.output_folder}/cut_1D_E_perp_{cut_along}.png', cax_saturation=cax_saturation,)
+            
             density.plot_fft_2D(i_kz=i_kz, 
                                 fout_name=f'F_abs_sq_{appendix}_overlap-term_kz_{density.get_kz_at_index(i_kz):.4f}.png', 
                                 figsize=fft_figsize,
@@ -1949,6 +1956,9 @@ def workflow_autocorrelation_term(parameters_model, scale_R_array=[1.0], output_
                                 fixed_z_scale=False,
                                 xlims=fft_xlims,
                                 ylims=fft_ylims,
+                                cut_along=cut_along,
+                                plot_line_cut=True, kx_arr_along=kx_arr_along, ky_arr_along=ky_arr_along,
+                                kx_arr_perp=kx_arr_perp, ky_arr_perp=ky_arr_perp,
                                 data_to_plot=(np.abs(overlap_term)**2)[:,:,i_kz],
                                 normalized=False,
                                 quantity_name=r'$|E_\mathrm{overlap}|^2$',
@@ -1989,7 +1999,7 @@ if __name__ == '__main__':
     # workflow_density_vs_cutoff_radius(site_idx=[0], site_radii_all=[[i] for i in np.arange(0.5, 4.0, 0.5)], plot=True)
     # exit()
 
-    scale_factor = 5.0
+    scale_factor = 1.0 # 5.0
 
     r_mt_Cu = 1.1 #Angstrom
     r_mt_O = 0.9 #Angstrom
