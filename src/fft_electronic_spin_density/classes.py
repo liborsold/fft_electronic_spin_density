@@ -21,6 +21,7 @@ from scipy.spatial.transform import Rotation as R
 from scipy.optimize import minimize
 from scipy.interpolate import LinearNDInterpolator
 from matplotlib.ticker import MultipleLocator
+from scipy.spatial.transform import Rotation
 
 a0 = physical_constants['Bohr radius'][0] * 1e10 # Bohr radius in units of Angstrom
 
@@ -1142,7 +1143,10 @@ _sq = (x**2 + y**2 + z**2)
                     output_folder=None,
                     show_plot=False, 
                     data_to_plot=None,
-                    quantity_name=r'$|F|^2$'):
+                    quantity_name=r'$|F|^2$', 
+                    X=None, 
+                    Y=None
+                    ):
         """Plot the 2D FFT of the scalar field.
 
         Args:
@@ -1211,9 +1215,13 @@ _sq = (x**2 + y**2 + z**2)
         j_vals = (np.arange(n2)-n2//2) / n2
         I, J = np.meshgrid(i_vals, j_vals, indexing='ij')
 
-        # Compute the actual coordinates in 2D space
-        X = I * k1[0] + J * k2[0]
-        Y = I * k1[1] + J * k2[1]  
+        # Compute the actual coordinates in 2D space - only if they have not been provided
+        if X is None and Y is None:
+            X = I * k1[0] + J * k2[0]
+            Y = I * k1[1] + J * k2[1]
+        else:
+            X = X
+            Y = Y
 
         if data_to_plot is None:
             plot_array = np.abs(F_abs_sq_cut)
@@ -1488,6 +1496,45 @@ _sq = (x**2 + y**2 + z**2)
         for z in z_coordinates:
             idx_z.append(np.argmin(np.abs(z_levels_cart - z)))
         return idx_z
+    
+    def get_plotting_grid_rotated(axis=(0,0,1), origin=(0,0,0), x_lim=1.0, y_lim=1.0, n_points=101):
+        """Get the XY mesh in a plane defined by the normal vector and the origin from 
+
+        Args:
+            axis (tuple, optional): Normal vector of the plane. Defaults to (0,0,1).
+            origin (tuple, optional): Origin of the plane. Defaults to (0,0,0).
+            x_lim (float, optional): Limit of the x axis. Defaults to 1.
+            y_lim (float, optional): Limit of the y axis. Defaults to 1.
+            n_points (int, optional): Number of points in each direction. Defaults to 101.
+
+        Returns:
+            tuple: X mesh, Y mesh.
+        """
+        # Create a grid of points in the plane
+        x = np.linspace(-x_lim, x_lim, n_points)
+        y = np.linspace(-y_lim, y_lim, n_points)
+        X, Y = np.meshgrid(x, y)
+
+        # Normalize the axis vector
+        axis = np.array(axis) / np.linalg.norm(axis)  # Normalize the normal vector
+        # First rotate in the x-y plane to align the normal vector with the z-axis
+
+        # Create a rotation matrix to rotate the plane to the desired orientation
+        rotvec_out_of_plane = np.cross([0, 0, 1], axis) # direction perpendicular to the normal vector
+        #  and magnitude of the angle between normal_vector and z-axis, as it should be
+        angle = np.arccos(np.dot([0, 0, 1], axis))
+        rotation_matrix = Rotation.from_rotvec(angle*rotvec_out_of_plane).as_matrix()
+
+        # Rotate the grid points
+        rotated_points = np.dot(rotation_matrix, np.array([X.flatten(), Y.flatten(), np.zeros_like(X.flatten())]))
+        # Translate the points to the desired origin
+        rotated_points[0] += origin[0]
+        rotated_points[1] += origin[1]
+        rotated_points[2] += origin[2]
+        # Reshape the rotated points back to the grid shape
+        X_rotated = rotated_points[0].reshape(X.shape)
+        Y_rotated = rotated_points[1].reshape(Y.shape)
+        return X_rotated, Y_rotated
 
 def test_shift():
     """Test the shift of a 3D array using numpy's fftshift function.
@@ -1995,6 +2042,12 @@ def workflow_autocorrelation_term(parameters_model, scale_R_array=[1.0], output_
     plt.tight_layout()
     plt.savefig(f'{output_folder}/E_perp_sq_vs_scale_R.png', dpi=400)
 
+
+def workflow_plot_2D_fft_planes():
+    """Workflow for the analysis of the 2D FFT planes.
+    """
+    fname_fft_cube_file
+
 if __name__ == '__main__':
     # workflow_density_vs_cutoff_radius(site_idx=[0], site_radii_all=[[i] for i in np.arange(0.5, 4.0, 0.5)], plot=True)
     # exit()
@@ -2244,6 +2297,7 @@ if __name__ == '__main__':
         ]
     case = 29      
 
+    exit()
 
     # plotting the 2D maps
     scale_R_array = [1.0] #[1.00]
