@@ -22,6 +22,7 @@ from scipy.optimize import minimize
 from scipy.interpolate import LinearNDInterpolator
 from matplotlib.ticker import MultipleLocator
 from scipy.spatial.transform import Rotation
+import pickle
 
 a0 = physical_constants['Bohr radius'][0] * 1e10 # Bohr radius in units of Angstrom
 
@@ -69,11 +70,11 @@ class Density:
                     # Cu1_xyz = (4.85991, 5.28091, 3.56158)
                     # self.R = np.array(Cu2_xyz) - np.array(Cu1_xyz)
         R_idx1, R_idx2 = R_atoms_idx
-        R1 = np.array((4.85991, 5.28091, 3.56158)) # np.array(list(self.metadata['atoms'][R_idx1][1])[1:])*physical_constants['Bohr radius'][0]*1e10
-        R2 = np.array((3.01571, 6.45289, 4.99992)) #np.array(list(self.metadata['atoms'][R_idx2][1])[1:])*physical_constants['Bohr radius'][0]*1e10
+        self.R1 = np.array((4.85991, 5.28091, 3.56158)) # np.array(list(self.metadata['atoms'][R_idx1][1])[1:])*physical_constants['Bohr radius'][0]*1e10
+        self.R2 = np.array((3.01571, 6.45289, 4.99992)) #np.array(list(self.metadata['atoms'][R_idx2][1])[1:])*physical_constants['Bohr radius'][0]*1e10
         
         # vector
-        self.R_vec = R2 - R1
+        self.R_vec = self.R2 - self.R1
         # its length
         self.R_xy = np.sqrt(self.R_vec[0]**2 + self.R_vec[1]**2)
 
@@ -194,6 +195,10 @@ class Density:
         self.kx_cart_mesh = k_cart_mesh_flat[:, 0].reshape((self.nka, self.nkb, self.nkc))
         self.ky_cart_mesh = k_cart_mesh_flat[:, 1].reshape((self.nka, self.nkb, self.nkc))
         self.kz_cart_mesh = k_cart_mesh_flat[:, 2].reshape((self.nka, self.nkb, self.nkc))
+
+        self.kx_cart_mesh_centered = self.kx_cart_mesh - (self.ka[0] + self.kb[0] + self.kc[0]) / 2
+        self.ky_cart_mesh_centered = self.ky_cart_mesh - (self.ka[1] + self.kb[1] + self.kc[1]) / 2
+        self.kz_cart_mesh_centered = self.kz_cart_mesh - (self.ka[2] + self.kb[2] + self.kc[2]) / 2
 
         # need to convert also units of the scalar field >>contained<< in the numpy array
         # spin density in units of electron per a_Bohr^3
@@ -1127,7 +1132,7 @@ _sq = (x**2 + y**2 + z**2)
         return mcolors.ListedColormap(new_colors)
 
 
-    def plot_fft_2D(self, i_kz, fft_as_log=False, k1_idx=0, k2_idx=1, 
+    def plot_fft_2D(self, i_kz=None, fft_as_log=False, k1_idx=0, k2_idx=1, 
                     fout_name='fft_2D_out.png', 
                     verbose=True, 
                     figsize=(6.0, 6.0), 
@@ -1137,6 +1142,7 @@ _sq = (x**2 + y**2 + z**2)
                     plot_line_cut=False, 
                     kx_arr_along=None, ky_arr_along=None,
                     kx_arr_perp=None, ky_arr_perp=None,
+                    kx_arr_along_opposite=None, ky_arr_along_opposite=None,
                     cut_along='both',
                     normalized=True, 
                     cax_saturation=None,
@@ -1145,7 +1151,10 @@ _sq = (x**2 + y**2 + z**2)
                     data_to_plot=None,
                     quantity_name=r'$|F|^2$', 
                     X=None, 
-                    Y=None
+                    Y=None,
+                    xlabel=None,
+                    ylabel=None,
+                    title=None
                     ):
         """Plot the 2D FFT of the scalar field.
 
@@ -1174,6 +1183,11 @@ _sq = (x**2 + y**2 + z**2)
             show_plot (bool, optional): Show the plot. Defaults to False.
             data_to_plot (np.ndarray, optional): Data to plot. Defaults to None, in which case the data will be a cut of np.abs(F_abs_sq) at index i_kz.
             quantity_name (str, optional): Name of the quantity to plot. Defaults to r'$|F|^2$'.
+            X (2D np.ndarray, optional): X coordinates for the plot. Defaults to None, in which case they are the cartesian X coordinates of the reciprocal unit cell.
+            Y (2D np.ndarray, optional): Y coordinates for the plot. Defaults to None, in which case they are the cartesian Y coordinates of the reciprocal unit cell.
+            xlabel (str, optional): Label for the x axis. Defaults to None, in which case default string is provided.
+            ylabel (str, optional): Label for the y axis. Defaults to None, in which case default string is provided.
+            title (str, optional): Title of the plot. Defaults to None, in which case default string is provided.
         """
         
         if output_folder is None:
@@ -1198,7 +1212,8 @@ _sq = (x**2 + y**2 + z**2)
         # F_abs_sq_sum_a = np.sum(F_abs_sq, axis=take_idx)
 
         #    - cut
-        F_abs_sq_cut = self.F_abs_sq.take(i_kz, axis=take_idx)
+        if i_kz is not None:
+            F_abs_sq_cut = self.F_abs_sq.take(i_kz, axis=take_idx)
 
         fig = plt.figure(figsize=figsize)
         ax = fig.add_subplot(111)
@@ -1274,6 +1289,7 @@ _sq = (x**2 + y**2 + z**2)
             # plot line cut
             linecolor_along = '#00b0f0'
             linecolor_perp = '#dc005a'
+            linecolor_along_opposite = '#0058f0'
             if cut_along == 'both' or cut_along == 'along_stripes':
                 if kx_arr_along is not None and ky_arr_along is not None:
                     ax.arrow(kx_arr_along[0], ky_arr_along[0], kx_arr_along[-1]-kx_arr_along[0], ky_arr_along[-1]-ky_arr_along[0], 
@@ -1288,11 +1304,20 @@ _sq = (x**2 + y**2 + z**2)
                     ax.arrow(kx_arr_perp[0], ky_arr_perp[0], kx_arr_perp[-1]-kx_arr_perp[0], ky_arr_perp[-1]-ky_arr_perp[0], 
                              head_width=None, head_length=None, fc=linecolor_perp, ec=linecolor_perp, linestyle=':', linewidth=2.0, color=linecolor_perp)
                     ax.arrow(-kx_arr_along[len(kx_arr_along)//2], -ky_arr_along[len(ky_arr_along)//2], kx_arr_along[len(kx_arr_along)//2], ky_arr_along[len(ky_arr_along)//2], head_width=None, head_length=None, fc='k', ec='k', linestyle='-', linewidth=1.0, color=linecolor_perp)
-            
+            if cut_along == 'along_opposite_stripes':
+                if kx_arr_along is not None and ky_arr_along is not None:
+                    ax.arrow(kx_arr_along_opposite[0], ky_arr_along_opposite[0], kx_arr_along_opposite[-1]-kx_arr_along_opposite[0], ky_arr_along_opposite[-1]-ky_arr_along_opposite[0], 
+                             head_width=None, head_length=None, fc=linecolor_along_opposite, ec=linecolor_along_opposite, linestyle=':', linewidth=2.0, color=linecolor_along_opposite)
         # Formatting
-        plt.xlabel(r"$k_x$ ($\mathrm{\AA}^{-1}$)", fontsize=12)
-        plt.ylabel(r"$k_y$ ($\mathrm{\AA}^{-1}$)", fontsize=12)
-        plt.title(quantity_name+r"($k_x$, $k_y$; $k_z$ = " + f'{self.get_kz_at_index(i_kz):.4f} '+r'$\mathrm{\AA}^{-1})$', fontsize=12)
+        if xlabel is None:
+            xlabel = r"$k_x$ ($\mathrm{\AA}^{-1}$)"
+        if ylabel is None:
+            ylabel = r"$k_y$ ($\mathrm{\AA}^{-1}$)"
+        plt.xlabel(xlabel, fontsize=12)
+        plt.ylabel(ylabel, fontsize=12)
+        if title is None:
+            title = quantity_name+r"($k_x$, $k_y$; $k_z$ = " + f'{self.get_kz_at_index(i_kz):.4f} '+r'$\mathrm{\AA}^{-1})$'
+        plt.title(title, fontsize=12)
 
         ax.set_aspect('equal', adjustable='box')  # Keep aspect ratio
 
@@ -1429,13 +1454,16 @@ _sq = (x**2 + y**2 + z**2)
                 # 90 deg rotated --> perpendicular the stripes
                 kx_along = kx_center + kx_0_along - gamma_y * k_dist
                 ky_along = ky_center + ky_0_along + gamma_x * k_dist
+                # at opposite stripe
+                kx_along_opposite = kx_center - kx_0_along - gamma_y * k_dist
+                ky_along_opposite = ky_center - ky_0_along + gamma_x * k_dist
                 # R is perpendicular to stripes
                 kx_perp = kx_center + kx_0_perp + gamma_x * k_dist
                 ky_perp = ky_center + ky_0_perp + gamma_y * k_dist
-                return kx_along, ky_along, kx_perp, ky_perp
+                return kx_along, ky_along, kx_perp, ky_perp, kx_along_opposite, ky_along_opposite
 
         k_dist_arr = np.linspace(-k_dist_lim, k_dist_lim, N_points)
-        kx_along_arr, ky_along_arr, kx_perp_arr, ky_perp_arr = kx_ky_fun(k_dist_arr)
+        kx_along_arr, ky_along_arr, kx_perp_arr, ky_perp_arr, kx_along_opposite_arr, ky_along_opposite_arr = kx_ky_fun(k_dist_arr)
 
         # interpolate along the line
         kx_data = self.kx_cart_mesh[:,:,i_kz]
@@ -1447,6 +1475,7 @@ _sq = (x**2 + y**2 + z**2)
         interp = LinearNDInterpolator(np.vstack((kx_data.flatten(), ky_data.flatten())).T, F_abs_sq_cut.flatten())
         F_abs_sq_interp_along = interp(kx_along_arr, ky_along_arr)
         F_abs_sq_interp_perp = interp(kx_perp_arr, ky_perp_arr)
+        F_abs_sq_interp_along_opposite = interp(kx_along_opposite_arr, ky_along_opposite_arr)
 
         print('MAXIMUM OF FFT', np.max(self.F_abs_sq))
         print('NORMALIZATION FACTOR FFT', self.F_abs_sq_normalization_constant )
@@ -1454,6 +1483,7 @@ _sq = (x**2 + y**2 + z**2)
         # --- PLOTTING ---
         linecolor_along = '#00b0f0'
         linecolor_perp = '#dc005a'
+        linecolor_along_opposite = '#0058f0'
         if fout_name is not None:
             fig = plt.figure(figsize=figsize)
             ax = fig.add_subplot(111)
@@ -1461,9 +1491,11 @@ _sq = (x**2 + y**2 + z**2)
                 ax.plot(k_dist_arr, F_abs_sq_interp_along, '-', color=linecolor_along)
             if cut_along == 'perpendicular_to_stripes' or cut_along == 'both':
                 ax.plot(k_dist_arr, F_abs_sq_interp_perp, '-', color=linecolor_perp)
+            if cut_along == 'along_opposite_stripes':
+                ax.plot(k_dist_arr, F_abs_sq_interp_along_opposite, '-', color=linecolor_along_opposite)
             ax.set_xlabel(r'$k$ ($\mathrm{\AA}^{-1}$)', fontsize=12)
             ax.set_ylabel(r'$|F|^2$', fontsize=12)
-            title_appendix = ' along stripes' if cut_along == 'along_stripes' else ' perpendicular to stripes'
+            title_appendix = ' ' + ' '.join(cut_along.split('_'))
             ax.set_title(r'$|F|^2$'+title_appendix)
             # xticks by 1.0 Angstrom^-1
             ax.xaxis.set_minor_locator(MultipleLocator(1.0))
@@ -1475,7 +1507,8 @@ _sq = (x**2 + y**2 + z**2)
             plt.savefig(fout_name, dpi=400)
             plt.savefig('.'.join(fout_name.split('.')[:-1])+'.pdf', dpi=400)
 
-        return (kx_along_arr-kx_center), (ky_along_arr-ky_center), F_abs_sq_interp_along, (kx_perp_arr-kx_center), (ky_perp_arr-ky_center), F_abs_sq_interp_perp
+        return (kx_along_arr-kx_center), (ky_along_arr-ky_center), F_abs_sq_interp_along, (kx_perp_arr-kx_center), (ky_perp_arr-ky_center), F_abs_sq_interp_perp, (kx_along_opposite_arr-kx_center), (ky_along_opposite_arr-ky_center), \
+                F_abs_sq_interp_along_opposite
 
     def get_c_idx_at_z_coordinates(self, z_coordinates):
         """Get the indices of the z coordinates.
@@ -1497,44 +1530,45 @@ _sq = (x**2 + y**2 + z**2)
             idx_z.append(np.argmin(np.abs(z_levels_cart - z)))
         return idx_z
     
-    def get_plotting_grid_rotated(axis=(0,0,1), origin=(0,0,0), x_lim=1.0, y_lim=1.0, n_points=101):
-        """Get the XY mesh in a plane defined by the normal vector and the origin from 
+def get_XY_meshgrid_in_space(axis=(0,0,1), origin=(0,0,0), x_lim=1, y_lim=1, N_points=101):
+    """
+    Generate a meshgrid of points in the XY plane, rotated to be perpendicular to a given axis.
 
-        Args:
-            axis (tuple, optional): Normal vector of the plane. Defaults to (0,0,1).
-            origin (tuple, optional): Origin of the plane. Defaults to (0,0,0).
-            x_lim (float, optional): Limit of the x axis. Defaults to 1.
-            y_lim (float, optional): Limit of the y axis. Defaults to 1.
-            n_points (int, optional): Number of points in each direction. Defaults to 101.
+    Parameters:
+    axis (tuple): The axis around which to rotate the XY plane (default is z-axis).
+    origin (tuple): The origin point of the meshgrid (default is (0,0,0)).
+    x_lim (float): The half-width of the meshgrid in the x direction.
+    y_lim (float): The half-width of the meshgrid in the y direction.
+    N_points (int): The number of points along each axis.
 
-        Returns:
-            tuple: X mesh, Y mesh.
-        """
-        # Create a grid of points in the plane
-        x = np.linspace(-x_lim, x_lim, n_points)
-        y = np.linspace(-y_lim, y_lim, n_points)
-        X, Y = np.meshgrid(x, y)
+    Returns:
+    tuple: A tuple containing the X,Y,Z 2D arrays of coordinates and the lattice vectors of the meshgrid.
+    """
 
-        # Normalize the axis vector
-        axis = np.array(axis) / np.linalg.norm(axis)  # Normalize the normal vector
-        # First rotate in the x-y plane to align the normal vector with the z-axis
+    axis = np.array(axis) / np.linalg.norm(axis)  # Normalize the axis vector
 
-        # Create a rotation matrix to rotate the plane to the desired orientation
-        rotvec_out_of_plane = np.cross([0, 0, 1], axis) # direction perpendicular to the normal vector
-        #  and magnitude of the angle between normal_vector and z-axis, as it should be
-        angle = np.arccos(np.dot([0, 0, 1], axis))
-        rotation_matrix = Rotation.from_rotvec(angle*rotvec_out_of_plane).as_matrix()
+    if np.abs(axis[0]) < 1e-10 and np.abs(axis[1]) < 1e-10:
+        # If the axis is close to the z-axis, we can use a different approach
+        u = np.array([1, 0, 0])
+        v = np.array([0, 1, 0])
+    else:
+        # the basis vectors of the rotated plane
+        u = np.array([-axis[1], axis[0], 0])
+        u = u / np.linalg.norm(u)  # Normalize the vector
+        v = np.cross(u, axis)  # Create a perpendicular vector 
+    
+    # the direct meshgrid coordinates 
+    i_u = np.linspace(-x_lim, x_lim, N_points)
+    i_v = np.linspace(-y_lim, y_lim, N_points)
+    X_direct, Y_direct = np.meshgrid(i_u, i_v, indexing='ij')
 
-        # Rotate the grid points
-        rotated_points = np.dot(rotation_matrix, np.array([X.flatten(), Y.flatten(), np.zeros_like(X.flatten())]))
-        # Translate the points to the desired origin
-        rotated_points[0] += origin[0]
-        rotated_points[1] += origin[1]
-        rotated_points[2] += origin[2]
-        # Reshape the rotated points back to the grid shape
-        X_rotated = rotated_points[0].reshape(X.shape)
-        Y_rotated = rotated_points[1].reshape(Y.shape)
-        return X_rotated, Y_rotated
+    # the cartesian meshgrid coordinates
+    X_cart = X_direct * u[0] + Y_direct * v[0] + origin[0]
+    Y_cart = X_direct * u[1] + Y_direct * v[1] + origin[1]
+    Z_cart = X_direct * u[2] + Y_direct * v[2] + origin[2]
+
+    return X_cart, Y_cart, Z_cart, X_direct, Y_direct, u, v
+
 
 def test_shift():
     """Test the shift of a 3D array using numpy's fftshift function.
@@ -1600,7 +1634,7 @@ def workflow(output_folder, site_idx, site_radii, replace_DFT_by_model, paramete
     """
     # --- INPUT ----
 
-    fname_cube_file = './cube_files/Cu2AC4_rho_sz_256.cube' #'./cube_files/Mn2GeO4_rho_sz.cube'
+    fname_cube_file = './cube_files/Cu2AC4_rho_sz_512.cube' #'./cube_files/Mn2GeO4_rho_sz.cube'
     
     permutation = None #!! for Mn2GeO4 need to use [2,1,0] to swap x,y,z -> z,y,x
 
@@ -1612,6 +1646,7 @@ def workflow(output_folder, site_idx, site_radii, replace_DFT_by_model, paramete
     fft_3D = False
     full_range_fft_spectrum_cuts = False
     zoom_in_fft_spectrum_cuts = False
+    fft_cut_planes_oblique = True
 
     write_cube_files = False
 
@@ -1758,8 +1793,8 @@ def workflow(output_folder, site_idx, site_radii, replace_DFT_by_model, paramete
             # for the middle i_kz, plot also line cuts
             if i_kz == density.nkc//2:
                 # along stripes
-                for cut_along in ['along_stripes', 'perpendicular_to_stripes', 'both']:
-                    kx_arr_along, ky_arr_along, F_abs_sq_interp_along, kx_arr_perp, ky_arr_perp, F_abs_sq_interp_perp = density.plot_fft_along_line(i_kz=i_kz, cut_along=cut_along, kx_ky_fun=None, k_dist_lim=12, N_points=3001, fout_name=f'{output_folder}/cut_1D_{cut_along}.png', cax_saturation=cax_saturation,)
+                for cut_along in ['along_stripes', 'perpendicular_to_stripes', 'both', 'along_opposite_stripes']:
+                    kx_arr_along, ky_arr_along, F_abs_sq_interp_along, kx_arr_perp, ky_arr_perp, F_abs_sq_interp_perp, kx_arr_along_opposite, ky_arr_along_opposite, F_abs_sq_interp_along_opposite = density.plot_fft_along_line(i_kz=i_kz, cut_along=cut_along, kx_ky_fun=None, k_dist_lim=12, N_points=3001, fout_name=f'{output_folder}/cut_1D_{cut_along}.png', cax_saturation=cax_saturation,)
                     density.plot_fft_2D(i_kz=i_kz, fft_as_log=fft_as_log, 
                                 fout_name=f'F_abs_sq{appendix}-scale_kz_at_idx_{i_kz}_cut_{cut_along}.png', 
                                 figsize=(5.5, 4.5),
@@ -1769,11 +1804,80 @@ def workflow(output_folder, site_idx, site_radii, replace_DFT_by_model, paramete
                                 xlims=fft_xlims,
                                 ylims=fft_ylims, 
                                 zlims=fft_zlims,
-                                plot_line_cut=True, kx_arr_along=kx_arr_along, ky_arr_along=ky_arr_along,
+                                plot_line_cut=True, 
+                                kx_arr_along=kx_arr_along, ky_arr_along=ky_arr_along,
                                 kx_arr_perp=kx_arr_perp, ky_arr_perp=ky_arr_perp,
+                                kx_arr_along_opposite=kx_arr_along_opposite, ky_arr_along_opposite=ky_arr_along_opposite,
                                 cut_along=cut_along)
-                    np.savetxt(os.path.join(density.output_folder, 'cut_1D_both.txt'), np.array([kx_arr_along, ky_arr_along, F_abs_sq_interp_along, kx_arr_perp, ky_arr_perp, F_abs_sq_interp_perp]).T, delimiter='\t', fmt='%.8e', header='kx_along\tky_along\tF_abs_sq_along\tkx_perp\tky_perp\tF_abs_sq_perp')
-                
+                    np.savetxt(os.path.join(density.output_folder, 'cut_1D_both.txt'), np.array([kx_arr_along, ky_arr_along, F_abs_sq_interp_along, kx_arr_perp, ky_arr_perp, F_abs_sq_interp_perp, kx_arr_along_opposite, ky_arr_along_opposite, F_abs_sq_interp_along_opposite]).T, delimiter='\t', fmt='%.8e', header='kx_along\tky_along\tF_abs_sq_along\tkx_perp\tky_perp\tF_abs_sq_perp\tkx_along_opposite\tky_along_opposite\tF_abs_sq_along_opposite')
+
+
+    if fft_cut_planes_oblique:
+
+        # create the interpolator
+        #   kx_cart_mesh etc. are 3D arrays of kx coordinates etc.
+
+        xy_lim = 10.0 # Angstrom^-1
+
+        kx_flat = density.kx_cart_mesh_centered.flatten()
+        ky_flat = density.ky_cart_mesh_centered.flatten()
+        kz_flat = density.kz_cart_mesh_centered.flatten()
+
+        print('np.min(density.kx_cart_mesh)', np.min(density.kx_cart_mesh_centered))
+        print('np.max(density.kx_cart_mesh)', np.max(density.kx_cart_mesh_centered))
+
+
+        axis = density.R_vec #(0,0,1) #
+        center = density.R_vec/np.linalg.norm(density.R_vec)*1.201 #(0,0,0) #
+
+        interpolator_name = f'interpolator_512_scale-factor_{scale_factor:.1f}_xy-lim_{xy_lim:.2f}_invA_center_{center[0]:.2f}_{center[1]:.2f}_{center[2]:.2f}_invA.pickle'
+
+        interpolator_cutoff = xy_lim*np.sqrt(3) # Angstrom^-1
+        include_points = np.where(np.sqrt((kx_flat-center[0])**2 + (ky_flat-center[1])**2 + (kz_flat-center[2])**2) < interpolator_cutoff)
+        print('kx_cart_mesh shape', density.kx_cart_mesh_centered.shape)
+        print('kx_flat[include_points] shape', kx_flat[include_points].shape)
+        
+        if not os.path.exists(interpolator_name):
+            print('creating interpolator...')
+            interpolator = LinearNDInterpolator(np.vstack((kx_flat[include_points], ky_flat[include_points], kz_flat[include_points])).T, density.F_abs_sq.flatten()[include_points])
+            with open(interpolator_name, 'wb') as f:
+                pickle.dump(interpolator, f)
+            print('interpolator saved to a pickle file!')
+        else:
+            print('interpolator pickle file exists! loading interpolator...')
+            with open(interpolator_name, 'rb') as f:
+                interpolator = pickle.load(f)
+        
+        N_points = 101
+        cax_saturation = 0.7
+        normalized = True
+
+        title = f'FFT in plane perpendicular to ({axis[0]:.2f}, {axis[1]:.2f}, {axis[2]:.2f})'+r'$\mathrm{\AA}^{-1}$' +f'\ncentered at ({center[0]:.2f}, {center[1]:.2f}, {center[2]:.2f})'+r'$\mathrm{\AA}^{-1}$'
+        fout_name = f'fft_2D_scale-factor_{scale_factor:.1f}_perp_to_axis_{axis[0]:.2f}_{axis[1]:.2f}_{axis[2]:.2f}_center_{center[0]:.2f}_{center[1]:.2f}_{center[2]:.2f}_Nk_{N_points}_caxsat_{cax_saturation:.1f}.png'
+
+        # X_cart, Y_cart, Z_cart, X_direct, Y_direct are all 2D arrays of coordinates
+        X_cart, Y_cart, Z_cart, X_direct, Y_direct, u, v = get_XY_meshgrid_in_space(axis=axis, origin=center, x_lim=xy_lim, y_lim=xy_lim, N_points=N_points)
+        # get 2D array of the FFT values
+        print('interpolating')
+        fft_XYZ = interpolator(X_cart, Y_cart, Z_cart)
+
+        xlabel = r'$k_u$' + f" [({u[0]:.2f}, {u[1]:.2f}, {u[2]:.2f})" + r'$\mathrm{\AA}^{-1}$]' + f"+ ({center[0]:.2f}, {center[1]:.2f}, {center[2]:.2f})" + r'$\mathrm{\AA}^{-1}$'
+        ylabel = r'$k_v$' + f" [({v[0]:.2f}, {v[1]:.2f}, {v[2]:.2f})" + r'$\mathrm{\AA}^{-1}$]' + f"+ ({center[0]:.2f}, {center[1]:.2f}, {center[2]:.2f})" + r'$\mathrm{\AA}^{-1}$'
+
+        density.plot_fft_2D(
+                            fout_name=fout_name,
+                            data_to_plot=fft_XYZ, 
+                            X=X_direct, 
+                            Y=Y_direct,
+                            xlabel=xlabel,
+                            ylabel=ylabel,
+                            title=title,
+                            cax_saturation=cax_saturation,
+                            xlims=(-xy_lim, xy_lim),
+                            ylims=(-xy_lim, xy_lim),
+                            normalized=normalized,
+                            )
+
     # test_shift()
     # exit()
 
@@ -2043,16 +2147,11 @@ def workflow_autocorrelation_term(parameters_model, scale_R_array=[1.0], output_
     plt.savefig(f'{output_folder}/E_perp_sq_vs_scale_R.png', dpi=400)
 
 
-def workflow_plot_2D_fft_planes():
-    """Workflow for the analysis of the 2D FFT planes.
-    """
-    fname_fft_cube_file
-
 if __name__ == '__main__':
     # workflow_density_vs_cutoff_radius(site_idx=[0], site_radii_all=[[i] for i in np.arange(0.5, 4.0, 0.5)], plot=True)
     # exit()
 
-    scale_factor = 1.0 # 5.0
+    scale_factor = 2.0 # 5.0
 
     r_mt_Cu = 1.1 #Angstrom
     r_mt_O = 0.9 #Angstrom
@@ -2068,7 +2167,7 @@ if __name__ == '__main__':
         workflow(site_idx=site_idx, site_radii=site_radii, output_folder=output_folder)
 
     # ===== RUN selected cases among the predefined ones =====
-    run_cases = [29] #[0, 3, 5, 23] #, 3, 5, 23] #, 3, 5] # None
+    run_cases = [5] #[0, 3, 5, 23] #, 3, 5, 23] #, 3, 5] # None
 
     site_idx_all = [
         [0], #0            
@@ -2295,28 +2394,25 @@ if __name__ == '__main__':
                                                                                     'C':[0.000, 0.25951331, 0.22725085, 0.291142454, 0.28161311, 0.000, 0.25951331, 0.22725085, 0.291142454, 0.28161311]}}, #30 <-------- both Cu0 and Cu1 populated with model 29 (Cu1 with spin down - controlled by 'spin_down_orbital_all' key in parameters_model)     
 
         ]
-    case = 29      
 
-    exit()
+    # case = 29
+    # scale_R_array = [1.0] #[1.00]
+    # workflow_autocorrelation_term(parameters_model_all[case], 
+    #                                 scale_R_array=scale_R_array, 
+    #                                 output_folder=base_path+'masked_model_Cu0_and_oxygens_purely_bonding_spx_correct_overlap_map', 
+    #                                 site_idx=site_idx_all[case],
+    #                                 write_cube_files=False)
 
-    # plotting the 2D maps
-    scale_R_array = [1.0] #[1.00]
-    workflow_autocorrelation_term(parameters_model_all[case], 
-                                    scale_R_array=scale_R_array, 
-                                    output_folder=base_path+'masked_model_Cu0_and_oxygens_purely_bonding_spx_correct_overlap_map', 
-                                    site_idx=site_idx_all[case],
-                                    write_cube_files=False)
+    # exit()                                                                                                
 
-    exit()                                                                                                
+    # scale_R_array = [0.01, 0.03, 0.05, 0.08, 0.1, 0.3, 0.5, 1.0, 1.5, 2.0] #np.arange(0.5, 1.5, 0.05)
+    # workflow_autocorrelation_term(parameters_model_all[case], 
+    #                                 scale_R_array=scale_R_array, 
+    #                                 output_folder=output_folders_all[case], 
+    #                                 site_idx=site_idx_all[case],
+    #                                 write_cube_files=True)
 
-    scale_R_array = [0.01, 0.03, 0.05, 0.08, 0.1, 0.3, 0.5, 1.0, 1.5, 2.0] #np.arange(0.5, 1.5, 0.05)
-    workflow_autocorrelation_term(parameters_model_all[case], 
-                                    scale_R_array=scale_R_array, 
-                                    output_folder=output_folders_all[case], 
-                                    site_idx=site_idx_all[case],
-                                    write_cube_files=True)
-
-    exit()
+    # exit()
 
     if run_cases:
         for i in run_cases:
