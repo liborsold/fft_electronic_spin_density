@@ -1154,7 +1154,8 @@ _sq = (x**2 + y**2 + z**2)
                     Y=None,
                     xlabel=None,
                     ylabel=None,
-                    title=None
+                    title=None,
+                    plot_rec_latt_vectors=True,
                     ):
         """Plot the 2D FFT of the scalar field.
 
@@ -1188,6 +1189,7 @@ _sq = (x**2 + y**2 + z**2)
             xlabel (str, optional): Label for the x axis. Defaults to None, in which case default string is provided.
             ylabel (str, optional): Label for the y axis. Defaults to None, in which case default string is provided.
             title (str, optional): Title of the plot. Defaults to None, in which case default string is provided.
+            plot_rec_latt_vectors (bool, optional): Plot the reciprocal lattice vectors. Defaults to True.
         """
         
         if output_folder is None:
@@ -1267,23 +1269,27 @@ _sq = (x**2 + y**2 + z**2)
         if fixed_z_scale and not normalized:
             plt.clim(0, np.max(self.F_abs_sq))
         elif normalized:
-            plt.clim(0, 1.0)
+            if zlims is None:
+                plt.clim(0, 1.0)
+            else:
+                plt.clim(zlims[0], zlims[1])
 
 
         # Overlay grid points
         # plt.scatter(X, Y, color='black', s=1)
 
         # plot lattice vectors
-        head_width = 0.04*np.linalg.norm(k1)
-        head_length = 0.07*np.linalg.norm(k1)
-        arrow_line_color = 'k'
-        linestyle = (5, (5, 5))
-        ax.arrow(0, 0, k1[0], k1[1], head_width=head_width, head_length=head_length, fc=arrow_line_color, ec=arrow_line_color)
-        ax.arrow(0, 0, k2[0], k2[1], head_width=head_width, head_length=head_length, fc=arrow_line_color, ec=arrow_line_color)
-        ax.arrow(-k1[0]/2-k2[0]/2, -k1[1]/2-k2[1]/2, k1[0], k1[1], head_width=0, head_length=0, fc=arrow_line_color, ec=arrow_line_color, linestyle=linestyle)
-        ax.arrow(-k1[0]/2-k2[0]/2, -k1[1]/2-k2[1]/2, k2[0], k2[1], head_width=0, head_length=0, fc=arrow_line_color, ec=arrow_line_color, linestyle=linestyle)
-        ax.arrow(k1[0]/2-k2[0]/2, k1[1]/2-k2[1]/2, k2[0], k2[1], head_width=0, head_length=0, fc=arrow_line_color, ec=arrow_line_color, linestyle=linestyle)
-        ax.arrow(-k1[0]/2+k2[0]/2, -k1[1]/2+k2[1]/2, k1[0], k1[1], head_width=0, head_length=0, fc=arrow_line_color, ec=arrow_line_color, linestyle=linestyle)
+        if plot_rec_latt_vectors:
+            head_width = 0.04*np.linalg.norm(k1)
+            head_length = 0.07*np.linalg.norm(k1)
+            arrow_line_color = 'k'
+            linestyle = (5, (5, 5))
+            ax.arrow(0, 0, k1[0], k1[1], head_width=head_width, head_length=head_length, fc=arrow_line_color, ec=arrow_line_color)
+            ax.arrow(0, 0, k2[0], k2[1], head_width=head_width, head_length=head_length, fc=arrow_line_color, ec=arrow_line_color)
+            ax.arrow(-k1[0]/2-k2[0]/2, -k1[1]/2-k2[1]/2, k1[0], k1[1], head_width=0, head_length=0, fc=arrow_line_color, ec=arrow_line_color, linestyle=linestyle)
+            ax.arrow(-k1[0]/2-k2[0]/2, -k1[1]/2-k2[1]/2, k2[0], k2[1], head_width=0, head_length=0, fc=arrow_line_color, ec=arrow_line_color, linestyle=linestyle)
+            ax.arrow(k1[0]/2-k2[0]/2, k1[1]/2-k2[1]/2, k2[0], k2[1], head_width=0, head_length=0, fc=arrow_line_color, ec=arrow_line_color, linestyle=linestyle)
+            ax.arrow(-k1[0]/2+k2[0]/2, -k1[1]/2+k2[1]/2, k1[0], k1[1], head_width=0, head_length=0, fc=arrow_line_color, ec=arrow_line_color, linestyle=linestyle)
 
         if plot_line_cut:
             # plot line cut
@@ -1621,7 +1627,8 @@ def test_shift():
     plt.close()
 
 
-def workflow(output_folder, site_idx, site_radii, replace_DFT_by_model, parameters_model, fit_model_to_DFT):
+def workflow(output_folder, site_idx, site_radii, replace_DFT_by_model, parameters_model, fit_model_to_DFT,
+             use_saved_interpolated_data=True, save_interpolated_data=True):
     """Main workflow for the analysis of the 3D scalar field.
 
     Args:
@@ -1828,7 +1835,7 @@ def workflow(output_folder, site_idx, site_radii, replace_DFT_by_model, paramete
 
 
         axis = density.R_vec #(0,0,1) #
-        center = density.R_vec/np.linalg.norm(density.R_vec)*1.201 #(0,0,0) #
+        center = -density.R_vec/np.linalg.norm(density.R_vec)*1.201 #(0.0, 0.0, 0.0) #
 
         interpolator_name = f'interpolator_512_scale-factor_{scale_factor:.1f}_xy-lim_{xy_lim:.2f}_invA_center_{center[0]:.2f}_{center[1]:.2f}_{center[2]:.2f}_invA.pickle'
 
@@ -1847,19 +1854,45 @@ def workflow(output_folder, site_idx, site_radii, replace_DFT_by_model, paramete
             print('interpolator pickle file exists! loading interpolator...')
             with open(interpolator_name, 'rb') as f:
                 interpolator = pickle.load(f)
-        
+         
         N_points = 101
-        cax_saturation = 0.7
+        cax_saturation = None
         normalized = True
+        zlims = (0.0, 0.6)
+        fft_as_log = False
 
         title = f'FFT in plane perpendicular to ({axis[0]:.2f}, {axis[1]:.2f}, {axis[2]:.2f})'+r'$\mathrm{\AA}^{-1}$' +f'\ncentered at ({center[0]:.2f}, {center[1]:.2f}, {center[2]:.2f})'+r'$\mathrm{\AA}^{-1}$'
-        fout_name = f'fft_2D_scale-factor_{scale_factor:.1f}_perp_to_axis_{axis[0]:.2f}_{axis[1]:.2f}_{axis[2]:.2f}_center_{center[0]:.2f}_{center[1]:.2f}_{center[2]:.2f}_Nk_{N_points}_caxsat_{cax_saturation:.1f}.png'
+        cax_saturation_str = f'{cax_saturation:.1f}' if cax_saturation else 'None'
+        fout_name = f'fft_2D_scale-factor_{scale_factor:.1f}_perp_to_axis_{axis[0]:.2f}_{axis[1]:.2f}_{axis[2]:.2f}_center_{center[0]:.2f}_{center[1]:.2f}_{center[2]:.2f}_Nk_{N_points}_caxsat_{cax_saturation_str}_normalized_{normalized}_log-{fft_as_log}.png'
 
         # X_cart, Y_cart, Z_cart, X_direct, Y_direct are all 2D arrays of coordinates
         X_cart, Y_cart, Z_cart, X_direct, Y_direct, u, v = get_XY_meshgrid_in_space(axis=axis, origin=center, x_lim=xy_lim, y_lim=xy_lim, N_points=N_points)
-        # get 2D array of the FFT values
-        print('interpolating')
-        fft_XYZ = interpolator(X_cart, Y_cart, Z_cart)
+
+        # check if the interpolation has been done already
+        interp_data_fout_pickle_name = f'fft_2D_DATA_scale-factor_{scale_factor:.1f}_perp_to_axis_{axis[0]:.2f}_{axis[1]:.2f}_{axis[2]:.2f}_center_{center[0]:.2f}_{center[1]:.2f}_{center[2]:.2f}_Nk_{N_points}.pickle'
+        interp_data_fout_pickle_name = os.path.join(density.output_folder, interp_data_fout_pickle_name)
+
+        if use_saved_interpolated_data and os.path.exists(interp_data_fout_pickle_name):
+            print('Interpolated data already exists! Loading from pickle file...')
+            with open(interp_data_fout_pickle_name, 'rb') as f:
+                data_to_load = pickle.load(f)
+                X_direct = data_to_load['X_direct']
+                Y_direct = data_to_load['Y_direct']
+                fft_XYZ = data_to_load['fft_XYZ']
+        else:
+            # need to perform the interpolation (takes time)
+            #   get 2D array of the FFT values:
+            print('interpolating')
+            fft_XYZ = interpolator(X_cart, Y_cart, Z_cart)
+
+            if save_interpolated_data:
+                data_to_save = {}
+                data_to_save['X_direct'] = X_direct
+                data_to_save['Y_direct'] = Y_direct
+                data_to_save['fft_XYZ'] = fft_XYZ
+                with open(interp_data_fout_pickle_name, 'wb') as f:
+                    pickle.dump(data_to_save, f)
+
 
         xlabel = r'$k_u$' + f" [({u[0]:.2f}, {u[1]:.2f}, {u[2]:.2f})" + r'$\mathrm{\AA}^{-1}$]' + f"+ ({center[0]:.2f}, {center[1]:.2f}, {center[2]:.2f})" + r'$\mathrm{\AA}^{-1}$'
         ylabel = r'$k_v$' + f" [({v[0]:.2f}, {v[1]:.2f}, {v[2]:.2f})" + r'$\mathrm{\AA}^{-1}$]' + f"+ ({center[0]:.2f}, {center[1]:.2f}, {center[2]:.2f})" + r'$\mathrm{\AA}^{-1}$'
@@ -1875,7 +1908,10 @@ def workflow(output_folder, site_idx, site_radii, replace_DFT_by_model, paramete
                             cax_saturation=cax_saturation,
                             xlims=(-xy_lim, xy_lim),
                             ylims=(-xy_lim, xy_lim),
+                            zlims=zlims,
                             normalized=normalized,
+                            plot_rec_latt_vectors=False,
+                            fft_as_log=fft_as_log,
                             )
 
     # test_shift()
