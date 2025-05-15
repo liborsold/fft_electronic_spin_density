@@ -26,6 +26,16 @@ import pickle
 
 a0 = physical_constants['Bohr radius'][0] * 1e10 # Bohr radius in units of Angstrom
 
+r_mt_Cu = 1.1 #Angstrom
+r_mt_O = 0.9 #Angstrom
+
+base_path = './outputs/Cu2AC4/512/'
+scale_factor = 2.0 # 5.0
+
+R1 = np.array((4.85991, 5.28091, 3.56158)) # np.array(list(self.metadata['atoms'][R_idx1][1])[1:])*physical_constants['Bohr radius'][0]*1e10
+R2 = np.array((3.01571, 6.45289, 4.99992)) #np.array(list(self.metadata['atoms'][R_idx2][1])[1:])*physical_constants['Bohr radius'][0]*1e10
+
+
 class Density:
     """Read, visualize and fourier transform (spin) density from gaussian .cube files.
         Replace by a model function if required.
@@ -70,11 +80,11 @@ class Density:
                     # Cu1_xyz = (4.85991, 5.28091, 3.56158)
                     # self.R = np.array(Cu2_xyz) - np.array(Cu1_xyz)
         R_idx1, R_idx2 = R_atoms_idx
-        self.R1 = np.array((4.85991, 5.28091, 3.56158)) # np.array(list(self.metadata['atoms'][R_idx1][1])[1:])*physical_constants['Bohr radius'][0]*1e10
-        self.R2 = np.array((3.01571, 6.45289, 4.99992)) #np.array(list(self.metadata['atoms'][R_idx2][1])[1:])*physical_constants['Bohr radius'][0]*1e10
+        self.R1 = R1 # np.array(list(self.metadata['atoms'][R_idx1][1])[1:])*physical_constants['Bohr radius'][0]*1e10
+        self.R2 = R2 #np.array(list(self.metadata['atoms'][R_idx2][1])[1:])*physical_constants['Bohr radius'][0]*1e10
         
         # vector
-        self.R_vec = self.R2 - self.R1
+        self.R_vec = self.R2 - self.R1  # = (-1.8442, 1.17198, 1.43834) A^-1 with a length of 2.616 A^-1 
         # its length
         self.R_xy = np.sqrt(self.R_vec[0]**2 + self.R_vec[1]**2)
 
@@ -1626,6 +1636,30 @@ def test_shift():
     plt.savefig('fake_3D_shifted.png')
     plt.close()
 
+def get_interpolator(interpolator_name: str, X: np.ndarray, fX: np.ndarray, verbose=True) -> LinearNDInterpolator:
+    """Create or load an interpolator for the given data.
+
+    Args:
+        interpolator_name (str): Name of the interpolator file.
+        X (np.ndarray): Input data points.
+        fX (np.ndarray): Function values at the input data points.
+        verbose (bool, optional): Verbosity flag. Defaults to True.
+
+    Returns:
+        LinearNDInterpolator: The interpolator object.
+    """
+    if not os.path.exists(interpolator_name):
+        if verbose: print('creating interpolator...')
+        interpolator = LinearNDInterpolator(X, fX)
+        with open(interpolator_name, 'wb') as f:
+            pickle.dump(interpolator, f)
+        if verbose: print('interpolator saved to a pickle file!')
+    else:
+        if verbose: print('interpolator pickle file exists! loading interpolator...')
+        with open(interpolator_name, 'rb') as f:
+            interpolator = pickle.load(f)
+    return interpolator
+
 
 def workflow(output_folder, site_idx, site_radii, replace_DFT_by_model, parameters_model, fit_model_to_DFT,
              use_saved_interpolated_data=True, save_interpolated_data=True):
@@ -1844,16 +1878,13 @@ def workflow(output_folder, site_idx, site_radii, replace_DFT_by_model, paramete
         print('kx_cart_mesh shape', density.kx_cart_mesh_centered.shape)
         print('kx_flat[include_points] shape', kx_flat[include_points].shape)
         
-        if not os.path.exists(interpolator_name):
-            print('creating interpolator...')
-            interpolator = LinearNDInterpolator(np.vstack((kx_flat[include_points], ky_flat[include_points], kz_flat[include_points])).T, density.F_abs_sq.flatten()[include_points])
-            with open(interpolator_name, 'wb') as f:
-                pickle.dump(interpolator, f)
-            print('interpolator saved to a pickle file!')
-        else:
-            print('interpolator pickle file exists! loading interpolator...')
-            with open(interpolator_name, 'rb') as f:
-                interpolator = pickle.load(f)
+        # ------- GET (or load) THE INTERPOLATOR ------
+            # coordinates
+        X = np.vstack((kx_flat[include_points], ky_flat[include_points], kz_flat[include_points])).T
+            # function values
+        fX = density.F_abs_sq.flatten()[include_points]
+            # create (or load / save) the interpolator
+        interpolator = get_interpolator(interpolator_name, X, fX, verbose=True)
          
         N_points = 101
         cax_saturation = None
@@ -2183,254 +2214,306 @@ def workflow_autocorrelation_term(parameters_model, scale_R_array=[1.0], output_
     plt.savefig(f'{output_folder}/E_perp_sq_vs_scale_R.png', dpi=400)
 
 
+site_idx_all = [
+    [0], #0            
+    [1], #1
+    [0,1], #2
+    [0, 16, 25, 9, 40], #3
+    [1, 41, 8, 24, 17], #4
+    [0, 16, 25, 9, 40, 1, 41, 8, 24, 17,], #5
+    None, #6
+    [0], #7
+    [0,1], #8
+    [0,1], #9
+    [0], #10
+    [0], #11
+    [0], #12
+    [1,], #13
+    [25,], #14
+    [25,], #15
+    [40], #16
+    [9], #17
+    [16], #18
+    [0, 25, 40, 9, 16], #19
+    [0], #20
+    [0, 25, 40, 9, 16], #21
+    [0, 25, 40, 9, 16], #22
+    [0, 25, 40, 9, 16, 1, 41, 24, 17, 8], #23
+    [25], #24
+    [40], #25
+    [9], #26
+    [16], #27
+    [0], #28
+    [0, 25, 40, 9, 16], #29
+]
+
+site_radii_all = [
+    [r_mt_Cu], #0
+    [r_mt_Cu], #1
+    [r_mt_Cu]*2, #2
+    [r_mt_Cu] + 4*[r_mt_O], #3
+    [r_mt_Cu] + 4*[r_mt_O], #4
+    [r_mt_Cu] + 4*[r_mt_O] + [r_mt_Cu] + 4*[r_mt_O], #5
+    None, #6
+    [r_mt_Cu], #7
+    [r_mt_Cu]*2, #8
+    [r_mt_Cu]*2, #9
+    [r_mt_Cu]*1, #10
+    [r_mt_Cu]*1, #11
+    [r_mt_Cu*1.1]*1, #12
+    [r_mt_Cu]*1, #13
+    [r_mt_O], #14
+    [r_mt_O], #15
+    [r_mt_O], #16
+    [r_mt_O], #17
+    [r_mt_O], #18
+    [r_mt_Cu]+[r_mt_O]*4, #19
+    [r_mt_Cu], #20
+    [r_mt_Cu]+[r_mt_O]*4, #21
+    [r_mt_Cu]+[r_mt_O]*4, #22
+    [r_mt_Cu]+[r_mt_O]*4+[r_mt_Cu]+[r_mt_O]*4, #23
+    [r_mt_O], #24
+    [r_mt_O], #25
+    [r_mt_O], #26
+    [r_mt_O], #27
+    [r_mt_Cu], #28
+    [r_mt_Cu]+[r_mt_O]*4, #29
+]
+
+
+output_folders_all = [
+    base_path+f'masked_Cu0_scale-factor_{scale_factor:.2f}_norm', #0
+    base_path+'masked_Cu1', #1
+    base_path+'masked_Cu0-1', #2
+    base_path+f'masked_Cu0_and_oxygens_scale-factor_{scale_factor:.2f}_norm', #3
+    base_path+'masked_Cu1_and_oxygens', #4
+    base_path+f'masked_Cu0-1_and_oxygens_scale-factor_{scale_factor:.2f}_norm', #5
+    base_path+'unmasked_unit-cell', #6
+    base_path+'masked_0_gaussian_sigma_0.3', #7
+    base_path+'masked_0_1_gaussians_sigma_0.3', #8
+    base_path+'masked_0_1_gaussians_sigma_0.3_same-sign', #9
+    base_path+'masked_0_dxy_rotated_test', #10
+    base_path+'masked_0_dx2y2_rotated_fit', #11
+    base_path+'masked_0_dx2y2_rotated_normalized_fit', #12
+    base_path+'masked_0_two_s_rotated_fit', #13
+    base_path+'masked_0_two_px_rotated_fit', #14
+    base_path+'masked_0_two_spx_rotated_25', #15
+    base_path+'masked_0_two_spx_rotated_40', #16
+    base_path+'masked_0_two_spx_rotated_9', #17
+    base_path+'masked_0_two_spx_rotated_16', #18
+    base_path+'masked_model_Cu0_and_oxygens', #19
+    base_path+'masked_model_Cu0_s-dx2y2', #20
+    base_path+'masked_model_Cu0_and_oxygens_s-dx2y2', #21
+    base_path+f'masked_model_Cu0_and_oxygens_purely_bonding_{scale_factor:.2f}', #22
+    base_path+f'masked_model_Cu0-1_and_oxygens_purely_bonding_exact_copies_0_and_1_{scale_factor:.2f}_norm', #23
+    base_path+'masked_0_two_spx_correct_rotated_25', #24 - like 15 but with correct n=2 for 2s orbital
+    base_path+'masked_0_two_spx_correct_rotated_40', #25 - like 16 but with correct n=2 for 2s orbital
+    base_path+'masked_0_two_spx_correct_rotated_9', #26 - like 17 but with correct n=2 for 2s orbital
+    base_path+'masked_0_two_spx_correct_rotated_16', #27 - like 18 but with correct n=2 for 2s orbital
+    base_path+'masked_model_Cu0_dx2y2_neat', #28 - like 11 but expression slightly revamped - just change of parameters
+    base_path+'masked_model_Cu0_and_oxygens_purely_bonding_spx_correct', #29 - like 21 but with correct n=2 for 2s orbital
+]
+
+replace_DFT_by_model_all = [
+    False, #0
+    False, #1
+    False, #2
+    False, #3
+    False, #4
+    False, #5
+    False, #6
+    True, #7
+    True, #8
+    True, #9
+    True, #10
+    True, #11
+    True, #12
+    True, #13
+    True, #14
+    True, #15
+    True, #16
+    True, #17
+    True, #18
+    True, #19
+    True, #20
+    True, #21
+    True, #22
+    True, #23
+    True, #24
+    True, #25
+    True, #26
+    True, #27
+    True, #28
+    True, #29
+]
+
+fit_model_to_DFT_all = [
+    False, #0
+    False, #1
+    False, #2
+    False, #3
+    False, #4
+    False, #5
+    False, #6
+    False, #7
+    False, #8
+    False, #9
+    False, #10
+    True, #11
+    True, #12
+    False, #13
+    False, #14
+    True, #15
+    True, #16
+    True, #17
+    True, #18
+    False, #19
+    False, #20
+    False, #21
+    False, #22
+    False, #23
+    True, #24
+    True, #25
+    True, #26
+    True, #27
+    True, #28
+    True, #29
+]
+
+parameters_model_all = [{}]*7 + [
+    {'type':['gaussian'], 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[1]}}, #7
+    {'type':['gaussian']*2, 'sigmas':[0.3, 0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[1,-1]}}, #8
+    {'type':['gaussian']*2, 'sigmas':[0.3, 0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[1,1]}}, #9
+    {'type':['dxy'], 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[1]}}, #10
+    {'type':['dx2y2'], 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[700.256342], 'theta0':[-1.011299], 'phi0':[-0.59835726], 'Z_eff':[12.85111],}}, #11 (old Copper)
+    {'type':['dx2y2_normalized'], 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'theta0':[-1.01], 'phi0':[-0.6001], 'Z_eff':[9.7],}}, #12
+    {'type':['two_s'], 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'theta0':[-1.006], 'phi0':[-0.5933], 'Z_eff':[20.5],}}, #13
+    {'type':['two_px'], 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'theta0':[-1.006], 'phi0':[-0.5933], 'Z_eff':[10],}}, #14
+    {'type':['two_spx'], 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[0.12095979], 'theta0':[-0.82363378], 'phi0':[-0.59752522], 'Z_eff':[8.5545368], 'C':[0.50774442]}}, #15 (atom 25) <-------- Oxygen 1/4
+    {'type':['two_spx'], 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[0.1264227], 'theta0':[1.18166768], 'phi0':[2.55285232], 'Z_eff':[8.5995384], 'C':[0.46376494]}}, #16 (atom 40) <-------- Oxygen 2/4
+    {'type':['two_spx'], 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[0.123107364], 'theta0':[0.0003331], 'phi0':[0.829267292], 'Z_eff':[8.53154405], 'C':[0.543582469]}}, #17 (atom 9) <-------- Oxygen 3/4
+    {'type':['two_spx'], 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[0.12409948], 'theta0':[0.17039612], 'phi0':[-2.0329591 ], 'Z_eff':[8.57672478], 'C':[0.46376494]}}, #18 (atom 16) <-------- Oxygen 4/4
+    {'type':['dx2y2']+4*['two_spx'], 'sigmas':[0.3]*5, 'centers':[], 'fit_params_init_all':{'amplitude':[509.65056, 0.12095979, 0.1264227, 0.123107364, 0.12409948], 
+                                                                            'theta0':[-0.99290,-0.82363378, 1.18166768, 0.0003331, 0.17039612], 
+                                                                            'phi0':[-0.58594, -0.5933, 2.55285232, 0.829267292, -2.0329591 ], 
+                                                                            'Z_eff':[12.2132868, 8.5545368, 8.5995384, 8.53154405, 8.57672478],
+                                                                            'C':[0.000, 0.50774442, 0.46376494, 0.543582469, 0.50554664]}}, #19 <-------- Copper (d only) + 4 Oxygens -- mixed bonding and anti-bonding!!
+    {'type':['dx2y2_with_four_s'], 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[691.803173], 'theta0':[-1.01204317], 'phi0':[-0.599982000], 'Z_eff':[12.8281], 'Z_eff_s':[3.59397636], 'C':[0.0057885]}}, #20 <------ Copper 1/1 
+    {'type':['dx2y2_with_four_s']+4*['two_spx'], 'sigmas':[0.3]*5, 'centers':[], 'fit_params_init_all':{'amplitude':[691.803173, 0.12095979, 0.1264227, 0.123107364, 0.12409948], 
+                                                                    'theta0':[-1.01204317,-0.82363378, 1.18166768, 0.0003331, 0.17039612], 
+                                                                    'phi0':[-0.599982, -0.5933, 2.55285232, 0.829267292, -2.0329591 ], 
+                                                                    'Z_eff':[12.8281, 8.5545368, 8.5995384, 8.53154405, 8.57672478],
+                                                                    'Z_eff_s':[3.59397636, None, None, None, None],
+                                                                    'C':[0.0057885, 0.50774442, 0.46376494, 0.543582469, 0.50554664]}}, #21 <-------- (  Copper (sd) + 4 Oxygens --- not much better) 
+    {'type':['dx2y2']+4*['two_spx'], 'sigmas':[0.3]*5, 'centers':[], 'fit_params_init_all':{'amplitude':[509.65056, -0.12095979, -0.1264227, 0.123107364, 0.12409948], 
+                                                                            'theta0':[-0.99290,-0.82363378, 1.18166768, 0.0003331, 0.17039612], 
+                                                                            'phi0':[-0.58594, -0.5933, 2.55285232, 0.829267292, -2.0329591 ], 
+                                                                            'Z_eff':[12.2132868, 8.5545368, 8.5995384, 8.53154405, 8.57672478],
+                                                                            'C':[0.000, 0.50774442, 0.46376494, 0.543582469, 0.50554664]}}, #22 <-------- purely bonding version of 19
+    {'type':['dx2y2']+4*['two_spx']+['dx2y2']+4*['two_spx'], 'sigmas':[0.3]*10, 'centers':[], 
+        'spin_down_orbital_all':[False]*5 + [True]*5,
+                                                                        'fit_params_init_all':{'amplitude':[509.65056, -0.12095979, -0.1264227, 0.123107364, 0.12409948, 509.65056, -0.12095979, -0.1264227, 0.123107364, 0.12409948], 
+                                                                            'theta0':[-0.99290,-0.82363378, 1.18166768, 0.0003331, 0.17039612, -0.99290,-0.82363378, 1.18166768, 0.0003331, 0.17039612], 
+                                                                            'phi0':[-0.58594, -0.5933, 2.55285232, 0.829267292, -2.0329591, -0.58594, -0.5933, 2.55285232, 0.829267292, -2.0329591,], 
+                                                                            'Z_eff':[12.2132868, 8.5545368, 8.5995384, 8.53154405, 8.57672478, 12.2132868, 8.5545368, 8.5995384, 8.53154405, 8.57672478],
+                                                                            'C':[0.000, 0.50774442, 0.46376494, 0.543582469, 0.50554664, 0.000, 0.50774442, 0.46376494, 0.543582469, 0.50554664]}}, #23 <-------- both Cu0 and Cu1 populated with model 22 (Cu1 with spin down - controlled by 'spin_down_orbital_all' key in parameters_model)
+    
+    
+    {'type':['two_spx_correct'], 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[-0.2926634], 'theta0':[-0.82051673], 'phi0':[-0.5980457], 'Z_eff':[5.01517706], 'C':[0.25951331]}}, #24 (atom 25) - like 15 but correct orbitals <-------- Oxygen 1/4,         --->  R^2 0.853924
+    {'type':['two_spx_correct'], 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[-0.30968292], 'theta0':[1.18435744], 'phi0':[2.55194631], 'Z_eff':[4.94533815], 'C':[0.22725085]}}, #25 (atom 40) - like 16 but correct orbitals <-------- Oxygen 2/4  --->  R^2 0.865949
+    {'type':['two_spx_correct'], 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[0.295919999], 'theta0':[0.00034809], 'phi0':[0.8265912], 'Z_eff':[5.10058135], 'C':[0.291142454]}}, #26 (atom 9) - like 17 but correct orbitals <-------- Oxygen 3/4   --->  R^2 0.842962
+    {'type':['two_spx_correct'], 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[0.30207433], 'theta0':[0.18104707], 'phi0':[-2.03391158], 'Z_eff':[5.04343411], 'C':[0.28161311]}}, #27 (atom 16) - like 18 but correct orbitals <-------- Oxygen 4/4          --->  R^2 0.852591
+    {'type':['dx2y2_neat'],      'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[0.360453056], 'theta0':[-1.011437], 'phi0':[-0.59855408], 'Z_eff':[12.8481725], 'C':[0.00]}}, #28 - like 11 but more neately defined parameters  <------ copper                --->  R^2 0.784286
+    {'type':['dx2y2_neat']+4*['two_spx_correct'], 'sigmas':[0.3]*5, 'centers':[], 'fit_params_init_all':{'amplitude':[0.360453056, -0.2926634, -0.30968292, 0.295919999, 0.30207433], 
+                                                                            'theta0':[-1.011437, -0.82051673, 1.18435744, 0.00034809, 0.18104707], 
+                                                                            'phi0':[-0.59855408, -0.5980457, 2.55194631, 0.8265912, -2.03391158], 
+                                                                            'Z_eff':[12.8481725, 5.01517706, 4.94533815, 5.10058135, 5.04343411],
+                                                                            'C':[0.000, 0.25951331, 0.22725085, 0.291142454, 0.28161311]}}, #29 - like 22 but correct sp orbitals - for fitting
+    # 30 will be like 23 but with parameters from #29
+    {'type':['dx2y2_neat']+4*['two_spx_correct']+['dx2y2_neat']+4*['two_spx_correct'], 'sigmas':[0.3]*10, 'centers':[],
+        'spin_down_orbital_all':[False]*5 + [True]*5,
+                                                                        'fit_params_init_all':{'amplitude':[0.360453056, -0.2926634, -0.30968292, 0.295919999, 0.30207433, 0.360453056, -0.2926634, -0.30968292, 0.295919999, 0.30207433], 
+                                                                                'theta0':[-1.011437, -0.82051673, 1.18435744, 0.00034809, 0.18104707, -1.011437, -0.82051673, 1.18435744, 0.00034809, 0.18104707], 
+                                                                                'phi0':[-0.59855408, -0.5980457, 2.55194631, 0.8265912, -2.03391158, -0.59855408, -0.5980457, 2.55194631, 0.8265912, -2.03391158], 
+                                                                                'Z_eff':[12.8481725, 5.01517706, 4.94533815, 5.10058135, 5.04343411, 12.8481725, 5.01517706, 4.94533815, 5.10058135, 5.04343411],
+                                                                                'C':[0.000, 0.25951331, 0.22725085, 0.291142454, 0.28161311, 0.000, 0.25951331, 0.22725085, 0.291142454, 0.28161311]}}, #30 <-------- both Cu0 and Cu1 populated with model 29 (Cu1 with spin down - controlled by 'spin_down_orbital_all' key in parameters_model)     
+
+    ]
+
+def workflow_plot_density(suffix='rho_sz_up-down_512'):
+    base_folder = './outputs/Cu2AC4/512/plot_along_line'
+    if not os.path.exists(base_folder):
+        os.makedirs(base_folder)
+    fname_cube_file = f'./cube_files/diverse_calculations/Cu2AC4_{suffix}.cube' #'./cube_files/Mn2GeO4_rho_sz.cube'
+
+    r_cutoff = 0.3 #2.5 # Angstrom
+    center = [3.93781, 5.8669, 4.28075]
+    R_vec = R2 - R1
+
+    interpolator_name = os.path.join(base_folder, f'interpolator_{suffix}_r-cutoff_{r_cutoff:.2f}.pickle')
+
+    if not os.path.exists(interpolator_name):
+        # only need the data if interpolator does not exist
+        density = Density(fname_cube_file=fname_cube_file)
+        x = density.x_cart_mesh.flatten()
+        y = density.y_cart_mesh.flatten()
+        z = density.z_cart_mesh.flatten()
+        include = np.logical_and(np.logical_and(np.abs(x-center[0]) < r_cutoff, np.abs(y-center[1]) < r_cutoff), np.abs(z-center[2]) < r_cutoff)
+        X = np.array([x[include], y[include], z[include]]).T
+        fX = density.array.flatten()[include]
+    else:
+        X = None
+        fX = None
+
+    interpolator = get_interpolator(interpolator_name=interpolator_name, X=X, fX=fX, verbose=True)
+
+    r_dist = np.linspace(-r_cutoff*np.sqrt(2), r_cutoff*np.sqrt(2), 301)
+    axis = R_vec / np.linalg.norm(R_vec)
+    x = center[0] + axis[0] * r_dist
+    y = center[1] + axis[1] * r_dist
+    z = center[2] + axis[2] * r_dist
+    X_interp = np.array([x, y, z]).T
+    fX_interp = interpolator(X_interp)
+
+    # save data
+    with open(os.path.join(base_folder, f'density_along_Cu1Cu2_line_{suffix}.txt'), 'w+') as fw:
+        np.savetxt(fw, np.vstack([r_dist, fX_interp]).T, header='r_dist\tF_abs_sq', delimiter='\t')
+
+    # plot in both linear and log scale
+    def plot_density(r_dist, fX_interp, suffix, log_scale=False):
+        fig, ax = plt.subplots(1, 1, figsize=(4., 3.))
+        if log_scale:
+            plt.semilogy()
+            suffix = 'log_abs_' + suffix
+            fX_interp = np.abs(fX_interp)
+        plt.plot(r_dist, fX_interp, '.-', markerfacecolor='none')
+        plt.xlabel(r'$r$ (Angstrom)')
+        plt.ylabel(f'density {suffix}' + ' (1/a_0^3)')
+        plt.tight_layout()
+        plt.savefig(os.path.join(base_folder, f'density_along_Cu1Cu2_line_{suffix}.png'), dpi=400)
+        plt.close()
+
+    plot_density(r_dist, fX_interp, suffix, log_scale=False)
+    plot_density(r_dist, fX_interp, suffix, log_scale=True)
+
+
 if __name__ == '__main__':
     # workflow_density_vs_cutoff_radius(site_idx=[0], site_radii_all=[[i] for i in np.arange(0.5, 4.0, 0.5)], plot=True)
     # exit()
 
-    scale_factor = 2.0 # 5.0
-
-    r_mt_Cu = 1.1 #Angstrom
-    r_mt_O = 0.9 #Angstrom
+    # PLOT THE ELECTRONIC AND SPIN DENSITY ALONG LINES ETC.
+    workflow_plot_density()
 
     # ===== RUN a single case =====
     run_a_single_case = False
-
     if run_a_single_case:
         output_folder = './outputs/Cu2AC4/512/masked_Cu0_and_oxygens' #_and_oxygens' # 'Mn2GeO4_kz_tomography_64' #'./gaussian/sigma_0.3_distance_1.0' # Mn2GeO4_kz_tomography_64
-        
         site_idx = [0, 16, 25, 9, 40] #, 1] # 16, 25, 9, 40, 1, 41, 8, 24, 17] #  16, 25, 9, 40] #[0]# None #[0,  16, 25, 9, 40, 1, 41, 8, 24, 17] #[1, 41, 8, 24, 17, 0,  16, 25, 9, 40] #[0] #, 16, 25, 9, 40]  # [0] #,  16, 25, 9, 40] #
         site_radii = [r_mt_Cu] + 4*[r_mt_O] #+ [r_mt_Cu]+ 4*[r_mt_O]
         workflow(site_idx=site_idx, site_radii=site_radii, output_folder=output_folder)
 
     # ===== RUN selected cases among the predefined ones =====
-    run_cases = [5] #[0, 3, 5, 23] #, 3, 5, 23] #, 3, 5] # None
-
-    site_idx_all = [
-        [0], #0            
-        [1], #1
-        [0,1], #2
-        [0, 16, 25, 9, 40], #3
-        [1, 41, 8, 24, 17], #4
-        [0, 16, 25, 9, 40, 1, 41, 8, 24, 17,], #5
-        None, #6
-        [0], #7
-        [0,1], #8
-        [0,1], #9
-        [0], #10
-        [0], #11
-        [0], #12
-        [1,], #13
-        [25,], #14
-        [25,], #15
-        [40], #16
-        [9], #17
-        [16], #18
-        [0, 25, 40, 9, 16], #19
-        [0], #20
-        [0, 25, 40, 9, 16], #21
-        [0, 25, 40, 9, 16], #22
-        [0, 25, 40, 9, 16, 1, 41, 24, 17, 8], #23
-        [25], #24
-        [40], #25
-        [9], #26
-        [16], #27
-        [0], #28
-        [0, 25, 40, 9, 16], #29
-    ]
-
-    site_radii_all = [
-        [r_mt_Cu], #0
-        [r_mt_Cu], #1
-        [r_mt_Cu]*2, #2
-        [r_mt_Cu] + 4*[r_mt_O], #3
-        [r_mt_Cu] + 4*[r_mt_O], #4
-        [r_mt_Cu] + 4*[r_mt_O] + [r_mt_Cu] + 4*[r_mt_O], #5
-        None, #6
-        [r_mt_Cu], #7
-        [r_mt_Cu]*2, #8
-        [r_mt_Cu]*2, #9
-        [r_mt_Cu]*1, #10
-        [r_mt_Cu]*1, #11
-        [r_mt_Cu*1.1]*1, #12
-        [r_mt_Cu]*1, #13
-        [r_mt_O], #14
-        [r_mt_O], #15
-        [r_mt_O], #16
-        [r_mt_O], #17
-        [r_mt_O], #18
-        [r_mt_Cu]+[r_mt_O]*4, #19
-        [r_mt_Cu], #20
-        [r_mt_Cu]+[r_mt_O]*4, #21
-        [r_mt_Cu]+[r_mt_O]*4, #22
-        [r_mt_Cu]+[r_mt_O]*4+[r_mt_Cu]+[r_mt_O]*4, #23
-        [r_mt_O], #24
-        [r_mt_O], #25
-        [r_mt_O], #26
-        [r_mt_O], #27
-        [r_mt_Cu], #28
-        [r_mt_Cu]+[r_mt_O]*4, #29
-    ]
-
-    base_path = './outputs/Cu2AC4/512/'
-    output_folders_all = [
-        base_path+f'masked_Cu0_scale-factor_{scale_factor:.2f}_norm', #0
-        base_path+'masked_Cu1', #1
-        base_path+'masked_Cu0-1', #2
-        base_path+f'masked_Cu0_and_oxygens_scale-factor_{scale_factor:.2f}_norm', #3
-        base_path+'masked_Cu1_and_oxygens', #4
-        base_path+f'masked_Cu0-1_and_oxygens_scale-factor_{scale_factor:.2f}_norm', #5
-        base_path+'unmasked_unit-cell', #6
-        base_path+'masked_0_gaussian_sigma_0.3', #7
-        base_path+'masked_0_1_gaussians_sigma_0.3', #8
-        base_path+'masked_0_1_gaussians_sigma_0.3_same-sign', #9
-        base_path+'masked_0_dxy_rotated_test', #10
-        base_path+'masked_0_dx2y2_rotated_fit', #11
-        base_path+'masked_0_dx2y2_rotated_normalized_fit', #12
-        base_path+'masked_0_two_s_rotated_fit', #13
-        base_path+'masked_0_two_px_rotated_fit', #14
-        base_path+'masked_0_two_spx_rotated_25', #15
-        base_path+'masked_0_two_spx_rotated_40', #16
-        base_path+'masked_0_two_spx_rotated_9', #17
-        base_path+'masked_0_two_spx_rotated_16', #18
-        base_path+'masked_model_Cu0_and_oxygens', #19
-        base_path+'masked_model_Cu0_s-dx2y2', #20
-        base_path+'masked_model_Cu0_and_oxygens_s-dx2y2', #21
-        base_path+f'masked_model_Cu0_and_oxygens_purely_bonding_{scale_factor:.2f}', #22
-        base_path+f'masked_model_Cu0-1_and_oxygens_purely_bonding_exact_copies_0_and_1_{scale_factor:.2f}_norm', #23
-        base_path+'masked_0_two_spx_correct_rotated_25', #24 - like 15 but with correct n=2 for 2s orbital
-        base_path+'masked_0_two_spx_correct_rotated_40', #25 - like 16 but with correct n=2 for 2s orbital
-        base_path+'masked_0_two_spx_correct_rotated_9', #26 - like 17 but with correct n=2 for 2s orbital
-        base_path+'masked_0_two_spx_correct_rotated_16', #27 - like 18 but with correct n=2 for 2s orbital
-        base_path+'masked_model_Cu0_dx2y2_neat', #28 - like 11 but expression slightly revamped - just change of parameters
-        base_path+'masked_model_Cu0_and_oxygens_purely_bonding_spx_correct', #29 - like 21 but with correct n=2 for 2s orbital
-    ]
-
-    replace_DFT_by_model_all = [
-        False, #0
-        False, #1
-        False, #2
-        False, #3
-        False, #4
-        False, #5
-        False, #6
-        True, #7
-        True, #8
-        True, #9
-        True, #10
-        True, #11
-        True, #12
-        True, #13
-        True, #14
-        True, #15
-        True, #16
-        True, #17
-        True, #18
-        True, #19
-        True, #20
-        True, #21
-        True, #22
-        True, #23
-        True, #24
-        True, #25
-        True, #26
-        True, #27
-        True, #28
-        True, #29
-    ]
-
-    fit_model_to_DFT_all = [
-        False, #0
-        False, #1
-        False, #2
-        False, #3
-        False, #4
-        False, #5
-        False, #6
-        False, #7
-        False, #8
-        False, #9
-        False, #10
-        True, #11
-        True, #12
-        False, #13
-        False, #14
-        True, #15
-        True, #16
-        True, #17
-        True, #18
-        False, #19
-        False, #20
-        False, #21
-        False, #22
-        False, #23
-        True, #24
-        True, #25
-        True, #26
-        True, #27
-        True, #28
-        True, #29
-    ]
-
-    parameters_model_all = [{}]*7 + [
-        {'type':['gaussian'], 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[1]}}, #7
-        {'type':['gaussian']*2, 'sigmas':[0.3, 0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[1,-1]}}, #8
-        {'type':['gaussian']*2, 'sigmas':[0.3, 0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[1,1]}}, #9
-        {'type':['dxy'], 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[1]}}, #10
-        {'type':['dx2y2'], 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[700.256342], 'theta0':[-1.011299], 'phi0':[-0.59835726], 'Z_eff':[12.85111],}}, #11 (old Copper)
-        {'type':['dx2y2_normalized'], 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'theta0':[-1.01], 'phi0':[-0.6001], 'Z_eff':[9.7],}}, #12
-        {'type':['two_s'], 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'theta0':[-1.006], 'phi0':[-0.5933], 'Z_eff':[20.5],}}, #13
-        {'type':['two_px'], 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'theta0':[-1.006], 'phi0':[-0.5933], 'Z_eff':[10],}}, #14
-        {'type':['two_spx'], 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[0.12095979], 'theta0':[-0.82363378], 'phi0':[-0.59752522], 'Z_eff':[8.5545368], 'C':[0.50774442]}}, #15 (atom 25) <-------- Oxygen 1/4
-        {'type':['two_spx'], 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[0.1264227], 'theta0':[1.18166768], 'phi0':[2.55285232], 'Z_eff':[8.5995384], 'C':[0.46376494]}}, #16 (atom 40) <-------- Oxygen 2/4
-        {'type':['two_spx'], 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[0.123107364], 'theta0':[0.0003331], 'phi0':[0.829267292], 'Z_eff':[8.53154405], 'C':[0.543582469]}}, #17 (atom 9) <-------- Oxygen 3/4
-        {'type':['two_spx'], 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[0.12409948], 'theta0':[0.17039612], 'phi0':[-2.0329591 ], 'Z_eff':[8.57672478], 'C':[0.46376494]}}, #18 (atom 16) <-------- Oxygen 4/4
-        {'type':['dx2y2']+4*['two_spx'], 'sigmas':[0.3]*5, 'centers':[], 'fit_params_init_all':{'amplitude':[509.65056, 0.12095979, 0.1264227, 0.123107364, 0.12409948], 
-                                                                                'theta0':[-0.99290,-0.82363378, 1.18166768, 0.0003331, 0.17039612], 
-                                                                                'phi0':[-0.58594, -0.5933, 2.55285232, 0.829267292, -2.0329591 ], 
-                                                                                'Z_eff':[12.2132868, 8.5545368, 8.5995384, 8.53154405, 8.57672478],
-                                                                                'C':[0.000, 0.50774442, 0.46376494, 0.543582469, 0.50554664]}}, #19 <-------- Copper (d only) + 4 Oxygens -- mixed bonding and anti-bonding!!
-        {'type':['dx2y2_with_four_s'], 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[691.803173], 'theta0':[-1.01204317], 'phi0':[-0.599982000], 'Z_eff':[12.8281], 'Z_eff_s':[3.59397636], 'C':[0.0057885]}}, #20 <------ Copper 1/1 
-        {'type':['dx2y2_with_four_s']+4*['two_spx'], 'sigmas':[0.3]*5, 'centers':[], 'fit_params_init_all':{'amplitude':[691.803173, 0.12095979, 0.1264227, 0.123107364, 0.12409948], 
-                                                                        'theta0':[-1.01204317,-0.82363378, 1.18166768, 0.0003331, 0.17039612], 
-                                                                        'phi0':[-0.599982, -0.5933, 2.55285232, 0.829267292, -2.0329591 ], 
-                                                                        'Z_eff':[12.8281, 8.5545368, 8.5995384, 8.53154405, 8.57672478],
-                                                                        'Z_eff_s':[3.59397636, None, None, None, None],
-                                                                        'C':[0.0057885, 0.50774442, 0.46376494, 0.543582469, 0.50554664]}}, #21 <-------- (  Copper (sd) + 4 Oxygens --- not much better) 
-        {'type':['dx2y2']+4*['two_spx'], 'sigmas':[0.3]*5, 'centers':[], 'fit_params_init_all':{'amplitude':[509.65056, -0.12095979, -0.1264227, 0.123107364, 0.12409948], 
-                                                                                'theta0':[-0.99290,-0.82363378, 1.18166768, 0.0003331, 0.17039612], 
-                                                                                'phi0':[-0.58594, -0.5933, 2.55285232, 0.829267292, -2.0329591 ], 
-                                                                                'Z_eff':[12.2132868, 8.5545368, 8.5995384, 8.53154405, 8.57672478],
-                                                                                'C':[0.000, 0.50774442, 0.46376494, 0.543582469, 0.50554664]}}, #22 <-------- purely bonding version of 19
-        {'type':['dx2y2']+4*['two_spx']+['dx2y2']+4*['two_spx'], 'sigmas':[0.3]*10, 'centers':[], 
-            'spin_down_orbital_all':[False]*5 + [True]*5,
-                                                                          'fit_params_init_all':{'amplitude':[509.65056, -0.12095979, -0.1264227, 0.123107364, 0.12409948, 509.65056, -0.12095979, -0.1264227, 0.123107364, 0.12409948], 
-                                                                                'theta0':[-0.99290,-0.82363378, 1.18166768, 0.0003331, 0.17039612, -0.99290,-0.82363378, 1.18166768, 0.0003331, 0.17039612], 
-                                                                                'phi0':[-0.58594, -0.5933, 2.55285232, 0.829267292, -2.0329591, -0.58594, -0.5933, 2.55285232, 0.829267292, -2.0329591,], 
-                                                                                'Z_eff':[12.2132868, 8.5545368, 8.5995384, 8.53154405, 8.57672478, 12.2132868, 8.5545368, 8.5995384, 8.53154405, 8.57672478],
-                                                                                'C':[0.000, 0.50774442, 0.46376494, 0.543582469, 0.50554664, 0.000, 0.50774442, 0.46376494, 0.543582469, 0.50554664]}}, #23 <-------- both Cu0 and Cu1 populated with model 22 (Cu1 with spin down - controlled by 'spin_down_orbital_all' key in parameters_model)
-        
-        
-        {'type':['two_spx_correct'], 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[-0.2926634], 'theta0':[-0.82051673], 'phi0':[-0.5980457], 'Z_eff':[5.01517706], 'C':[0.25951331]}}, #24 (atom 25) - like 15 but correct orbitals <-------- Oxygen 1/4,         --->  R^2 0.853924
-        {'type':['two_spx_correct'], 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[-0.30968292], 'theta0':[1.18435744], 'phi0':[2.55194631], 'Z_eff':[4.94533815], 'C':[0.22725085]}}, #25 (atom 40) - like 16 but correct orbitals <-------- Oxygen 2/4  --->  R^2 0.865949
-        {'type':['two_spx_correct'], 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[0.295919999], 'theta0':[0.00034809], 'phi0':[0.8265912], 'Z_eff':[5.10058135], 'C':[0.291142454]}}, #26 (atom 9) - like 17 but correct orbitals <-------- Oxygen 3/4   --->  R^2 0.842962
-        {'type':['two_spx_correct'], 'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[0.30207433], 'theta0':[0.18104707], 'phi0':[-2.03391158], 'Z_eff':[5.04343411], 'C':[0.28161311]}}, #27 (atom 16) - like 18 but correct orbitals <-------- Oxygen 4/4          --->  R^2 0.852591
-        {'type':['dx2y2_neat'],      'sigmas':[0.3], 'centers':[], 'fit_params_init_all':{'amplitude':[0.360453056], 'theta0':[-1.011437], 'phi0':[-0.59855408], 'Z_eff':[12.8481725], 'C':[0.00]}}, #28 - like 11 but more neately defined parameters  <------ copper                --->  R^2 0.784286
-        {'type':['dx2y2_neat']+4*['two_spx_correct'], 'sigmas':[0.3]*5, 'centers':[], 'fit_params_init_all':{'amplitude':[0.360453056, -0.2926634, -0.30968292, 0.295919999, 0.30207433], 
-                                                                                'theta0':[-1.011437, -0.82051673, 1.18435744, 0.00034809, 0.18104707], 
-                                                                                'phi0':[-0.59855408, -0.5980457, 2.55194631, 0.8265912, -2.03391158], 
-                                                                                'Z_eff':[12.8481725, 5.01517706, 4.94533815, 5.10058135, 5.04343411],
-                                                                                'C':[0.000, 0.25951331, 0.22725085, 0.291142454, 0.28161311]}}, #29 - like 22 but correct sp orbitals - for fitting
-        # 30 will be like 23 but with parameters from #29
-        {'type':['dx2y2_neat']+4*['two_spx_correct']+['dx2y2_neat']+4*['two_spx_correct'], 'sigmas':[0.3]*10, 'centers':[],
-            'spin_down_orbital_all':[False]*5 + [True]*5,
-                                                                            'fit_params_init_all':{'amplitude':[0.360453056, -0.2926634, -0.30968292, 0.295919999, 0.30207433, 0.360453056, -0.2926634, -0.30968292, 0.295919999, 0.30207433], 
-                                                                                    'theta0':[-1.011437, -0.82051673, 1.18435744, 0.00034809, 0.18104707, -1.011437, -0.82051673, 1.18435744, 0.00034809, 0.18104707], 
-                                                                                    'phi0':[-0.59855408, -0.5980457, 2.55194631, 0.8265912, -2.03391158, -0.59855408, -0.5980457, 2.55194631, 0.8265912, -2.03391158], 
-                                                                                    'Z_eff':[12.8481725, 5.01517706, 4.94533815, 5.10058135, 5.04343411, 12.8481725, 5.01517706, 4.94533815, 5.10058135, 5.04343411],
-                                                                                    'C':[0.000, 0.25951331, 0.22725085, 0.291142454, 0.28161311, 0.000, 0.25951331, 0.22725085, 0.291142454, 0.28161311]}}, #30 <-------- both Cu0 and Cu1 populated with model 29 (Cu1 with spin down - controlled by 'spin_down_orbital_all' key in parameters_model)     
-
-        ]
-
+    run_cases = None #[5] #[0, 3, 5, 23] #, 3, 5, 23] #, 3, 5] # None
     # case = 29
     # scale_R_array = [1.0] #[1.00]
     # workflow_autocorrelation_term(parameters_model_all[case], 
@@ -2438,7 +2521,6 @@ if __name__ == '__main__':
     #                                 output_folder=base_path+'masked_model_Cu0_and_oxygens_purely_bonding_spx_correct_overlap_map', 
     #                                 site_idx=site_idx_all[case],
     #                                 write_cube_files=False)
-
     # exit()                                                                                                
 
     # scale_R_array = [0.01, 0.03, 0.05, 0.08, 0.1, 0.3, 0.5, 1.0, 1.5, 2.0] #np.arange(0.5, 1.5, 0.05)
@@ -2447,7 +2529,6 @@ if __name__ == '__main__':
     #                                 output_folder=output_folders_all[case], 
     #                                 site_idx=site_idx_all[case],
     #                                 write_cube_files=True)
-
     # exit()
 
     if run_cases:
@@ -2459,3 +2540,4 @@ if __name__ == '__main__':
             parameters_model = parameters_model_all[i]
             fit_model_to_DFT = fit_model_to_DFT_all[i]
             workflow(site_idx=site_idx, site_radii=site_radii, output_folder=output_folder, replace_DFT_by_model=replace_DFT_by_model, parameters_model=parameters_model, fit_model_to_DFT=fit_model_to_DFT)
+
