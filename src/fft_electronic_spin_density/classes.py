@@ -24,6 +24,8 @@ from matplotlib.ticker import MultipleLocator
 from scipy.spatial.transform import Rotation
 import pickle
 
+mpl.rcParams['agg.path.chunksize'] = 10000
+
 a0 = physical_constants['Bohr radius'][0] * 1e10 # Bohr radius in units of Angstrom
 
 r_mt_Cu = 1.1 #Angstrom
@@ -1546,6 +1548,37 @@ _sq = (x**2 + y**2 + z**2)
             idx_z.append(np.argmin(np.abs(z_levels_cart - z)))
         return idx_z
     
+    def get_line_density(self, along_vector, center, N_points=101):
+        """Get the line density along a vector.
+
+        Args:
+            along_vector (np.ndarray): The vector along which to get the density.
+            center (np.ndarray): The center point of the line.
+            N_points (int, optional): Number of points along the line. Defaults to 101.
+
+        Returns:
+            tuple: The 1D coordinates (Angstrom) and the line density (Angstrom^-1).
+        """
+        r_along_R_vec = np.array([self.x_cart_mesh.flatten() - center[0], self.y_cart_mesh.flatten() - center[1], self.z_cart_mesh.flatten() - center[2]]).T @ along_vector
+        density_3D = self.array.flatten()
+        density_1D = np.zeros(N_points)
+        step = (r_along_R_vec.max() - r_along_R_vec.min()) / (N_points-1)  # Angstrom
+        r_along_R_vec_min = r_along_R_vec.min()
+        for i in range(N_points):
+            in_interval = np.logical_and(r_along_R_vec_min + (i + 1) * step > r_along_R_vec, r_along_R_vec >= r_along_R_vec_min + i * step)
+            density_1D[i] = np.sum(density_3D[in_interval])
+        density_1D *= self.V/a0**3 / self.array.size / step # units of 1/Angstrom; (self.V is the unit cell volume and is converted from Angstrom^3 to Bohr^3 because 3D density is in Bohr^-3)
+        r_along_R_vec = np.linspace(r_along_R_vec.min(), r_along_R_vec.max(), N_points)
+        # ensure that step in r_along_R_vec is the same as step
+        print('step (Angstrom)', step)
+        print('r_along_R_vec step -- must be equal', r_along_R_vec[1] - r_along_R_vec[0])
+        # test that integration is correct
+        print('density_1D_sum * step', np.sum(density_1D) * step)
+        # absolute
+        print('abs(density_1D_sum * step)', np.sum(np.abs(density_1D) * step))
+        return r_along_R_vec, density_1D
+
+    
 def get_XY_meshgrid_in_space(axis=(0,0,1), origin=(0,0,0), x_lim=1, y_lim=1, N_points=101):
     """
     Generate a meshgrid of points in the XY plane, rotated to be perpendicular to a given axis.
@@ -2445,11 +2478,31 @@ parameters_model_all = [{}]*7 + [
 
     ]
 
-def workflow_plot_density(suffix='rho_sz_up-down_512', replace_by_model_number=None):
+def workflow_plot_density(suffix='rho_sz_up-down_512', replace_by_model_number=None, skip_interpolation=False):
+
+        # plot in both linear and log scale
+    def plot_density(r_dist, fX_interp, suffix, log_scale=False, xlims=None, ylims=None):
+        fig, ax = plt.subplots(1, 1, figsize=(4., 3.))
+        if log_scale:
+            plt.semilogy()
+            suffix = 'log_abs_' + suffix
+            fX_interp = np.abs(fX_interp)
+        plt.plot(r_dist, fX_interp, '-o', markerfacecolor='none', markersize=0.2)
+        plt.xlabel(r'$r$ ($\mathrm{\AA}$)')
+        plt.ylabel(r'$\rho_\mathrm{1D}$ ($\mathrm{\AA}^{-1}$)')
+        if xlims is not None:
+            plt.xlim(xlims)
+        if ylims is not None:
+            plt.ylim(ylims)
+        plt.tight_layout()  
+        plt.savefig(os.path.join(base_folder, f'density_along_Cu1Cu2_line_{suffix}.png'), dpi=400)
+        plt.close()
+
+    print('workflow_plot_density')
     base_folder = './outputs/Cu2AC4/512/plot_along_line'
     if not os.path.exists(base_folder):
         os.makedirs(base_folder)
-    fname_cube_file = f'./cube_files/diverse_calculations/Cu2AC4_{suffix}.cube' #'./cube_files/Mn2GeO4_rho_sz.cube'
+    fname_cube_file = f'./cube_files/Cu2AC4_{suffix}.cube' #diverse_calculations/Cu2AC4_{suffix}.cube' #'./cube_files/Mn2GeO4_rho_sz.cube'
 
     r_cutoff = 2.5 # Angstrom
     center = [3.93781, 5.8669, 4.28075]
@@ -2461,53 +2514,77 @@ def workflow_plot_density(suffix='rho_sz_up-down_512', replace_by_model_number=N
     if replace_by_model_number is not None:
         suffix += f'_model-{replace_by_model_number}'
 
-    interpolator_name = os.path.join(base_folder, f'interpolator_{suffix}_r-cutoff_{r_cutoff:.2f}.pickle')
 
-    if not os.path.exists(interpolator_name):
-        # only need the data if interpolator does not exist
-        density = Density(fname_cube_file=fname_cube_file)
+    density = Density(fname_cube_file=fname_cube_file)
 
-        if replace_by_model_number is not None:
-            print('ood')
-            site_idx = site_idx_all[replace_by_model_number]
-            site_radii = site_radii_all[replace_by_model_number]
-            parameters_model = parameters_model_all[replace_by_model_number]
-            fit_model_to_DFT = fit_model_to_DFT_all[replace_by_model_number]
+    central_radius = 4.0
 
-            # ---- MASKING and REPLACIN -----
-            site_centers = density.get_sites_of_atoms(site_idx)
-            leave_sites = {'site_centers':site_centers, 'site_radii':site_radii}
-            density.mask_except_sites(leave_sites)
+    if replace_by_model_number is not None:
+        print('ood')
+        site_idx = site_idx_all[replace_by_model_number]
+        site_radii = site_radii_all[replace_by_model_number]
+        parameters_model = parameters_model_all[replace_by_model_number]
+        fit_model_to_DFT = fit_model_to_DFT_all[replace_by_model_number]
 
-            print('After masking interated:')
-            density.integrate_cube_file()
-        
-            parameters_model['centers'] = site_centers
-            density.replace_by_model(fit=fit_model_to_DFT,
-                                    parameters=parameters_model,
-                                    leave_sites=leave_sites,
-                                    leave_as_wavefunction=False,
-                                    )
+        # ---- MASKING and REPLACING -----
+        site_centers = density.get_sites_of_atoms(site_idx)
+        leave_sites = {'site_centers':site_centers, 'site_radii':site_radii}
+        density.mask_except_sites(leave_sites)
+
+        print('After masking interated:')
+        density.integrate_cube_file()
     
-            # print('After replacin by model interated:')
-            # density.integrate_cube_file() 
+        parameters_model['centers'] = site_centers
+        density.replace_by_model(fit=fit_model_to_DFT,
+                                parameters=parameters_model,
+                                leave_sites=leave_sites,
+                                leave_as_wavefunction=False,
+                                )
+        
+        # print('After replacing by model interated:')
+        # density.integrate_cube_file() 
 
-            # print('and saved file')
-            #     # ---- WRITE MODIFIED DENSITY TO CUBE FILE -----
-            # write_cube_files = True
-            # if write_cube_files:
-            #     density.write_cube_file_rho_sz(fout=os.path.join(base_folder, f'rho_sz_model_{suffix}.cube')) 
+        # print('and saved file')
+        #     # ---- WRITE MODIFIED DENSITY TO CUBE FILE -----
+        # write_cube_files = True
+        # if write_cube_files:
+        #     density.write_cube_file_rho_sz(fout=os.path.join(base_folder, f'rho_sz_model_{suffix}.cube')) 
 
 
         # print('exiting now...')
         # exit()
+
+    else:
+        # mask 4 Angstrom radius from the origin
+        # ---- MASKING -----
+        leave_sites = {'site_centers':[tuple((R1+R2)/2)], 'site_radii':[central_radius]}
+        density.mask_except_sites(leave_sites)
+
+    # ---- ALL POINTS PROJECTED -----
+    print('After masking interated:')
+    density.integrate_cube_file()
+    # all points projected onto R_vec (the Cu1-Cu2 connection unit vector)
+    R_vec_unit = R_vec / np.linalg.norm(R_vec)
+    # distance of all points projected onto the Cu1-Cu2 unit vector
+    Cu1Cu2_center = (R1 + R2) / 2
+    r_along_R_vec, density_1D = density.get_line_density(R_vec_unit, Cu1Cu2_center, N_points=1001)
+    suffix += '_projected'
+    plot_density(r_along_R_vec, density_1D, suffix, log_scale=False, xlims=(-central_radius, central_radius))
+    plot_density(r_along_R_vec, density_1D, suffix, log_scale=True, xlims=(-central_radius, central_radius), ylims=(1e-13, 5.0))
+
+    if skip_interpolation:
+        return
+
+    interpolator_name = os.path.join(base_folder, f'interpolator_{suffix}_r-cutoff_{r_cutoff:.2f}.pickle')
+
+    if not os.path.exists(interpolator_name):
 
         x = density.x_cart_mesh.flatten()
         y = density.y_cart_mesh.flatten()
         z = density.z_cart_mesh.flatten()
         include = np.logical_and(np.logical_and(np.abs(x-center[0]) < r_cutoff, np.abs(y-center[1]) < r_cutoff), np.abs(z-center[2]) < r_cutoff)
         X = np.array([x[include], y[include], z[include]]).T
-        fX = density.array.flatten()[include] * (a_Bohr**3 / Angstrom**3) # convert to 1/Angstrom^3
+        fX = density.array.flatten()[include] #* (a_Bohr**3 / Angstrom**3) # convert to 1/Angstrom^3
     else:
         X = None
         fX = None
@@ -2527,22 +2604,10 @@ def workflow_plot_density(suffix='rho_sz_up-down_512', replace_by_model_number=N
     with open(os.path.join(base_folder, f'density_along_Cu1Cu2_line_{suffix}.txt'), 'w+') as fw:
         np.savetxt(fw, np.vstack([r_dist, fX_interp]).T, header='r_dist\trho (Angstrom^-3)', delimiter='\t')
 
-    # plot in both linear and log scale
-    def plot_density(r_dist, fX_interp, suffix, log_scale=False):
-        fig, ax = plt.subplots(1, 1, figsize=(4., 3.))
-        if log_scale:
-            plt.semilogy()
-            suffix = 'log_abs_' + suffix
-            fX_interp = np.abs(fX_interp)
-        plt.plot(r_dist, fX_interp, '.-', markerfacecolor='none')
-        plt.xlabel(r'$r$ (Angstrom)')
-        plt.ylabel(f'density {suffix}' + r' ($\mathrm{\AA}^{-3}$)')
-        plt.tight_layout()  
-        plt.savefig(os.path.join(base_folder, f'density_along_Cu1Cu2_line_{suffix}.png'), dpi=400)
-        plt.close()
-
     plot_density(r_dist, fX_interp, suffix, log_scale=False)
     plot_density(r_dist, fX_interp, suffix, log_scale=True)
+
+
 
 
 if __name__ == '__main__':
@@ -2550,9 +2615,14 @@ if __name__ == '__main__':
     # exit()
 
     # PLOT THE ELECTRONIC AND SPIN DENSITY ALONG LINES ETC.
-    replace_by_model_number = 30 # None
+    replace_by_model_number = 30 # None # 
+    skip_interpolation = True # False
 
-    workflow_plot_density(suffix='rho_up-up_512', replace_by_model_number=replace_by_model_number)   # suffix='rho_up-down_256'   # suffix='rho_sz_up-down_512'
+            #suffix='rho_up-up_512', 
+    workflow_plot_density(suffix='rho_sz_512', 
+                          replace_by_model_number=replace_by_model_number, 
+                          skip_interpolation=skip_interpolation
+                          )   # suffix='rho_up-down_256'   # suffix='rho_sz_up-down_512'
 
     # ===== RUN a single case =====
     run_a_single_case = False
