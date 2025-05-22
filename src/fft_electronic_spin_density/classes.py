@@ -35,7 +35,6 @@ scale_factor = 2.0 # 5.0
 R1 = np.array((4.85991, 5.28091, 3.56158)) # np.array(list(self.metadata['atoms'][R_idx1][1])[1:])*physical_constants['Bohr radius'][0]*1e10
 R2 = np.array((3.01571, 6.45289, 4.99992)) #np.array(list(self.metadata['atoms'][R_idx2][1])[1:])*physical_constants['Bohr radius'][0]*1e10
 
-
 class Density:
     """Read, visualize and fourier transform (spin) density from gaussian .cube files.
         Replace by a model function if required.
@@ -609,7 +608,7 @@ _sq = (x**2 + y**2 + z**2)
                 
                 spin_down_orbital = False if 'spin_down_orbital_all' not in parameters else parameters['spin_down_orbital_all'][i] # if not provided, flip_sign will be False
                 spinor_idx = 1 if spin_down_orbital else 0
-                
+                    
                 if fit_params_init_all:
                     fit_params_init = {key:value[i] for key, value in fit_params_init_all.items()}
                 else:
@@ -1405,7 +1404,8 @@ _sq = (x**2 + y**2 + z**2)
         if not volume:
             Angstrom = 1e-10
             a_Bohr = physical_constants['Bohr radius'][0]
-            # volume in Bohr^3
+            # get volume in units of Bohr^3
+            #   conversion factor because a, b,c are in Angstrom 
             volume = np.abs(np.dot(np.cross(self.a, self.b), self.c)) * (Angstrom/a_Bohr)**3
         rho_tot = np.sum(data_array) * volume / data_array.size
         abs_rho_tot = np.sum(np.abs(data_array)) * volume / data_array.size
@@ -2226,7 +2226,7 @@ site_idx_all = [
     [0,1], #8
     [0,1], #9
     [0], #10
-    [0], #11
+    [0], #11    
     [0], #12
     [1,], #13
     [25,], #14
@@ -2245,6 +2245,7 @@ site_idx_all = [
     [16], #27
     [0], #28
     [0, 25, 40, 9, 16], #29
+    [0, 25, 40, 9, 16, 1, 41, 24, 17, 8], #30
 ]
 
 site_radii_all = [
@@ -2278,6 +2279,7 @@ site_radii_all = [
     [r_mt_O], #27
     [r_mt_Cu], #28
     [r_mt_Cu]+[r_mt_O]*4, #29
+    [r_mt_Cu]+[r_mt_O]*4+[r_mt_Cu]+[r_mt_O]*4, #30
 ]
 
 
@@ -2312,6 +2314,7 @@ output_folders_all = [
     base_path+'masked_0_two_spx_correct_rotated_16', #27 - like 18 but with correct n=2 for 2s orbital
     base_path+'masked_model_Cu0_dx2y2_neat', #28 - like 11 but expression slightly revamped - just change of parameters
     base_path+'masked_model_Cu0_and_oxygens_purely_bonding_spx_correct', #29 - like 21 but with correct n=2 for 2s orbital
+    base_path+'masked_model_Cu0-1_and_oxygens_purely_bonding_spx_correct'
 ]
 
 replace_DFT_by_model_all = [
@@ -2345,6 +2348,7 @@ replace_DFT_by_model_all = [
     True, #27
     True, #28
     True, #29
+    True, #30
 ]
 
 fit_model_to_DFT_all = [
@@ -2378,6 +2382,7 @@ fit_model_to_DFT_all = [
     True, #27
     True, #28
     True, #29
+    False, #30
 ]
 
 parameters_model_all = [{}]*7 + [
@@ -2440,27 +2445,69 @@ parameters_model_all = [{}]*7 + [
 
     ]
 
-def workflow_plot_density(suffix='rho_sz_up-down_512'):
+def workflow_plot_density(suffix='rho_sz_up-down_512', replace_by_model_number=None):
     base_folder = './outputs/Cu2AC4/512/plot_along_line'
     if not os.path.exists(base_folder):
         os.makedirs(base_folder)
     fname_cube_file = f'./cube_files/diverse_calculations/Cu2AC4_{suffix}.cube' #'./cube_files/Mn2GeO4_rho_sz.cube'
 
-    r_cutoff = 0.3 #2.5 # Angstrom
+    r_cutoff = 2.5 # Angstrom
     center = [3.93781, 5.8669, 4.28075]
-    R_vec = R2 - R1
+    R_vec = R1 - R2
+
+    Angstrom = 1e-10
+    a_Bohr = physical_constants['Bohr radius'][0]
+
+    if replace_by_model_number is not None:
+        suffix += f'_model-{replace_by_model_number}'
 
     interpolator_name = os.path.join(base_folder, f'interpolator_{suffix}_r-cutoff_{r_cutoff:.2f}.pickle')
 
     if not os.path.exists(interpolator_name):
         # only need the data if interpolator does not exist
         density = Density(fname_cube_file=fname_cube_file)
+
+        if replace_by_model_number is not None:
+            print('ood')
+            site_idx = site_idx_all[replace_by_model_number]
+            site_radii = site_radii_all[replace_by_model_number]
+            parameters_model = parameters_model_all[replace_by_model_number]
+            fit_model_to_DFT = fit_model_to_DFT_all[replace_by_model_number]
+
+            # ---- MASKING and REPLACIN -----
+            site_centers = density.get_sites_of_atoms(site_idx)
+            leave_sites = {'site_centers':site_centers, 'site_radii':site_radii}
+            density.mask_except_sites(leave_sites)
+
+            print('After masking interated:')
+            density.integrate_cube_file()
+        
+            parameters_model['centers'] = site_centers
+            density.replace_by_model(fit=fit_model_to_DFT,
+                                    parameters=parameters_model,
+                                    leave_sites=leave_sites,
+                                    leave_as_wavefunction=False,
+                                    )
+    
+            # print('After replacin by model interated:')
+            # density.integrate_cube_file() 
+
+            # print('and saved file')
+            #     # ---- WRITE MODIFIED DENSITY TO CUBE FILE -----
+            # write_cube_files = True
+            # if write_cube_files:
+            #     density.write_cube_file_rho_sz(fout=os.path.join(base_folder, f'rho_sz_model_{suffix}.cube')) 
+
+
+        # print('exiting now...')
+        # exit()
+
         x = density.x_cart_mesh.flatten()
         y = density.y_cart_mesh.flatten()
         z = density.z_cart_mesh.flatten()
         include = np.logical_and(np.logical_and(np.abs(x-center[0]) < r_cutoff, np.abs(y-center[1]) < r_cutoff), np.abs(z-center[2]) < r_cutoff)
         X = np.array([x[include], y[include], z[include]]).T
-        fX = density.array.flatten()[include]
+        fX = density.array.flatten()[include] * (a_Bohr**3 / Angstrom**3) # convert to 1/Angstrom^3
     else:
         X = None
         fX = None
@@ -2473,11 +2520,12 @@ def workflow_plot_density(suffix='rho_sz_up-down_512'):
     y = center[1] + axis[1] * r_dist
     z = center[2] + axis[2] * r_dist
     X_interp = np.array([x, y, z]).T
+    print('interpolating...')
     fX_interp = interpolator(X_interp)
 
     # save data
     with open(os.path.join(base_folder, f'density_along_Cu1Cu2_line_{suffix}.txt'), 'w+') as fw:
-        np.savetxt(fw, np.vstack([r_dist, fX_interp]).T, header='r_dist\tF_abs_sq', delimiter='\t')
+        np.savetxt(fw, np.vstack([r_dist, fX_interp]).T, header='r_dist\trho (Angstrom^-3)', delimiter='\t')
 
     # plot in both linear and log scale
     def plot_density(r_dist, fX_interp, suffix, log_scale=False):
@@ -2488,8 +2536,8 @@ def workflow_plot_density(suffix='rho_sz_up-down_512'):
             fX_interp = np.abs(fX_interp)
         plt.plot(r_dist, fX_interp, '.-', markerfacecolor='none')
         plt.xlabel(r'$r$ (Angstrom)')
-        plt.ylabel(f'density {suffix}' + ' (1/a_0^3)')
-        plt.tight_layout()
+        plt.ylabel(f'density {suffix}' + r' ($\mathrm{\AA}^{-3}$)')
+        plt.tight_layout()  
         plt.savefig(os.path.join(base_folder, f'density_along_Cu1Cu2_line_{suffix}.png'), dpi=400)
         plt.close()
 
@@ -2502,7 +2550,9 @@ if __name__ == '__main__':
     # exit()
 
     # PLOT THE ELECTRONIC AND SPIN DENSITY ALONG LINES ETC.
-    workflow_plot_density()
+    replace_by_model_number = 30 # None
+
+    workflow_plot_density(suffix='rho_up-up_512', replace_by_model_number=replace_by_model_number)   # suffix='rho_up-down_256'   # suffix='rho_sz_up-down_512'
 
     # ===== RUN a single case =====
     run_a_single_case = False
