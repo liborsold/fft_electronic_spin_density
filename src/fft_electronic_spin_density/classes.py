@@ -2490,7 +2490,11 @@ parameters_model_all = [{}]*7 + [
                                                                                 'C':[0.000, 0.25951331, 0.22725085, 0.291142454, 0.28161311, 0.000, 0.25951331, 0.22725085, 0.291142454, 0.28161311]}}, #31 <-------- like 30 but all orbitals are spin up
     ]
 
-def workflow_plot_density(suffix='rho_sz_up-down_512', replace_by_model_number=None, skip_interpolation=False, skip_projection=False):
+def workflow_plot_density(suffix='rho_sz_up-down_512', replace_by_model_number=None, skip_interpolation=False, skip_projection=False,
+                          ylabel=None):
+
+    if ylabel is None:
+        ylabel = r'$\rho_\mathrm{1D}$ ($\mathrm{\AA}^{-1}$)'
 
         # plot in both linear and log scale
     def plot_density(r_dist, fX_interp, suffix, log_scale=False, xlims=None, ylims=None):
@@ -2501,7 +2505,7 @@ def workflow_plot_density(suffix='rho_sz_up-down_512', replace_by_model_number=N
             fX_interp = np.abs(fX_interp)
         plt.plot(r_dist, fX_interp, '-o', markerfacecolor='none', markersize=0.2)
         plt.xlabel(r'$r$ ($\mathrm{\AA}$)')
-        plt.ylabel(r'$\rho_\mathrm{1D}$ ($\mathrm{\AA}^{-1}$)')
+        plt.ylabel(ylabel)
         if xlims is not None:
             plt.xlim(xlims)
         if ylims is not None:
@@ -2618,11 +2622,11 @@ def workflow_plot_density(suffix='rho_sz_up-down_512', replace_by_model_number=N
 
         # save data
         with open(os.path.join(base_folder, f'density_along_Cu1Cu2_line_{suffix}.txt'), 'w+') as fw:
-            np.savetxt(fw, np.vstack([r_dist, fX_interp]).T, header='r_dist\trho (Angstrom^-3)', delimiter='\t')
+            np.savetxt(fw, np.vstack([r_dist, fX_interp]).T, header='r_dist\trho (a_Bohr^-3)', delimiter='\t')
 
-        plot_density(r_dist, fX_interp, suffix, log_scale=False)
-        plot_density(r_dist, fX_interp, suffix, log_scale=True)
-
+        ylabel = r'$\rho_\mathrm{3D}$ (a_Bohr$^{-3}$)'
+        plot_density(r_dist, fX_interp, suffix, log_scale=False, ylabel=ylabel)
+        plot_density(r_dist, fX_interp, suffix, log_scale=True, ylabel=ylabel)
 
 
 
