@@ -2642,8 +2642,8 @@ def workflow_plot_density(suffix='rho_sz_up-down_512', replace_by_model_number=N
 def workflow_all_densities_integrated():
         # PLOT THE ELECTRONIC AND SPIN DENSITY ALONG LINES ETC.
     replace_by_model_number = None # 30 # 
-    skip_interpolation = False #True # 
-    skip_projection = True # False #
+    skip_interpolation = True #True # 
+    skip_projection = False # False #
 
             #suffix='rho_up-up_512',  #suffix='rho_up-down_512',   #suffix='rho_sz_up-up_512',   #suffix='rho_sz_up-down_512', 
     workflow_plot_density(suffix='rho_up-up_512',
@@ -2692,15 +2692,15 @@ def workflow_all_densities_interpolated():
 
     # PLOT THE ELECTRONIC AND SPIN DENSITY ALONG LINES ETC.
     replace_by_model_number = None # 30 # 
-    skip_interpolation =  #True # 
-    skip_projection = False # False #
+    skip_interpolation = False #True #
+    skip_projection = True # False #
 
 
-    # 1. === oxygen 18-34 ====
+    # 1. ============== oxygen 18-34 ==============
     R_vec = R_O18 - R_O34
     R_vec_center=(R_O18 + R_O34) / 2
 
-    # 1.A. DFT spin up-up
+    # --- 1.A. DFT spin up-up ---
     workflow_plot_density(suffix='rho_sz_up-up_512',
                           line_name='O18O34',
                         replace_by_model_number=None, 
@@ -2710,7 +2710,7 @@ def workflow_all_densities_interpolated():
                         R_vec_center=R_vec_center
                         )   # suffix='rho_up-down_256'   # suffix='rho_sz_up-down_512'
     
-    # 1.B. model spin up-up
+    # --- 1.B. model spin up-up ---
     workflow_plot_density(suffix='rho_sz_up-up_512',
                           line_name='O18O34',
                         replace_by_model_number=31, 
