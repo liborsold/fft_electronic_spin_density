@@ -2490,14 +2490,15 @@ parameters_model_all = [{}]*7 + [
                                                                                 'C':[0.000, 0.25951331, 0.22725085, 0.291142454, 0.28161311, 0.000, 0.25951331, 0.22725085, 0.291142454, 0.28161311]}}, #31 <-------- like 30 but all orbitals are spin up
     ]
 
-def workflow_plot_density(suffix='rho_sz_up-down_512', replace_by_model_number=None, skip_interpolation=False, skip_projection=False,
-                          ylabel=None):
-
-    if ylabel is None:
-        ylabel = r'$\rho_\mathrm{1D}$ ($\mathrm{\AA}^{-1}$)'
+def workflow_plot_density(suffix='rho_sz_up-down_512', replace_by_model_number=None, skip_interpolation=False, skip_projection=False):
 
         # plot in both linear and log scale
-    def plot_density(r_dist, fX_interp, suffix, log_scale=False, xlims=None, ylims=None):
+    def plot_density(r_dist, fX_interp, suffix, 
+                    log_scale=False, 
+                    xlims=None,
+                    ylims=None,
+                    ylabel=None
+                    ):
         fig, ax = plt.subplots(1, 1, figsize=(4., 3.))
         if log_scale:
             plt.semilogy()
@@ -2505,6 +2506,8 @@ def workflow_plot_density(suffix='rho_sz_up-down_512', replace_by_model_number=N
             fX_interp = np.abs(fX_interp)
         plt.plot(r_dist, fX_interp, '-o', markerfacecolor='none', markersize=0.2)
         plt.xlabel(r'$r$ ($\mathrm{\AA}$)')
+        if ylabel is None:
+            ylabel = r'$\rho_\mathrm{1D}$ ($\mathrm{\AA}^{-1}$)'
         plt.ylabel(ylabel)
         if xlims is not None:
             plt.xlim(xlims)
