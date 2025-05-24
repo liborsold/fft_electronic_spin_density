@@ -37,6 +37,10 @@ scale_factor = 2.0 # 5.0
 R1 = np.array((4.85991, 5.28091, 3.56158)) # np.array(list(self.metadata['atoms'][R_idx1][1])[1:])*physical_constants['Bohr radius'][0]*1e10
 R2 = np.array((3.01571, 6.45289, 4.99992)) #np.array(list(self.metadata['atoms'][R_idx2][1])[1:])*physical_constants['Bohr radius'][0]*1e10
 
+R_O18 = np.array((5.54428, 4.75066, 5.31609))
+R_O34 = np.array((3.97804, 5.77690, 6.54433))
+
+
 class Density:
     """Read, visualize and fourier transform (spin) density from gaussian .cube files.
         Replace by a model function if required.
@@ -2490,7 +2494,8 @@ parameters_model_all = [{}]*7 + [
                                                                                 'C':[0.000, 0.25951331, 0.22725085, 0.291142454, 0.28161311, 0.000, 0.25951331, 0.22725085, 0.291142454, 0.28161311]}}, #31 <-------- like 30 but all orbitals are spin up
     ]
 
-def workflow_plot_density(suffix='rho_sz_up-down_512', replace_by_model_number=None, skip_interpolation=False, skip_projection=False):
+def workflow_plot_density(suffix='rho_sz_up-down_512', replace_by_model_number=None, skip_interpolation=False, skip_projection=False,
+                          R_vec=None, R_vec_center=None, line_name='Cu1Cu2'):
 
         # plot in both linear and log scale
     def plot_density(r_dist, fX_interp, suffix, 
@@ -2514,7 +2519,7 @@ def workflow_plot_density(suffix='rho_sz_up-down_512', replace_by_model_number=N
         if ylims is not None:
             plt.ylim(ylims)
         plt.tight_layout()  
-        plt.savefig(os.path.join(base_folder, f'density_along_Cu1Cu2_line_{suffix}.png'), dpi=400)
+        plt.savefig(os.path.join(base_folder, f'density_along_{line_name}_line_{suffix}.png'), dpi=400)
         plt.close()
 
     print('workflow_plot_density')
@@ -2525,7 +2530,10 @@ def workflow_plot_density(suffix='rho_sz_up-down_512', replace_by_model_number=N
 
     r_cutoff = 2.5 # Angstrom
     center = [3.93781, 5.8669, 4.28075]
-    R_vec = R1 - R2
+    if R_vec is None:
+        R_vec = R1 - R2
+    if R_vec_center is None:
+        R_vec_center = (R1 + R2) / 2
 
     Angstrom = 1e-10
     a_Bohr = physical_constants['Bohr radius'][0]
@@ -2586,11 +2594,10 @@ def workflow_plot_density(suffix='rho_sz_up-down_512', replace_by_model_number=N
         # all points projected onto R_vec (the Cu1-Cu2 connection unit vector)
         R_vec_unit = R_vec / np.linalg.norm(R_vec)
         # distance of all points projected onto the Cu1-Cu2 unit vector
-        Cu1Cu2_center = (R1 + R2) / 2
-        r_along_R_vec, density_1D = density.get_line_density(R_vec_unit, Cu1Cu2_center, N_points=1001)
+        r_along_R_vec, density_1D = density.get_line_density(R_vec_unit, R_vec_center, N_points=1001)
 
         # save projected data to files
-        with open(os.path.join(base_folder, f'density_1D_proj_along_Cu1Cu2_line_{suffix}.txt'), 'w+') as fw:
+        with open(os.path.join(base_folder, f'density_1D_proj_along_{line_name}_line_{suffix}.txt'), 'w+') as fw:
             np.savetxt(fw, np.vstack([r_along_R_vec, density_1D]).T, header='r_dist\trho_proj (Angstrom^-1)', delimiter='\t')
         suffix += '_projected'
         # plot and save
@@ -2598,7 +2605,7 @@ def workflow_plot_density(suffix='rho_sz_up-down_512', replace_by_model_number=N
         plot_density(r_along_R_vec, density_1D, suffix, log_scale=True, xlims=(-central_radius, central_radius), ylims=(1e-13, 5.0))
 
     if not skip_interpolation:
-        interpolator_name = os.path.join(base_folder, f'interpolator_{suffix}_r-cutoff_{r_cutoff:.2f}.pickle')
+        interpolator_name = os.path.join(base_folder, f'interpolator_{suffix}_along_{line_name}_line_r-cutoff_{r_cutoff:.2f}.pickle')
 
         if not os.path.exists(interpolator_name):
 
@@ -2624,7 +2631,7 @@ def workflow_plot_density(suffix='rho_sz_up-down_512', replace_by_model_number=N
         fX_interp = interpolator(X_interp)
 
         # save data
-        with open(os.path.join(base_folder, f'density_along_Cu1Cu2_line_{suffix}.txt'), 'w+') as fw:
+        with open(os.path.join(base_folder, f'density_along_{line_name}_line_{suffix}.txt'), 'w+') as fw:
             np.savetxt(fw, np.vstack([r_dist, fX_interp]).T, header='r_dist\trho (a_Bohr^-3)', delimiter='\t')
 
         ylabel = r'$\rho_\mathrm{3D}$ (a_Bohr$^{-3}$)'
@@ -2632,12 +2639,8 @@ def workflow_plot_density(suffix='rho_sz_up-down_512', replace_by_model_number=N
         plot_density(r_dist, fX_interp, suffix, log_scale=True, ylabel=ylabel)
 
 
-
-if __name__ == '__main__':
-    # workflow_density_vs_cutoff_radius(site_idx=[0], site_radii_all=[[i] for i in np.arange(0.5, 4.0, 0.5)], plot=True)
-    # exit()
-
-    # PLOT THE ELECTRONIC AND SPIN DENSITY ALONG LINES ETC.
+def workflow_all_densities_integrated():
+        # PLOT THE ELECTRONIC AND SPIN DENSITY ALONG LINES ETC.
     replace_by_model_number = None # 30 # 
     skip_interpolation = False #True # 
     skip_projection = True # False #
@@ -2683,6 +2686,46 @@ if __name__ == '__main__':
                           skip_interpolation=skip_interpolation,
                           skip_projection=skip_projection
                           )   # suffix='rho_up-down_256'   # suffix='rho_sz_up-down_512'
+
+
+def workflow_all_densities_interpolated():
+
+    # PLOT THE ELECTRONIC AND SPIN DENSITY ALONG LINES ETC.
+    replace_by_model_number = None # 30 # 
+    skip_interpolation =  #True # 
+    skip_projection = False # False #
+
+
+    # 1. === oxygen 18-34 ====
+    R_vec = R_O18 - R_O34
+    R_vec_center=(R_O18 + R_O34) / 2
+
+    # 1.A. DFT spin up-up
+    workflow_plot_density(suffix='rho_sz_up-up_512',
+                          line_name='O18O34',
+                        replace_by_model_number=None, 
+                        skip_interpolation=skip_interpolation,
+                        skip_projection=skip_projection,
+                        R_vec=R_vec,
+                        R_vec_center=R_vec_center
+                        )   # suffix='rho_up-down_256'   # suffix='rho_sz_up-down_512'
+    
+    # 1.B. model spin up-up
+    workflow_plot_density(suffix='rho_sz_up-up_512',
+                          line_name='O18O34',
+                        replace_by_model_number=31, 
+                        skip_interpolation=skip_interpolation,
+                        skip_projection=skip_projection,
+                        R_vec=R_vec,
+                        R_vec_center=R_vec_center
+                        )   # suffix='rho_up-down_256'   # suffix='rho_sz_up-down_512'
+
+if __name__ == '__main__':
+    # workflow_density_vs_cutoff_radius(site_idx=[0], site_radii_all=[[i] for i in np.arange(0.5, 4.0, 0.5)], plot=True)
+    # exit()
+
+    # workflow_all_densities_integrated()
+    workflow_all_densities_interpolated()
 
     # ===== RUN a single case =====
     run_a_single_case = False
