@@ -2279,6 +2279,7 @@ site_idx_all = [
     [0], #28
     [0, 25, 40, 9, 16], #29
     [0, 25, 40, 9, 16, 1, 41, 24, 17, 8], #30
+    [0, 25, 40, 9, 16, 1, 41, 24, 17, 8], #31
 ]
 
 site_radii_all = [
@@ -2313,6 +2314,7 @@ site_radii_all = [
     [r_mt_Cu], #28
     [r_mt_Cu]+[r_mt_O]*4, #29
     [r_mt_Cu]+[r_mt_O]*4+[r_mt_Cu]+[r_mt_O]*4, #30
+    [r_mt_Cu]+[r_mt_O]*4+[r_mt_Cu]+[r_mt_O]*4, #31
 ]
 
 
@@ -2347,7 +2349,8 @@ output_folders_all = [
     base_path+'masked_0_two_spx_correct_rotated_16', #27 - like 18 but with correct n=2 for 2s orbital
     base_path+'masked_model_Cu0_dx2y2_neat', #28 - like 11 but expression slightly revamped - just change of parameters
     base_path+'masked_model_Cu0_and_oxygens_purely_bonding_spx_correct', #29 - like 21 but with correct n=2 for 2s orbital
-    base_path+'masked_model_Cu0-1_and_oxygens_purely_bonding_spx_correct'
+    base_path+'masked_model_Cu0-1_and_oxygens_purely_bonding_spx_correct', #30
+        base_path+'masked_model_Cu0-1_and_oxygens_purely_bonding_spx_correct' #31
 ]
 
 replace_DFT_by_model_all = [
@@ -2382,6 +2385,7 @@ replace_DFT_by_model_all = [
     True, #28
     True, #29
     True, #30
+    True, #31
 ]
 
 fit_model_to_DFT_all = [
@@ -2416,6 +2420,7 @@ fit_model_to_DFT_all = [
     True, #28
     True, #29
     False, #30
+    False, #31
 ]
 
 parameters_model_all = [{}]*7 + [
@@ -2475,10 +2480,17 @@ parameters_model_all = [{}]*7 + [
                                                                                 'phi0':[-0.59855408, -0.5980457, 2.55194631, 0.8265912, -2.03391158, -0.59855408, -0.5980457, 2.55194631, 0.8265912, -2.03391158], 
                                                                                 'Z_eff':[12.8481725, 5.01517706, 4.94533815, 5.10058135, 5.04343411, 12.8481725, 5.01517706, 4.94533815, 5.10058135, 5.04343411],
                                                                                 'C':[0.000, 0.25951331, 0.22725085, 0.291142454, 0.28161311, 0.000, 0.25951331, 0.22725085, 0.291142454, 0.28161311]}}, #30 <-------- both Cu0 and Cu1 populated with model 29 (Cu1 with spin down - controlled by 'spin_down_orbital_all' key in parameters_model)     
-
+    # 31 is like 30 but all orbitals are spin up
+    {'type':['dx2y2_neat']+4*['two_spx_correct']+['dx2y2_neat']+4*['two_spx_correct'], 'sigmas':[0.3]*10, 'centers':[],
+        'spin_down_orbital_all':[False]*5 + [False]*5,
+                                                                        'fit_params_init_all':{'amplitude':[0.360453056, -0.2926634, -0.30968292, 0.295919999, 0.30207433, 0.360453056, -0.2926634, -0.30968292, 0.295919999, 0.30207433], 
+                                                                                'theta0':[-1.011437, -0.82051673, 1.18435744, 0.00034809, 0.18104707, -1.011437, -0.82051673, 1.18435744, 0.00034809, 0.18104707], 
+                                                                                'phi0':[-0.59855408, -0.5980457, 2.55194631, 0.8265912, -2.03391158, -0.59855408, -0.5980457, 2.55194631, 0.8265912, -2.03391158], 
+                                                                                'Z_eff':[12.8481725, 5.01517706, 4.94533815, 5.10058135, 5.04343411, 12.8481725, 5.01517706, 4.94533815, 5.10058135, 5.04343411],
+                                                                                'C':[0.000, 0.25951331, 0.22725085, 0.291142454, 0.28161311, 0.000, 0.25951331, 0.22725085, 0.291142454, 0.28161311]}}, #31 <-------- like 30 but all orbitals are spin up
     ]
 
-def workflow_plot_density(suffix='rho_sz_up-down_512', replace_by_model_number=None, skip_interpolation=False):
+def workflow_plot_density(suffix='rho_sz_up-down_512', replace_by_model_number=None, skip_interpolation=False, skip_projection=False):
 
         # plot in both linear and log scale
     def plot_density(r_dist, fX_interp, suffix, log_scale=False, xlims=None, ylims=None):
@@ -2502,7 +2514,7 @@ def workflow_plot_density(suffix='rho_sz_up-down_512', replace_by_model_number=N
     base_folder = './outputs/Cu2AC4/512/plot_along_line'
     if not os.path.exists(base_folder):
         os.makedirs(base_folder)
-    fname_cube_file = f'./cube_files/Cu2AC4_{suffix}.cube' #diverse_calculations/Cu2AC4_{suffix}.cube' #'./cube_files/Mn2GeO4_rho_sz.cube'
+    fname_cube_file = f'./cube_files/diverse_calculations/Cu2AC4_{suffix}.cube' #'./cube_files/Mn2GeO4_rho_sz.cube'
 
     r_cutoff = 2.5 # Angstrom
     center = [3.93781, 5.8669, 4.28075]
@@ -2560,52 +2572,56 @@ def workflow_plot_density(suffix='rho_sz_up-down_512', replace_by_model_number=N
         leave_sites = {'site_centers':[tuple((R1+R2)/2)], 'site_radii':[central_radius]}
         density.mask_except_sites(leave_sites)
 
-    # ---- ALL POINTS PROJECTED -----
-    print('After masking interated:')
-    density.integrate_cube_file()
-    # all points projected onto R_vec (the Cu1-Cu2 connection unit vector)
-    R_vec_unit = R_vec / np.linalg.norm(R_vec)
-    # distance of all points projected onto the Cu1-Cu2 unit vector
-    Cu1Cu2_center = (R1 + R2) / 2
-    r_along_R_vec, density_1D = density.get_line_density(R_vec_unit, Cu1Cu2_center, N_points=1001)
-    suffix += '_projected'
-    plot_density(r_along_R_vec, density_1D, suffix, log_scale=False, xlims=(-central_radius, central_radius))
-    plot_density(r_along_R_vec, density_1D, suffix, log_scale=True, xlims=(-central_radius, central_radius), ylims=(1e-13, 5.0))
+    if not skip_projection:
+        # ---- ALL POINTS PROJECTED -----
+        print('After masking integrated:')
+        density.integrate_cube_file()
+        # all points projected onto R_vec (the Cu1-Cu2 connection unit vector)
+        R_vec_unit = R_vec / np.linalg.norm(R_vec)
+        # distance of all points projected onto the Cu1-Cu2 unit vector
+        Cu1Cu2_center = (R1 + R2) / 2
+        r_along_R_vec, density_1D = density.get_line_density(R_vec_unit, Cu1Cu2_center, N_points=1001)
 
-    if skip_interpolation:
-        return
+        # save projected data to files
+        with open(os.path.join(base_folder, f'density_1D_proj_along_Cu1Cu2_line_{suffix}.txt'), 'w+') as fw:
+            np.savetxt(fw, np.vstack([r_along_R_vec, density_1D]).T, header='r_dist\trho_proj (Angstrom^-1)', delimiter='\t')
+        suffix += '_projected'
+        # plot and save
+        plot_density(r_along_R_vec, density_1D, suffix, log_scale=False, xlims=(-central_radius, central_radius))
+        plot_density(r_along_R_vec, density_1D, suffix, log_scale=True, xlims=(-central_radius, central_radius), ylims=(1e-13, 5.0))
 
-    interpolator_name = os.path.join(base_folder, f'interpolator_{suffix}_r-cutoff_{r_cutoff:.2f}.pickle')
+    if not skip_interpolation:
+        interpolator_name = os.path.join(base_folder, f'interpolator_{suffix}_r-cutoff_{r_cutoff:.2f}.pickle')
 
-    if not os.path.exists(interpolator_name):
+        if not os.path.exists(interpolator_name):
 
-        x = density.x_cart_mesh.flatten()
-        y = density.y_cart_mesh.flatten()
-        z = density.z_cart_mesh.flatten()
-        include = np.logical_and(np.logical_and(np.abs(x-center[0]) < r_cutoff, np.abs(y-center[1]) < r_cutoff), np.abs(z-center[2]) < r_cutoff)
-        X = np.array([x[include], y[include], z[include]]).T
-        fX = density.array.flatten()[include] #* (a_Bohr**3 / Angstrom**3) # convert to 1/Angstrom^3
-    else:
-        X = None
-        fX = None
+            x = density.x_cart_mesh.flatten()
+            y = density.y_cart_mesh.flatten()
+            z = density.z_cart_mesh.flatten()
+            include = np.logical_and(np.logical_and(np.abs(x-center[0]) < r_cutoff, np.abs(y-center[1]) < r_cutoff), np.abs(z-center[2]) < r_cutoff)
+            X = np.array([x[include], y[include], z[include]]).T
+            fX = density.array.flatten()[include] #* (a_Bohr**3 / Angstrom**3) # convert to 1/Angstrom^3
+        else:
+            X = None
+            fX = None
 
-    interpolator = get_interpolator(interpolator_name=interpolator_name, X=X, fX=fX, verbose=True)
+        interpolator = get_interpolator(interpolator_name=interpolator_name, X=X, fX=fX, verbose=True)
 
-    r_dist = np.linspace(-r_cutoff*np.sqrt(2), r_cutoff*np.sqrt(2), 301)
-    axis = R_vec / np.linalg.norm(R_vec)
-    x = center[0] + axis[0] * r_dist
-    y = center[1] + axis[1] * r_dist
-    z = center[2] + axis[2] * r_dist
-    X_interp = np.array([x, y, z]).T
-    print('interpolating...')
-    fX_interp = interpolator(X_interp)
+        r_dist = np.linspace(-r_cutoff*np.sqrt(2), r_cutoff*np.sqrt(2), 301)
+        axis = R_vec / np.linalg.norm(R_vec)
+        x = center[0] + axis[0] * r_dist
+        y = center[1] + axis[1] * r_dist
+        z = center[2] + axis[2] * r_dist
+        X_interp = np.array([x, y, z]).T
+        print('interpolating...')
+        fX_interp = interpolator(X_interp)
 
-    # save data
-    with open(os.path.join(base_folder, f'density_along_Cu1Cu2_line_{suffix}.txt'), 'w+') as fw:
-        np.savetxt(fw, np.vstack([r_dist, fX_interp]).T, header='r_dist\trho (Angstrom^-3)', delimiter='\t')
+        # save data
+        with open(os.path.join(base_folder, f'density_along_Cu1Cu2_line_{suffix}.txt'), 'w+') as fw:
+            np.savetxt(fw, np.vstack([r_dist, fX_interp]).T, header='r_dist\trho (Angstrom^-3)', delimiter='\t')
 
-    plot_density(r_dist, fX_interp, suffix, log_scale=False)
-    plot_density(r_dist, fX_interp, suffix, log_scale=True)
+        plot_density(r_dist, fX_interp, suffix, log_scale=False)
+        plot_density(r_dist, fX_interp, suffix, log_scale=True)
 
 
 
@@ -2615,13 +2631,50 @@ if __name__ == '__main__':
     # exit()
 
     # PLOT THE ELECTRONIC AND SPIN DENSITY ALONG LINES ETC.
-    replace_by_model_number = 30 # None # 
-    skip_interpolation = True # False
+    replace_by_model_number = None # 30 # 
+    skip_interpolation = False #True # 
+    skip_projection = True # False #
 
-            #suffix='rho_up-up_512', 
-    workflow_plot_density(suffix='rho_sz_512', 
+            #suffix='rho_up-up_512',  #suffix='rho_up-down_512',   #suffix='rho_sz_up-up_512',   #suffix='rho_sz_up-down_512', 
+    workflow_plot_density(suffix='rho_up-up_512',
                           replace_by_model_number=replace_by_model_number, 
-                          skip_interpolation=skip_interpolation
+                          skip_interpolation=skip_interpolation,
+                          skip_projection=skip_projection
+                          )   # suffix='rho_up-down_256'   # suffix='rho_sz_up-down_512'
+    
+            #suffix='rho_up-up_512',  #suffix='rho_up-down_512',   #suffix='rho_sz_up-up_512',   #suffix='rho_sz_up-down_512', 
+    workflow_plot_density(suffix='rho_up-down_512',
+                          replace_by_model_number=replace_by_model_number, 
+                          skip_interpolation=skip_interpolation,
+                          skip_projection=skip_projection
+                          )   # suffix='rho_up-down_256'   # suffix='rho_sz_up-down_512'
+    
+            #suffix='rho_up-up_512',  #suffix='rho_up-down_512',   #suffix='rho_sz_up-up_512',   #suffix='rho_sz_up-down_512', 
+    workflow_plot_density(suffix='rho_sz_up-up_512',
+                          replace_by_model_number=replace_by_model_number, 
+                          skip_interpolation=skip_interpolation,
+                          skip_projection=skip_projection
+                          )   # suffix='rho_up-down_256'   # suffix='rho_sz_up-down_512'
+    
+            #suffix='rho_up-up_512',  #suffix='rho_up-down_512',   #suffix='rho_sz_up-up_512',   #suffix='rho_sz_up-down_512', 
+    workflow_plot_density(suffix='rho_sz_up-down_512',
+                          replace_by_model_number=replace_by_model_number, 
+                          skip_interpolation=skip_interpolation,
+                          skip_projection=skip_projection
+                          )   # suffix='rho_up-down_256'   # suffix='rho_sz_up-down_512'
+    
+            #suffix='rho_up-up_512',  #suffix='rho_up-down_512',   #suffix='rho_sz_up-up_512',   #suffix='rho_sz_up-down_512', 
+    workflow_plot_density(suffix='rho_sz_up-down_512',
+                          replace_by_model_number=30, 
+                          skip_interpolation=skip_interpolation,
+                          skip_projection=skip_projection
+                          )   # suffix='rho_up-down_256'   # suffix='rho_sz_up-down_512'
+    
+            #suffix='rho_up-up_512',  #suffix='rho_up-down_512',   #suffix='rho_sz_up-up_512',   #suffix='rho_sz_up-down_512', 
+    workflow_plot_density(suffix='rho_sz_up-up_512',
+                          replace_by_model_number=31, 
+                          skip_interpolation=skip_interpolation,
+                          skip_projection=skip_projection
                           )   # suffix='rho_up-down_256'   # suffix='rho_sz_up-down_512'
 
     # ===== RUN a single case =====
