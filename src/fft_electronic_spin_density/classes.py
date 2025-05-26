@@ -2701,7 +2701,7 @@ def workflow_all_densities_interpolated():
     R_vec_center=(R_O18 + R_O34) / 2
 
     # --- 1.A. DFT spin up-up ---
-    workflow_plot_density(suffix='rho_sz_up-up_512',
+    workflow_plot_density(suffix='rho_up-down_512',
                           line_name='O18O34',
                         replace_by_model_number=None, 
                         skip_interpolation=skip_interpolation,
@@ -2711,9 +2711,9 @@ def workflow_all_densities_interpolated():
                         )   # suffix='rho_up-down_256'   # suffix='rho_sz_up-down_512'
     
     # --- 1.B. model spin up-up ---
-    workflow_plot_density(suffix='rho_sz_up-up_512',
+    workflow_plot_density(suffix='rho_up-up_512',
                           line_name='O18O34',
-                        replace_by_model_number=31, 
+                        replace_by_model_number=None, 
                         skip_interpolation=skip_interpolation,
                         skip_projection=skip_projection,
                         R_vec=R_vec,
