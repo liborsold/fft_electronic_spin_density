@@ -40,6 +40,10 @@ R2 = np.array((3.01571, 6.45289, 4.99992)) #np.array(list(self.metadata['atoms']
 R_O18 = np.array((5.54428, 4.75066, 5.31609))
 R_O34 = np.array((3.97804, 5.77690, 6.54433))
 
+R_O9 = np.array((3.64655, 3.70753, 3.52220))
+R_O1 = np.array((2.10020, 4.69340, 4.79607))
+
+
 
 class Density:
     """Read, visualize and fourier transform (spin) density from gaussian .cube files.
@@ -2523,13 +2527,13 @@ def workflow_plot_density(suffix='rho_sz_up-down_512', replace_by_model_number=N
         plt.close()
 
     print('workflow_plot_density')
-    base_folder = './outputs/Cu2AC4/512/plot_along_line'
+    base_folder = './outputs/Cu2AC4/512/plot_along_line' # for hydrogen molecule: '/home/vojace_l/Documents/Cu(II)_acetate/hydrogen_molecule/gamma_only/3x_supercell/r_over_R_4.00/triplet/' #
     if not os.path.exists(base_folder):
         os.makedirs(base_folder)
-    fname_cube_file = f'./cube_files/diverse_calculations/Cu2AC4_{suffix}.cube' #'./cube_files/Mn2GeO4_rho_sz.cube'
+    fname_cube_file = f'./cube_files/diverse_calculations/Cu2AC4_{suffix}.cube'  # for hydrogen molecule: os.path.join(base_folder, 'H2_rho_sz.cube') # './cube_files/Mn2GeO4_rho_sz.cube'
 
     r_cutoff = 2.5 # Angstrom
-    center = [3.93781, 5.8669, 4.28075]
+    center = [3.93781, 5.8669, 4.28075] # for hydrogen molecule: [5.0746, 5.0746, 6.17542] #
     if R_vec is None:
         R_vec = R1 - R2
     if R_vec_center is None:
@@ -2544,7 +2548,7 @@ def workflow_plot_density(suffix='rho_sz_up-down_512', replace_by_model_number=N
 
     density = Density(fname_cube_file=fname_cube_file)
 
-    central_radius = 4.0
+    central_radius = 5.0
 
     if replace_by_model_number is not None:
         print('ood')
@@ -2699,26 +2703,37 @@ def workflow_all_densities_interpolated():
     # 1. ============== oxygen 18-34 ==============
     R_vec = R_O18 - R_O34
     R_vec_center=(R_O18 + R_O34) / 2
+    line_name = 'O18O34'
 
-    # --- 1.A. DFT spin up-up ---
-    workflow_plot_density(suffix='rho_up-down_512',
-                          line_name='O18O34',
-                        replace_by_model_number=None, 
-                        skip_interpolation=skip_interpolation,
-                        skip_projection=skip_projection,
-                        R_vec=R_vec,
-                        R_vec_center=R_vec_center
-                        )   # suffix='rho_up-down_256'   # suffix='rho_sz_up-down_512'
-    
-    # --- 1.B. model spin up-up ---
-    workflow_plot_density(suffix='rho_up-up_512',
-                          line_name='O18O34',
-                        replace_by_model_number=None, 
-                        skip_interpolation=skip_interpolation,
-                        skip_projection=skip_projection,
-                        R_vec=R_vec,
-                        R_vec_center=R_vec_center
-                        )   # suffix='rho_up-down_256'   # suffix='rho_sz_up-down_512'
+    # 2. ============== oxygen 9-1 ==============
+    R_vec = R_O9 - R_O1
+    R_vec_center=(R_O9 + R_O1) / 2
+    line_name = 'O9O1'
+
+    # calculate DFT rho_sz up-up, DFT rho_sz up-down, model rho_sz up-up, model rho_sz up-down, DFT rho up-up, DFT rho up-down 
+    suffix_all = ['rho_sz_up-up_512', 'rho_sz_up-down_512', 
+                   'rho_sz_up-up_512', 'rho_sz_up-down_512', 
+                   'rho_up-up_512','rho_up-down_512']
+    replace_by_model_all = [None, None, 31, 30, None, None]
+
+    # for hydrogen molecule:
+    # R_H1 = np.array([5.0746, 5.0746, 4.69105]) # H1
+    # R_H2 = np.array([5.0746, 5.0746, 7.65979]) # H2
+    # R_vec = R_H1 - R_H2
+    # R_vec_center = (R_H1 + R_H2) / 2
+    # suffix_all = ['rho_sz_up-up_512']
+    # replace_by_model_all = [None]
+
+    for suffix, replace_by_model in zip(suffix_all, replace_by_model_all):
+        workflow_plot_density(suffix=suffix,
+                            line_name=line_name,
+                            replace_by_model_number=replace_by_model, 
+                            skip_interpolation=skip_interpolation,
+                            skip_projection=skip_projection,
+                            R_vec=R_vec,
+                            R_vec_center=R_vec_center
+                            )   # suffix='rho_up-down_256'   # suffix='rho_sz_up-down_512'
+
 
 if __name__ == '__main__':
     # workflow_density_vs_cutoff_radius(site_idx=[0], site_radii_all=[[i] for i in np.arange(0.5, 4.0, 0.5)], plot=True)
