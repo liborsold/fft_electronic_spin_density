@@ -32,7 +32,7 @@ r_mt_Cu = 1.1 #Angstrom
 r_mt_O = 0.9 #Angstrom
 
 base_path = './outputs/Cu2AC4/512/'
-scale_factor = 2.0 # 5.0
+scale_factor = 1.0 # 5.0
 
 R1 = np.array((4.85991, 5.28091, 3.56158)) # np.array(list(self.metadata['atoms'][R_idx1][1])[1:])*physical_constants['Bohr radius'][0]*1e10
 R2 = np.array((3.01571, 6.45289, 4.99992)) #np.array(list(self.metadata['atoms'][R_idx2][1])[1:])*physical_constants['Bohr radius'][0]*1e10
@@ -573,7 +573,93 @@ _sq = (x**2 + y**2 + z**2)
             rho = 2 * Z_eff * r / n / a0
             return amplitude * (x**2 - y**2)/r_sq * rho**2 * np.exp(-rho/2)
         models['dx2y2_neat'] = dx2y2_neat
+
+        def dz2(x, y, z, sigma=None, center=(3,3,3), amplitude=1, theta0=-0.99290, phi0=-0.58594, Z_eff=1, C=None):
+            """
+            dz2 orbital https://winter.group.shef.ac.uk/orbitron/atomic_orbitals/3d/3d_equations.html
+            Args:
+                x (np.array): Array of cartesian x coordinates in Angstrom.
+                y (np.array): Array of cartesian y coordinates in Angstrom.
+                z (np.array): Array of cartesian z coordinates in Angstrom.
+                sigma (float, optional): _description_. Defaults to 0.5.
+                center (tuple, optional): _description_. Defaults to (3,3,3).
+                sign (int, optional): _description_. Defaults to 1.
+
+            Returns:
+                _type_: _description_
+            """
+            n = 3  # principal number; 3 for d orbitals
+            x, y, z = center_and_rotate(x, y, z, center=center, theta0=theta0, phi0=phi0, seq='yzy')
+            r_sq = (x**2 + y**2 + z**2)
+            r = np.sqrt(r_sq)
+            return np.sqrt(amplitude) * (3*z**2 - r_sq)/r_sq * (r/a0)**2 * np.exp(-(Z_eff*r/a0/n))
+        models['dz2'] = dz2
+
+        def dx2y2_with_dz2(x, y, z, sigma=None, center=(3,3,3), amplitude=1, theta0=-1.011299, phi0=-0.59835726, Z_eff=12.8, Z_eff_s=10, C=0.2):
+            """dx2y2 with dz2 orbitals  https://winter.group.shef.ac.uk/orbitron/atomic_orbitals/3d/3d_equations.html
+            (not normalized)
+
+            Args:
+                x (_type_): Cartesian x coordinate in Angstrom.
+                y (_type_): Cartesian y coordinate in Angstrom.
+                z (_type_): Cartesian z coordinate in Angstrom.
+                sigma (float, optional): _description_. Defaults to 0.5.
+                center (tuple, optional): _description_. Defaults to (3,3,3).
+                sign (int, optional): _description_. Defaults to 1.
+
+            Returns:
+                _type_: _description_
+            """
+            # https://winter.group.shef.ac.uk/orbitron/atomic_orbitals/2p/2p_equations.html
+            orbital = np.sqrt(1-C**2) * dx2y2(x, y, z, sigma=sigma, center=center, theta0=theta0, phi0=phi0, Z_eff=Z_eff) +\
+                                    C    *  dz2(x, y, z, sigma=sigma, center=center, theta0=theta0, phi0=phi0, Z_eff=Z_eff_s)
+            return np.sqrt(amplitude) * orbital
+        models['dx2y2_with_dz2'] = dx2y2_with_dz2
+
+        def dsphere(x, y, z, sigma=None, center=(3,3,3), amplitude=1, theta0=-0.99290, phi0=-0.58594, Z_eff=1, C=None):
+            """
+            dz2 orbital https://winter.group.shef.ac.uk/orbitron/atomic_orbitals/3d/3d_equations.html
+            Args:
+                x (np.array): Array of cartesian x coordinates in Angstrom.
+                y (np.array): Array of cartesian y coordinates in Angstrom.
+                z (np.array): Array of cartesian z coordinates in Angstrom.
+                sigma (float, optional): _description_. Defaults to 0.5.
+                center (tuple, optional): _description_. Defaults to (3,3,3).
+                sign (int, optional): _description_. Defaults to 1.
+
+            Returns:
+                _type_: _description_
+            """
+            n = 3  # principal number; 3 for d orbitals
+            x, y, z = center_and_rotate(x, y, z, center=center, theta0=theta0, phi0=phi0, seq='yzy')
+            r_sq = (x**2 + y**2 + z**2)
+            r = np.sqrt(r_sq)
+            rho = 2 * Z_eff * r / n / a0
+            return amplitude * ((3*z**2 - r**2)/(np.sqrt(3)) + 2*x*y + 2*y*z + 2*x*z + (x**2-y**2))/r_sq * rho**2 * np.exp(-rho/2)
+            return amplitude * (2*x*y)/r_sq * rho**2 * np.exp(-rho/2)
             
+        models['dsphere'] = dsphere
+
+        def dx2y2_neat_with_dsphere(x, y, z, sigma=None, center=(3,3,3), amplitude=1, theta0=-1.011299, phi0=-0.59835726, Z_eff=12.8, Z_eff_s=10, C=0.2):
+            """dx2y2 with dz2 orbitals  https://winter.group.shef.ac.uk/orbitron/atomic_orbitals/3d/3d_equations.html
+            (not normalized)
+
+            Args:
+                x (_type_): Cartesian x coordinate in Angstrom.
+                y (_type_): Cartesian y coordinate in Angstrom.
+                z (_type_): Cartesian z coordinate in Angstrom.
+                sigma (float, optional): _description_. Defaults to 0.5.
+                center (tuple, optional): _description_. Defaults to (3,3,3).
+                sign (int, optional): _description_. Defaults to 1.
+
+            Returns:
+                _type_: _description_
+            """
+            # https://winter.group.shef.ac.uk/orbitron/atomic_orbitals/2p/2p_equations.html
+            orbital = np.sqrt(1-C**2) * dx2y2_neat(x, y, z, sigma=sigma, center=center, theta0=theta0, phi0=phi0, Z_eff=Z_eff) +\
+                                    C    *  dsphere(x, y, z, sigma=sigma, center=center, theta0=theta0, phi0=phi0, Z_eff=Z_eff_s)
+            return amplitude * orbital
+        models['dx2y2_neat_with_dsphere'] = dx2y2_neat_with_dsphere
 
         # check plot
         # x = np.linspace(-1, 1, 101)
@@ -1728,9 +1814,9 @@ def workflow(output_folder, site_idx, site_radii, replace_DFT_by_model, paramete
     fft_3D = False
     full_range_fft_spectrum_cuts = False
     zoom_in_fft_spectrum_cuts = False
-    fft_cut_planes_oblique = True
+    fft_cut_planes_oblique = False
 
-    write_cube_files = False
+    write_cube_files = True
 
     # ---- PARAMETERS -----
 
@@ -2288,6 +2374,8 @@ site_idx_all = [
     [0, 25, 40, 9, 16], #29
     [0, 25, 40, 9, 16, 1, 41, 24, 17, 8], #30
     [0, 25, 40, 9, 16, 1, 41, 24, 17, 8], #31
+    [0, 25, 40, 9, 16], #32
+    [0, 25, 40, 9, 16], #33
 ]
 
 site_radii_all = [
@@ -2323,6 +2411,8 @@ site_radii_all = [
     [r_mt_Cu]+[r_mt_O]*4, #29
     [r_mt_Cu]+[r_mt_O]*4+[r_mt_Cu]+[r_mt_O]*4, #30
     [r_mt_Cu]+[r_mt_O]*4+[r_mt_Cu]+[r_mt_O]*4, #31
+    [r_mt_Cu]+[r_mt_O]*4, #32
+    [r_mt_Cu]+[r_mt_O]*4, #33
 ]
 
 
@@ -2358,7 +2448,9 @@ output_folders_all = [
     base_path+'masked_model_Cu0_dx2y2_neat', #28 - like 11 but expression slightly revamped - just change of parameters
     base_path+'masked_model_Cu0_and_oxygens_purely_bonding_spx_correct', #29 - like 21 but with correct n=2 for 2s orbital
     base_path+'masked_model_Cu0-1_and_oxygens_purely_bonding_spx_correct', #30
-        base_path+'masked_model_Cu0-1_and_oxygens_purely_bonding_spx_correct' #31
+    base_path+'masked_model_Cu0-1_and_oxygens_purely_bonding_spx_correct', #31
+    base_path+'masked_model_Cu0_and_oxygens_dx2y2_dz2', #32
+    base_path+'masked_model_Cu0_and_oxygens_dx2y2_dsphere', #33
 ]
 
 replace_DFT_by_model_all = [
@@ -2394,6 +2486,8 @@ replace_DFT_by_model_all = [
     True, #29
     True, #30
     True, #31
+    True, #32
+    True, #33
 ]
 
 fit_model_to_DFT_all = [
@@ -2429,6 +2523,8 @@ fit_model_to_DFT_all = [
     True, #29
     False, #30
     False, #31
+    False, #32
+    False, #33
 ]
 
 parameters_model_all = [{}]*7 + [
@@ -2496,6 +2592,20 @@ parameters_model_all = [{}]*7 + [
                                                                                 'phi0':[-0.59855408, -0.5980457, 2.55194631, 0.8265912, -2.03391158, -0.59855408, -0.5980457, 2.55194631, 0.8265912, -2.03391158], 
                                                                                 'Z_eff':[12.8481725, 5.01517706, 4.94533815, 5.10058135, 5.04343411, 12.8481725, 5.01517706, 4.94533815, 5.10058135, 5.04343411],
                                                                                 'C':[0.000, 0.25951331, 0.22725085, 0.291142454, 0.28161311, 0.000, 0.25951331, 0.22725085, 0.291142454, 0.28161311]}}, #31 <-------- like 30 but all orbitals are spin up
+       # add dz2: improving the decay rate of the model (density in-between copper dimers)
+       {'type':['dx2y2_with_dz2']+4*['two_spx'], 'sigmas':[0.3]*5, 'centers':[], 'fit_params_init_all':{'amplitude':[691.803173, 0.12095979, 0.1264227, 0.123107364, 0.12409948], 
+                                                                    'theta0':[-1.01204317,-0.82363378, 1.18166768, 0.0003331, 0.17039612], 
+                                                                    'phi0':[-0.599982, -0.5933, 2.55285232, 0.829267292, -2.0329591 ], 
+                                                                    'Z_eff':[12.8281, 8.5545368, 8.5995384, 8.53154405, 8.57672478],
+                                                                    'Z_eff_s':[12.8281, None, None, None, None],
+                                                                    'C':[0.2, 0.50774442, 0.46376494, 0.543582469, 0.50554664]}}, # 32 Copper (dx2y2-dz2) + 4 Oxygens
+       # add dsphere: improving the decay rate of the model (density in-between copper dimers)
+        {'type':['dx2y2_neat_with_dsphere']+4*['two_spx_correct'], 'sigmas':[0.3]*5, 'centers':[], 'fit_params_init_all':{'amplitude':[0.360453056, 0.2926634, 0.30968292, -0.295919999, -0.30207433], 
+                                                                            'theta0':[-1.011437, -0.82051673, 1.18435744, 0.00034809, 0.18104707], 
+                                                                            'phi0':[-0.59855408, -0.5980457, 2.55194631, 0.8265912, -2.03391158], 
+                                                                            'Z_eff':[12.8481725, 5.01517706, 4.94533815, 5.10058135, 5.04343411],
+                                                                            'Z_eff_s':[12.8481725, None, None, None, None],
+                                                                            'C':[1.00, 0.25951331, 0.22725085, 0.291142454, 0.28161311]}}, # 33 Copper (dx2y2-ds) + 4 Oxygens              
     ]
 
 def workflow_plot_density(suffix='rho_sz_up-down_512', replace_by_model_number=None, skip_interpolation=False, skip_projection=False,
@@ -2643,7 +2753,7 @@ def workflow_plot_density(suffix='rho_sz_up-down_512', replace_by_model_number=N
         plot_density(r_dist, fX_interp, suffix, log_scale=True, ylabel=ylabel)
 
 
-def workflow_all_densities_integrated():
+def workflow_plot_all_densities_integrated():
         # PLOT THE ELECTRONIC AND SPIN DENSITY ALONG LINES ETC.
     replace_by_model_number = None # 30 # 
     skip_interpolation = True #True # 
@@ -2692,7 +2802,7 @@ def workflow_all_densities_integrated():
                           )   # suffix='rho_up-down_256'   # suffix='rho_sz_up-down_512'
 
 
-def workflow_all_densities_interpolated():
+def workflow_plot_all_densities_interpolated():
 
     # PLOT THE ELECTRONIC AND SPIN DENSITY ALONG LINES ETC.
     replace_by_model_number = None # 30 # 
@@ -2739,8 +2849,8 @@ if __name__ == '__main__':
     # workflow_density_vs_cutoff_radius(site_idx=[0], site_radii_all=[[i] for i in np.arange(0.5, 4.0, 0.5)], plot=True)
     # exit()
 
-    # workflow_all_densities_integrated()
-    workflow_all_densities_interpolated()
+    # workflow_plot_all_densities_integrated()
+    # workflow_plot_all_densities_interpolated()
 
     # ===== RUN a single case =====
     run_a_single_case = False
@@ -2751,7 +2861,9 @@ if __name__ == '__main__':
         workflow(site_idx=site_idx, site_radii=site_radii, output_folder=output_folder)
 
     # ===== RUN selected cases among the predefined ones =====
-    run_cases = None #[5] #[0, 3, 5, 23] #, 3, 5, 23] #, 3, 5] # None
+
+    run_cases = [33] #None #[5] #[0, 3, 5, 23] #, 3, 5, 23] #, 3, 5] # None
+
     # case = 29
     # scale_R_array = [1.0] #[1.00]
     # workflow_autocorrelation_term(parameters_model_all[case], 
