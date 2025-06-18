@@ -24,6 +24,11 @@ from matplotlib.ticker import MultipleLocator
 from scipy.spatial.transform import Rotation
 import pickle
 
+from ase.io.xsf import read_xsf
+from ase.io.cube import write_cube as write_cube_ase
+
+from copy import deepcopy
+
 mpl.rcParams['agg.path.chunksize'] = 10000
 
 a0 = physical_constants['Bohr radius'][0] * 1e10 # Bohr radius in units of Angstrom
@@ -2608,33 +2613,37 @@ parameters_model_all = [{}]*7 + [
                                                                             'C':[1.00, 0.25951331, 0.22725085, 0.291142454, 0.28161311]}}, # 33 Copper (dx2y2-ds) + 4 Oxygens              
     ]
 
+
+# plot in both linear and log scale
+def plot_density(r_dist, fX_interp, suffix, 
+                log_scale=False, 
+                xlims=None,
+                ylims=None,
+                ylabel=None,
+                base_folder='./outputs/Cu2AC4/512/plot_along_line',
+                line_name='Cu1Cu2'
+                ):
+    fig, ax = plt.subplots(1, 1, figsize=(4., 3.))
+    if log_scale:
+        plt.semilogy()
+        suffix = 'log_abs_' + suffix
+        fX_interp = np.abs(fX_interp)
+    plt.plot(r_dist, fX_interp, '-o', markerfacecolor='none', markersize=0.2)
+    plt.xlabel(r'$r$ ($\mathrm{\AA}$)')
+    if ylabel is None:
+        ylabel = r'$\rho_\mathrm{1D}$ ($\mathrm{\AA}^{-1}$)'
+    plt.ylabel(ylabel)
+    if xlims is not None:
+        plt.xlim(xlims)
+    if ylims is not None:
+        plt.ylim(ylims)
+    plt.tight_layout()  
+    plt.savefig(os.path.join(base_folder, f'density_along_{line_name}_line_{suffix}.png'), dpi=400)
+    plt.close()
+    
+
 def workflow_plot_density(suffix='rho_sz_up-down_512', replace_by_model_number=None, skip_interpolation=False, skip_projection=False,
                           R_vec=None, R_vec_center=None, line_name='Cu1Cu2'):
-
-        # plot in both linear and log scale
-    def plot_density(r_dist, fX_interp, suffix, 
-                    log_scale=False, 
-                    xlims=None,
-                    ylims=None,
-                    ylabel=None
-                    ):
-        fig, ax = plt.subplots(1, 1, figsize=(4., 3.))
-        if log_scale:
-            plt.semilogy()
-            suffix = 'log_abs_' + suffix
-            fX_interp = np.abs(fX_interp)
-        plt.plot(r_dist, fX_interp, '-o', markerfacecolor='none', markersize=0.2)
-        plt.xlabel(r'$r$ ($\mathrm{\AA}$)')
-        if ylabel is None:
-            ylabel = r'$\rho_\mathrm{1D}$ ($\mathrm{\AA}^{-1}$)'
-        plt.ylabel(ylabel)
-        if xlims is not None:
-            plt.xlim(xlims)
-        if ylims is not None:
-            plt.ylim(ylims)
-        plt.tight_layout()  
-        plt.savefig(os.path.join(base_folder, f'density_along_{line_name}_line_{suffix}.png'), dpi=400)
-        plt.close()
 
     print('workflow_plot_density')
     base_folder = './outputs/Cu2AC4/512/plot_along_line' # for hydrogen molecule: '/home/vojace_l/Documents/Cu(II)_acetate/hydrogen_molecule/gamma_only/3x_supercell/r_over_R_4.00/triplet/' #
@@ -2715,8 +2724,8 @@ def workflow_plot_density(suffix='rho_sz_up-down_512', replace_by_model_number=N
             np.savetxt(fw, np.vstack([r_along_R_vec, density_1D]).T, header='r_dist\trho_proj (Angstrom^-1)', delimiter='\t')
         suffix += '_projected'
         # plot and save
-        plot_density(r_along_R_vec, density_1D, suffix, log_scale=False, xlims=(-central_radius, central_radius))
-        plot_density(r_along_R_vec, density_1D, suffix, log_scale=True, xlims=(-central_radius, central_radius), ylims=(1e-13, 5.0))
+        plot_density(r_along_R_vec, density_1D, suffix, log_scale=False, xlims=(-central_radius, central_radius), base_folder=base_folder, line_name=line_name)
+        plot_density(r_along_R_vec, density_1D, suffix, log_scale=True, xlims=(-central_radius, central_radius), ylims=(1e-13, 5.0), base_folder=base_folder, line_name=line_name)
 
     if not skip_interpolation:
         interpolator_name = os.path.join(base_folder, f'interpolator_{suffix}_along_{line_name}_line_r-cutoff_{r_cutoff:.2f}.pickle')
@@ -2845,7 +2854,111 @@ def workflow_plot_all_densities_interpolated():
                             )   # suffix='rho_up-down_256'   # suffix='rho_sz_up-down_512'
 
 
+def xsf_to_cube(xsf_name='Cu2AC4_00001.xsf', base_folder='.', normalize=True):
+    """
+    Convert an XSF file to a CUBE file.
+    
+    params:
+        xsf_name: name of the XSF file to convert
+    """
+    xsf_path = os.path.join(base_folder, xsf_name)
+    with open(xsf_path, 'r') as f:
+        array, origin, span_vectors, atoms = read_xsf(f, read_data=True)
+
+    if normalize is True:
+        # condition -- for the density -- is that the array**2 summed and multiplied by the volume belonging to a single point (total unit cell volume / number of points) be equal to 1
+        # get the unti cell size from atoms
+        unit_cell = atoms.get_cell()
+        norm_factor = (np.sum(array**2) * unit_cell.volume / a0**3 / array.size)
+        array /= np.sqrt(norm_factor)
+
+    with open(os.path.join(base_folder, xsf_name.split('.')[0]+'.cube'), 'w') as f:
+        write_cube_ase(f, atoms, data=array, origin=None, comment=None)
+
+
+def workflow_wannier(base_folders=['.', '.'], xsf_name='Cu2AC4_00001.xsf', spins=['up', 'down'],
+                     common_folder='.'):
+    """
+    Workflow to convert an XSF file to a CUBE file and produce the density.
+    params:
+        xsf_name: name of the XSF file to convert
+        spin: 'up' or 'down' for the spin density
+    """
+
+    def do_for_each(i_wannier, suffix=''):
+        base_folder = base_folders[i_wannier]
+        spin = spins[i_wannier]
+
+        cube_name = xsf_name.split('.')[0] + '.cube'
+        cube_path = os.path.join(base_folder, cube_name)
+        if True: #not os.path.exists(cube_path):
+            xsf_to_cube(xsf_name=xsf_name, base_folder=base_folder, normalize=True)
+
+        orbital = Density(fname_cube_file=cube_path)
+
+        density = deepcopy(orbital)
+        density.square_data()
+        
+        # --- PRODUCE DENSITY FROM THE ORBITAL DATA ---
+        density_cube_name = cube_name.split('.')[0] + '_rho_sz.cube'
+        density_cube_path = os.path.join(base_folder, density_cube_name)
+
+        if spin == 'up':
+            pass
+        elif spin == 'down':
+            density.array = -density.array
+        else:
+            raise ValueError("'spin' must be 'up' or 'down'")
+        
+        if not os.path.exists(density_cube_path):
+            # write
+            density.write_cube_file_rho_sz(fout=density_cube_name, output_folder=base_folder)
+
+        # --- PLOT THE DENSITY ALONG THE Cu0-Cu1 line (1D - projected) ---
+        line_name = 'Cu0Cu1'
+        central_radius = 5.0  # Angstrom
+        R_vec = R1 - R2
+        R_vec_center = (R1 + R2) / 2
+
+        print('After masking integrated:')
+        density.integrate_cube_file()
+        # all points projected onto R_vec (the Cu1-Cu2 connection unit vector)
+        R_vec_unit = R_vec / np.linalg.norm(R_vec)
+        # distance of all points projected onto the Cu1-Cu2 unit vector
+        r_along_R_vec, density_1D = density.get_line_density(R_vec_unit, R_vec_center, N_points=1001)
+
+        # save projected data to files
+        with open(os.path.join(base_folder, f'density_1D_proj_along_{line_name}_line_{suffix}.txt'), 'w+') as fw:
+            np.savetxt(fw, np.vstack([r_along_R_vec, density_1D]).T, header='r_dist\trho_proj (Angstrom^-1)', delimiter='\t')
+        suffix += '_projected'
+        # plot and save
+        plot_density(r_along_R_vec, density_1D, suffix, log_scale=False, xlims=(-central_radius, central_radius), base_folder=base_folder, line_name=line_name)
+        plot_density(r_along_R_vec, density_1D, suffix, log_scale=True, xlims=(-central_radius, central_radius), ylims=(1e-13, 5.0), base_folder=base_folder, line_name=line_name)
+        return orbital, density
+    
+    orbital_up, density_up = do_for_each(i_wannier=0)
+    orbital_down, density_down = do_for_each(i_wannier=1)
+
+    # --- COMBINE THE DENSITIES ---
+    combined_density = deepcopy(density_up)
+    combined_density.array = density_up.array + density_down.array
+    # write cube file of the combined density
+    combined_density.write_cube_file_rho_sz(fout=os.path.join(common_folder, f'Cu2AC4_combined_up_and_down_rho_sz.cube'))
+
+
+    
 if __name__ == '__main__':
+
+    # ------ WANNNIER -----
+    spins=['up', 'down'] # for Cu0 the wannierized orbital (unoccupied - hole) is spin down so the occuped net density is spin up  
+    base_folders = ['/home/vojace_l/Documents/Cu(II)_acetate/from_daint_alps/Wannierization/singlet_spin_polarized/nscf_kpoints2x2x2/case_07_unoccupied_above_Fermi_Cu0_so_spin-down_1000_1000', \
+                    '/home/vojace_l/Documents/Cu(II)_acetate/from_daint_alps/Wannierization/singlet_spin_polarized/nscf_kpoints2x2x2/case_08_unoccupied_above_Fermi_Cu1_so_spin-up_1000_1000']
+    common_folder = '/home/vojace_l/Documents/Cu(II)_acetate/from_daint_alps/Wannierization/singlet_spin_polarized/nscf_kpoints2x2x2/joint_case_07_case_08'
+
+    xsf_name='Cu2AC4_00001.xsf'
+    workflow_wannier(base_folders=base_folders, spins=spins, xsf_name=xsf_name, common_folder=common_folder)
+    exit()
+
     # workflow_density_vs_cutoff_radius(site_idx=[0], site_radii_all=[[i] for i in np.arange(0.5, 4.0, 0.5)], plot=True)
     # exit()
 
