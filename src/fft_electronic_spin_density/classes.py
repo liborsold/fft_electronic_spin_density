@@ -2890,7 +2890,7 @@ def workflow_wannier(base_folders=['.', '.'], xsf_name='Cu2AC4_00001.xsf', spins
         spin: 'up' or 'down' for the spin density
     """
 
-    def do_for_each(i_wannier, suffix='wannier'):
+    def do_for_each(i_wannier):
         base_folder = base_folders[i_wannier]
         spin = spins[i_wannier]
 
@@ -2915,10 +2915,13 @@ def workflow_wannier(base_folders=['.', '.'], xsf_name='Cu2AC4_00001.xsf', spins
         else:
             raise ValueError("'spin' must be 'up' or 'down'")
         
-        if False: #not os.path.exists(density_cube_path):
-            # write
-            density.write_cube_file_rho_sz(fout=density_cube_name, output_folder=base_folder)
+        if True: #not os.path.exists(density_cube_path):
+            # write, but make a copy first
+            density_to_write = deepcopy(density)
+            density_to_write.write_cube_file_rho_sz(fout=density_cube_name, output_folder=base_folder)
+        return orbital, density
 
+    def plot_density_for_wannier(base_folder, density, suffix='wannier'):
         # --- PLOT THE DENSITY ALONG THE Cu0-Cu1 line (1D - projected) ---
         line_name = 'Cu0Cu1'
         central_radius = 5.0  # Angstrom
@@ -2948,20 +2951,22 @@ def workflow_wannier(base_folders=['.', '.'], xsf_name='Cu2AC4_00001.xsf', spins
         # plot and save
         plot_density(r_along_R_vec, density_1D, suffix, log_scale=False, xlims=(-central_radius, central_radius), base_folder=base_folder, line_name=line_name)
         plot_density(r_along_R_vec, density_1D, suffix, log_scale=True, xlims=(-central_radius, central_radius), ylims=(1e-13, 5.0), base_folder=base_folder, line_name=line_name)
-        return orbital, density
     
     orbital_up, density_up = do_for_each(i_wannier=0)
+    plot_density_for_wannier(base_folder=base_folders[0], density=density_up)
     orbital_down, density_down = do_for_each(i_wannier=1)
+    plot_density_for_wannier(base_folder=base_folders[1], density=density_down)
 
     # --- COMBINE THE DENSITIES ---
     combined_density = deepcopy(density_up)
     combined_density.array = density_up.array + density_down.array
     # write cube file of the combined density
     combined_density.write_cube_file_rho_sz(fout=os.path.join(common_folder, f'Cu2AC4_combined_up_and_down_rho_sz.cube'))
+    plot_density_for_wannier(base_folder=common_folder, density=combined_density)
 
 
     
-if __name__ == '__main__'
+if __name__ == '__main__':
 
     # ------ WANNNIER -----
     spins=['up', 'down'] # for Cu0 the wannierized orbital (unoccupied - hole) is spin down so the occuped net density is spin up  
