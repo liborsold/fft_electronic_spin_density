@@ -42,6 +42,7 @@ scale_factor = 1.0 # 5.0
 R1 = np.array((4.85991, 5.28091, 3.56158)) # np.array(list(self.metadata['atoms'][R_idx1][1])[1:])*physical_constants['Bohr radius'][0]*1e10
 R2 = np.array((3.01571, 6.45289, 4.99992)) #np.array(list(self.metadata['atoms'][R_idx2][1])[1:])*physical_constants['Bohr radius'][0]*1e10
 
+
 R_O18 = np.array((5.54428, 4.75066, 5.31609))
 R_O34 = np.array((3.97804, 5.77690, 6.54433))
 
@@ -2873,7 +2874,11 @@ def xsf_to_cube(xsf_name='Cu2AC4_00001.xsf', base_folder='.', normalize=True):
         array /= np.sqrt(norm_factor)
 
     with open(os.path.join(base_folder, xsf_name.split('.')[0]+'.cube'), 'w') as f:
-        write_cube_ase(f, atoms, data=array, origin=None, comment=None)
+        write_cube_ase(f, atoms, data=array, origin=origin, comment=None)
+        # shift back from origin
+        print('origin', origin)
+        # print('array', array)
+        print('atoms', atoms)
 
 
 def workflow_wannier(base_folders=['.', '.'], xsf_name='Cu2AC4_00001.xsf', spins=['up', 'down'],
@@ -2885,7 +2890,7 @@ def workflow_wannier(base_folders=['.', '.'], xsf_name='Cu2AC4_00001.xsf', spins
         spin: 'up' or 'down' for the spin density
     """
 
-    def do_for_each(i_wannier, suffix=''):
+    def do_for_each(i_wannier, suffix='wannier'):
         base_folder = base_folders[i_wannier]
         spin = spins[i_wannier]
 
@@ -2910,16 +2915,25 @@ def workflow_wannier(base_folders=['.', '.'], xsf_name='Cu2AC4_00001.xsf', spins
         else:
             raise ValueError("'spin' must be 'up' or 'down'")
         
-        if not os.path.exists(density_cube_path):
+        if False: #not os.path.exists(density_cube_path):
             # write
             density.write_cube_file_rho_sz(fout=density_cube_name, output_folder=base_folder)
 
         # --- PLOT THE DENSITY ALONG THE Cu0-Cu1 line (1D - projected) ---
         line_name = 'Cu0Cu1'
         central_radius = 5.0  # Angstrom
-        R_vec = R1 - R2
-        R_vec_center = (R1 + R2) / 2
-
+        # !!!!! the Wannier unit cell has shifted origin (all atomic positions and data values are shifted by the origin vector) !!!!!!
+        # search for origin=origin in the code (it's about 0.05 in each direction)
+        # this is because xcrysden file format xsf is working with a (1,1,1) supercell
+        # there is no easy fix around this
+        # you cannot specify positions for the data array
+        # and exporting directly in cube format form wannier90 has it's own other quirks -- very difficult
+        # !!!! ALSO NOTE THAT LABELING OF THE ATOMS IN THE NEW CUBE FILE IS DIFFERENT FROM THE ORIGINAL CUBE FILE FROM QUANTUM ESPRESSO !!!!!
+        # AGAIN a quirk of wannier90
+        R1_xsf = np.array((4.90913, 5.35425, 3.64720)) # np.array(list(self.metadata['atoms'][R_idx1][1])[1:])*physical_constants['Bohr radius'][0]*1e10
+        R2_xsf = np.array((3.06493, 6.52622, 5.08553)) #np.array(list(self.metadata['atoms'][R_idx2][1])[1:])*physical_constants['Bohr radius'][0]*1e10
+        R_vec = R1_xsf - R2_xsf
+        R_vec_center = (R1_xsf + R2_xsf) / 2
         print('After masking integrated:')
         density.integrate_cube_file()
         # all points projected onto R_vec (the Cu1-Cu2 connection unit vector)
@@ -2947,7 +2961,7 @@ def workflow_wannier(base_folders=['.', '.'], xsf_name='Cu2AC4_00001.xsf', spins
 
 
     
-if __name__ == '__main__':
+if __name__ == '__main__'
 
     # ------ WANNNIER -----
     spins=['up', 'down'] # for Cu0 the wannierized orbital (unoccupied - hole) is spin down so the occuped net density is spin up  
