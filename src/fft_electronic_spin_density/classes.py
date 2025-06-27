@@ -2882,7 +2882,7 @@ def xsf_to_cube(xsf_name='Cu2AC4_00001.xsf', base_folder='.', normalize=True):
 
 
 def workflow_wannier(base_folders=['.', '.'], xsf_name='Cu2AC4_00001.xsf', spins=['up', 'down'],
-                     common_folder='.'):
+                     common_folder='.', scale_factor=1.0):
     """
     Workflow to convert an XSF file to a CUBE file and produce the density.
     params:
@@ -2899,7 +2899,7 @@ def workflow_wannier(base_folders=['.', '.'], xsf_name='Cu2AC4_00001.xsf', spins
         if True: #not os.path.exists(cube_path):
             xsf_to_cube(xsf_name=xsf_name, base_folder=base_folder, normalize=True)
 
-        orbital = Density(fname_cube_file=cube_path)
+        orbital = Density(fname_cube_file=cube_path, output_folder=base_folder, scale_factor=scale_factor)
 
         density = deepcopy(orbital)
         density.square_data()
@@ -2964,6 +2964,41 @@ def workflow_wannier(base_folders=['.', '.'], xsf_name='Cu2AC4_00001.xsf', spins
     combined_density.write_cube_file_rho_sz(fout=os.path.join(common_folder, f'Cu2AC4_combined_up_and_down_rho_sz.cube'))
     plot_density_for_wannier(base_folder=common_folder, density=combined_density)
 
+    # --- PLOT their fourier transform (form-factor term) ---
+
+    # for the middle i_kz, plot also line cuts
+    i_kz = combined_density.nkc//2
+    fft_as_log = False
+    appendix = 'Wannier'
+    fft_figsize = (4.5, 4.5)
+    fft_dpi = 400
+    fft_xlims = [-19, 19] # 1/Angstrom
+    fft_ylims = [-19, 19] # 1/Angstrom
+    fft_zlims = None #[0, 6.4e4] # 1/Angstrom
+    normalized = True
+    cax_saturation = 0.5
+    # along stripes
+    for cut_along in ['along_stripes', 'perpendicular_to_stripes', 'both', 'along_opposite_stripes']:
+        kx_arr_along, ky_arr_along, F_abs_sq_interp_along, kx_arr_perp, ky_arr_perp, F_abs_sq_interp_perp, kx_arr_along_opposite, ky_arr_along_opposite, F_abs_sq_interp_along_opposite = combined_density.plot_fft_along_line(i_kz=i_kz, cut_along=cut_along, kx_ky_fun=None, k_dist_lim=12, N_points=3001, fout_name=f'{combined_density.output_folder}/cut_1D_{cut_along}.png', cax_saturation=cax_saturation, normalized=normalized,)
+        combined_density.plot_fft_2D(i_kz=i_kz, fft_as_log=fft_as_log, 
+                    fout_name=f'F_abs_sq{appendix}-scale_kz_at_idx_{i_kz}_cut_{cut_along}.png', 
+                    figsize=(5.5, 4.5),
+                    dpi=fft_dpi,
+                    fixed_z_scale=True,
+                    cax_saturation=cax_saturation,
+                    xlims=fft_xlims,
+                    ylims=fft_ylims, 
+                    zlims=fft_zlims,
+                    plot_line_cut=True, 
+                    kx_arr_along=kx_arr_along, ky_arr_along=ky_arr_along,
+                    kx_arr_perp=kx_arr_perp, ky_arr_perp=ky_arr_perp,
+                    kx_arr_along_opposite=kx_arr_along_opposite, ky_arr_along_opposite=ky_arr_along_opposite,
+                    cut_along=cut_along, 
+                    normalized=normalized,)
+        np.savetxt(os.path.join(combined_density.output_folder, 'cut_1D_both.txt'), np.array([kx_arr_along, ky_arr_along, F_abs_sq_interp_along, kx_arr_perp, ky_arr_perp, F_abs_sq_interp_perp, kx_arr_along_opposite, ky_arr_along_opposite, F_abs_sq_interp_along_opposite]).T, delimiter='\t', fmt='%.8e', header='kx_along\tky_along\tF_abs_sq_along\tkx_perp\tky_perp\tF_abs_sq_perp\tkx_along_opposite\tky_along_opposite\tF_abs_sq_along_opposite')
+
+
+
 
     
 if __name__ == '__main__':
@@ -2975,7 +3010,8 @@ if __name__ == '__main__':
     common_folder = '/home/vojace_l/Documents/Cu(II)_acetate/from_daint_alps/Wannierization/singlet_spin_polarized/nscf_kpoints2x2x2/joint_case_07_case_08'
 
     xsf_name='Cu2AC4_00001.xsf'
-    workflow_wannier(base_folders=base_folders, spins=spins, xsf_name=xsf_name, common_folder=common_folder)
+    scale_factor = 4.0 #
+    workflow_wannier(base_folders=base_folders, spins=spins, xsf_name=xsf_name, common_folder=common_folder, scale_factor=scale_factor)
     exit()
 
     # workflow_density_vs_cutoff_radius(site_idx=[0], site_radii_all=[[i] for i in np.arange(0.5, 4.0, 0.5)], plot=True)
@@ -3023,3 +3059,4 @@ if __name__ == '__main__':
             fit_model_to_DFT = fit_model_to_DFT_all[i]
             workflow(site_idx=site_idx, site_radii=site_radii, output_folder=output_folder, replace_DFT_by_model=replace_DFT_by_model, parameters_model=parameters_model, fit_model_to_DFT=fit_model_to_DFT)
 
+ 
