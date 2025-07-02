@@ -2218,6 +2218,11 @@ def workflow_autocorrelation_term(parameters_model, scale_R_array=[1.0], output_
         site_centers_plus = [tuple(np.array(r) + np.array(R)) for r in site_centers]
         site_centers_minus = [tuple(np.array(r) - np.array(R)) for r in site_centers]
 
+        # add inversion! of sites as well! - fake, not working so well
+        order = [0, 2, 1, 4, 3] # switch oxygen orbitals in a centrosymmetric fashion
+        site_centers_plus = [site_centers_plus[i] for i in order]
+        site_centers_minus = [site_centers_minus[i] for i in order]
+
         parameters_model['centers'] = site_centers_plus
         orbital_shifted_plus.replace_by_model(parameters=parameters_model, leave_as_wavefunction=True)
 
@@ -2298,7 +2303,7 @@ def workflow_autocorrelation_term(parameters_model, scale_R_array=[1.0], output_
             cax_saturation = None
             N_kpoints = 101 # 3001
 
-            kx_arr_along, ky_arr_along, F_abs_sq_interp_along, kx_arr_perp, ky_arr_perp, F_abs_sq_interp_perp = density.plot_fft_along_line(i_kz=i_kz, cut_along=cut_along, kx_ky_fun=None, k_dist_lim=12, N_points=N_kpoints, fout_name=f'{density.output_folder}/cut_1D_E_perp_{cut_along}.png', cax_saturation=cax_saturation,)
+            kx_arr_along, ky_arr_along, F_abs_sq_interp_along, kx_arr_perp, ky_arr_perp, F_abs_sq_interp_perp, kx_arr_along_opposite, ky_arr_along_opposite, F_abs_sq_interp_along_opposite  = density.plot_fft_along_line(i_kz=i_kz, cut_along=cut_along, kx_ky_fun=None, k_dist_lim=12, N_points=N_kpoints, fout_name=f'{density.output_folder}/cut_1D_E_perp_{cut_along}.png', cax_saturation=cax_saturation,)
             
             density.plot_fft_2D(i_kz=i_kz, 
                                 fout_name=f'F_abs_sq_{appendix}_overlap-term_kz_{density.get_kz_at_index(i_kz):.4f}.png', 
@@ -2958,16 +2963,16 @@ def workflow_wannier(base_folders=['.', '.'], xsf_name='Cu2AC4_00001.xsf', spins
     plot_density_for_wannier(base_folder=base_folders[1], density=density_down)
 
     # --- COMBINE THE DENSITIES ---
-    combined_density = deepcopy(density_up)
-    combined_density.array = density_up.array + density_down.array
+    spin_density = deepcopy(density_up)
+    spin_density.array = density_up.array + density_down.array
     # write cube file of the combined density
-    combined_density.write_cube_file_rho_sz(fout=os.path.join(common_folder, f'Cu2AC4_combined_up_and_down_rho_sz.cube'))
-    plot_density_for_wannier(base_folder=common_folder, density=combined_density)
+    spin_density.write_cube_file_rho_sz(fout=os.path.join(common_folder, f'Cu2AC4_combined_up_and_down_rho_sz.cube'))
+    plot_density_for_wannier(base_folder=common_folder, density=spin_density)
 
     # --- PLOT their fourier transform (form-factor term) ---
 
     # for the middle i_kz, plot also line cuts
-    i_kz = combined_density.nkc//2
+    i_kz = spin_density.nkc//2
     fft_as_log = False
     appendix = 'Wannier'
     fft_figsize = (4.5, 4.5)
@@ -2979,8 +2984,8 @@ def workflow_wannier(base_folders=['.', '.'], xsf_name='Cu2AC4_00001.xsf', spins
     cax_saturation = 0.5
     # along stripes
     for cut_along in ['along_stripes', 'perpendicular_to_stripes', 'both', 'along_opposite_stripes']:
-        kx_arr_along, ky_arr_along, F_abs_sq_interp_along, kx_arr_perp, ky_arr_perp, F_abs_sq_interp_perp, kx_arr_along_opposite, ky_arr_along_opposite, F_abs_sq_interp_along_opposite = combined_density.plot_fft_along_line(i_kz=i_kz, cut_along=cut_along, kx_ky_fun=None, k_dist_lim=12, N_points=3001, fout_name=f'{combined_density.output_folder}/cut_1D_{cut_along}.png', cax_saturation=cax_saturation, normalized=normalized,)
-        combined_density.plot_fft_2D(i_kz=i_kz, fft_as_log=fft_as_log, 
+        kx_arr_along, ky_arr_along, F_abs_sq_interp_along, kx_arr_perp, ky_arr_perp, F_abs_sq_interp_perp, kx_arr_along_opposite, ky_arr_along_opposite, F_abs_sq_interp_along_opposite = spin_density.plot_fft_along_line(i_kz=i_kz, cut_along=cut_along, kx_ky_fun=None, k_dist_lim=12, N_points=3001, fout_name=f'{spin_density.output_folder}/cut_1D_{cut_along}.png', cax_saturation=cax_saturation, normalized=normalized,)
+        spin_density.plot_fft_2D(i_kz=i_kz, fft_as_log=fft_as_log, 
                     fout_name=f'F_abs_sq{appendix}-scale_kz_at_idx_{i_kz}_cut_{cut_along}.png', 
                     figsize=(5.5, 4.5),
                     dpi=fft_dpi,
@@ -2995,9 +3000,21 @@ def workflow_wannier(base_folders=['.', '.'], xsf_name='Cu2AC4_00001.xsf', spins
                     kx_arr_along_opposite=kx_arr_along_opposite, ky_arr_along_opposite=ky_arr_along_opposite,
                     cut_along=cut_along, 
                     normalized=normalized,)
-        np.savetxt(os.path.join(combined_density.output_folder, 'cut_1D_both.txt'), np.array([kx_arr_along, ky_arr_along, F_abs_sq_interp_along, kx_arr_perp, ky_arr_perp, F_abs_sq_interp_perp, kx_arr_along_opposite, ky_arr_along_opposite, F_abs_sq_interp_along_opposite]).T, delimiter='\t', fmt='%.8e', header='kx_along\tky_along\tF_abs_sq_along\tkx_perp\tky_perp\tF_abs_sq_perp\tkx_along_opposite\tky_along_opposite\tF_abs_sq_along_opposite')
+        np.savetxt(os.path.join(spin_density.output_folder, 'cut_1D_both.txt'), np.array([kx_arr_along, ky_arr_along, F_abs_sq_interp_along, kx_arr_perp, ky_arr_perp, F_abs_sq_interp_perp, kx_arr_along_opposite, ky_arr_along_opposite, F_abs_sq_interp_along_opposite]).T, delimiter='\t', fmt='%.8e', header='kx_along\tky_along\tF_abs_sq_along\tkx_perp\tky_perp\tF_abs_sq_perp\tkx_along_opposite\tky_along_opposite\tF_abs_sq_along_opposite')
 
 
+    # get the overlap density and calculate the overlap term
+    overlap_density = deepcopy(orbital_up)
+    overlap_density.array = np.conj(orbital_up.array) * orbital_down.array
+
+    def E_overlap(rho_overlap):
+        """
+        Calculate the overlap energy term from the overlap density.
+        """
+        # integrate the overlap density
+        rho_tot, abs_rho_tot = rho_overlap.integrate_cube_file()
+        # calculate the energy
+        E_overlap = np.sum(rho_overlap.array) * rho_overlap.unit_cell_volume / a0**3
 
 
     
@@ -3010,9 +3027,9 @@ if __name__ == '__main__':
     common_folder = '/home/vojace_l/Documents/Cu(II)_acetate/from_daint_alps/Wannierization/singlet_spin_polarized/nscf_kpoints2x2x2/joint_case_07_case_08'
 
     xsf_name='Cu2AC4_00001.xsf'
-    scale_factor = 4.0 #
-    workflow_wannier(base_folders=base_folders, spins=spins, xsf_name=xsf_name, common_folder=common_folder, scale_factor=scale_factor)
-    exit()
+    scale_factor = 1.0 #
+    # workflow_wannier(base_folders=base_folders, spins=spins, xsf_name=xsf_name, common_folder=common_folder, scale_factor=scale_factor)
+    # exit()
 
     # workflow_density_vs_cutoff_radius(site_idx=[0], site_radii_all=[[i] for i in np.arange(0.5, 4.0, 0.5)], plot=True)
     # exit()
@@ -3032,14 +3049,14 @@ if __name__ == '__main__':
 
     run_cases = [33] #None #[5] #[0, 3, 5, 23] #, 3, 5, 23] #, 3, 5] # None
 
-    # case = 29
-    # scale_R_array = [1.0] #[1.00]
-    # workflow_autocorrelation_term(parameters_model_all[case], 
-    #                                 scale_R_array=scale_R_array, 
-    #                                 output_folder=base_path+'masked_model_Cu0_and_oxygens_purely_bonding_spx_correct_overlap_map', 
-    #                                 site_idx=site_idx_all[case],
-    #                                 write_cube_files=False)
-    # exit()                                                                                                
+    case = 29
+    scale_R_array = [1.0] #[1.00]
+    workflow_autocorrelation_term(parameters_model_all[case], 
+                                    scale_R_array=scale_R_array, 
+                                    output_folder=base_path+'masked_model_Cu0_and_oxygens_purely_bonding_spx_correct_overlap_map', 
+                                    site_idx=site_idx_all[case],
+                                    write_cube_files=False)
+    exit()                                                                                                
 
     # scale_R_array = [0.01, 0.03, 0.05, 0.08, 0.1, 0.3, 0.5, 1.0, 1.5, 2.0] #np.arange(0.5, 1.5, 0.05)
     # workflow_autocorrelation_term(parameters_model_all[case], 
