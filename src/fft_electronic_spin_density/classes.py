@@ -37,7 +37,7 @@ r_mt_Cu = 1.1 #Angstrom
 r_mt_O = 0.9 #Angstrom
 
 base_path = './outputs/Cu2AC4/512/'
-scale_factor = 1.0 # 5.0
+scale_factor = 4.0 # 5.0
 
 R1 = np.array((4.85991, 5.28091, 3.56158)) # np.array(list(self.metadata['atoms'][R_idx1][1])[1:])*physical_constants['Bohr radius'][0]*1e10
 R2 = np.array((3.01571, 6.45289, 4.99992)) #np.array(list(self.metadata['atoms'][R_idx2][1])[1:])*physical_constants['Bohr radius'][0]*1e10
@@ -1679,7 +1679,7 @@ _sq = (x**2 + y**2 + z**2)
         return r_along_R_vec, density_1D
 
     
-def get_XY_meshgrid_in_space(axis=(0,0,1), origin=(0,0,0), x_lim=1, y_lim=1, N_points=101):
+def get_XY_meshgrid_in_space(axis=(0,0,1), u=(1,0,0), origin=(0,0,0), x_lim=1, y_lim=1, N_points=101):
     """
     Generate a meshgrid of points in the XY plane, rotated to be perpendicular to a given axis.
 
@@ -1695,16 +1695,9 @@ def get_XY_meshgrid_in_space(axis=(0,0,1), origin=(0,0,0), x_lim=1, y_lim=1, N_p
     """
 
     axis = np.array(axis) / np.linalg.norm(axis)  # Normalize the axis vector
+    u = np.array(u) / np.linalg.norm(u)  # Normalize the u vector
 
-    if np.abs(axis[0]) < 1e-10 and np.abs(axis[1]) < 1e-10:
-        # If the axis is close to the z-axis, we can use a different approach
-        u = np.array([1, 0, 0])
-        v = np.array([0, 1, 0])
-    else:
-        # the basis vectors of the rotated plane
-        u = np.array([-axis[1], axis[0], 0])
-        u = u / np.linalg.norm(u)  # Normalize the vector
-        v = np.cross(u, axis)  # Create a perpendicular vector 
+    v = np.cross(u, axis)  # Create a perpendicular vector 
     
     # the direct meshgrid coordinates 
     i_u = np.linspace(-x_lim, x_lim, N_points)
@@ -1820,9 +1813,9 @@ def workflow(output_folder, site_idx, site_radii, replace_DFT_by_model, paramete
     fft_3D = False
     full_range_fft_spectrum_cuts = False
     zoom_in_fft_spectrum_cuts = False
-    fft_cut_planes_oblique = False
+    fft_cut_planes_oblique = True
 
-    write_cube_files = True
+    write_cube_files = False
 
     # ---- PARAMETERS -----
 
@@ -1985,8 +1978,7 @@ def workflow(output_folder, site_idx, site_radii, replace_DFT_by_model, paramete
                                 cut_along=cut_along)
                     np.savetxt(os.path.join(density.output_folder, 'cut_1D_both.txt'), np.array([kx_arr_along, ky_arr_along, F_abs_sq_interp_along, kx_arr_perp, ky_arr_perp, F_abs_sq_interp_perp, kx_arr_along_opposite, ky_arr_along_opposite, F_abs_sq_interp_along_opposite]).T, delimiter='\t', fmt='%.8e', header='kx_along\tky_along\tF_abs_sq_along\tkx_perp\tky_perp\tF_abs_sq_perp\tkx_along_opposite\tky_along_opposite\tF_abs_sq_along_opposite')
 
-
-    if fft_cut_planes_oblique:
+    def fft_perform_cut_planes_oblique(axis, center=(0.0, 0.0, 0.0), seedname_perp_cut='perp_to_axis', u_axis=(1,0,0)):
 
         # create the interpolator
         #   kx_cart_mesh etc. are 3D arrays of kx coordinates etc.
@@ -2001,8 +1993,8 @@ def workflow(output_folder, site_idx, site_radii, replace_DFT_by_model, paramete
         print('np.max(density.kx_cart_mesh)', np.max(density.kx_cart_mesh_centered))
 
 
-        axis = density.R_vec #(0,0,1) #
-        center = -density.R_vec/np.linalg.norm(density.R_vec)*1.201 #(0.0, 0.0, 0.0) #
+        # axis = density.R_vec #(0,0,1) #
+        # center = -density.R_vec/np.linalg.norm(density.R_vec)*1.201 #(0.0, 0.0, 0.0) #
 
         interpolator_name = f'interpolator_512_scale-factor_{scale_factor:.1f}_xy-lim_{xy_lim:.2f}_invA_center_{center[0]:.2f}_{center[1]:.2f}_{center[2]:.2f}_invA.pickle'
 
@@ -2022,18 +2014,18 @@ def workflow(output_folder, site_idx, site_radii, replace_DFT_by_model, paramete
         N_points = 101
         cax_saturation = None
         normalized = True
-        zlims = (0.0, 0.6)
+        zlims = (0.0, 1.0)
         fft_as_log = False
 
         title = f'FFT in plane perpendicular to ({axis[0]:.2f}, {axis[1]:.2f}, {axis[2]:.2f})'+r'$\mathrm{\AA}^{-1}$' +f'\ncentered at ({center[0]:.2f}, {center[1]:.2f}, {center[2]:.2f})'+r'$\mathrm{\AA}^{-1}$'
         cax_saturation_str = f'{cax_saturation:.1f}' if cax_saturation else 'None'
-        fout_name = f'fft_2D_scale-factor_{scale_factor:.1f}_perp_to_axis_{axis[0]:.2f}_{axis[1]:.2f}_{axis[2]:.2f}_center_{center[0]:.2f}_{center[1]:.2f}_{center[2]:.2f}_Nk_{N_points}_caxsat_{cax_saturation_str}_normalized_{normalized}_log-{fft_as_log}.png'
+        fout_name = f'fft_2D_scale-factor_{scale_factor:.1f}_{seedname_perp_cut}_{axis[0]:.2f}_{axis[1]:.2f}_{axis[2]:.2f}_center_{center[0]:.2f}_{center[1]:.2f}_{center[2]:.2f}_Nk_{N_points}_caxsat_{cax_saturation_str}_normalized_{normalized}_log-{fft_as_log}.png'
 
         # X_cart, Y_cart, Z_cart, X_direct, Y_direct are all 2D arrays of coordinates
-        X_cart, Y_cart, Z_cart, X_direct, Y_direct, u, v = get_XY_meshgrid_in_space(axis=axis, origin=center, x_lim=xy_lim, y_lim=xy_lim, N_points=N_points)
+        X_cart, Y_cart, Z_cart, X_direct, Y_direct, u, v = get_XY_meshgrid_in_space(axis=axis, u=u_axis, origin=center, x_lim=xy_lim, y_lim=xy_lim, N_points=N_points)
 
         # check if the interpolation has been done already
-        interp_data_fout_pickle_name = f'fft_2D_DATA_scale-factor_{scale_factor:.1f}_perp_to_axis_{axis[0]:.2f}_{axis[1]:.2f}_{axis[2]:.2f}_center_{center[0]:.2f}_{center[1]:.2f}_{center[2]:.2f}_Nk_{N_points}.pickle'
+        interp_data_fout_pickle_name = f'fft_2D_DATA_scale-factor_{scale_factor:.1f}_{seedname_perp_cut}_{axis[0]:.2f}_{axis[1]:.2f}_{axis[2]:.2f}_center_{center[0]:.2f}_{center[1]:.2f}_{center[2]:.2f}_Nk_{N_points}.pickle'
         interp_data_fout_pickle_name = os.path.join(density.output_folder, interp_data_fout_pickle_name)
 
         if use_saved_interpolated_data and os.path.exists(interp_data_fout_pickle_name):
@@ -2077,6 +2069,27 @@ def workflow(output_folder, site_idx, site_radii, replace_DFT_by_model, paramete
                             plot_rec_latt_vectors=False,
                             fft_as_log=fft_as_log,
                             )
+
+
+    if fft_cut_planes_oblique:
+        r_Cu1 = np.array([4.85991, 5.28091, 3.56158])
+        r_Cu2 = np.array([3.01571, 6.45289, 4.99992])
+        r_Ox2 = np.array([5.77542, 7.04040, 3.76543])
+        r_Ox9 = np.array([3.64655, 3.70753, 3.52220])
+        r_Ox33 = np.array([3.89759, 5.95690, 2.01717])
+        r_Ox18 = np.array([5.54428, 4.75066, 5.31609])
+
+        R_l = r_Cu2 - r_Cu1 # Cu1 - Cu2 vector
+        R_h = r_Ox2 - r_Ox9
+        R_k = r_Ox33 - r_Ox18
+
+        center_HL = (0.0, 0.0, 0.0)
+        center_HK = density.R_vec / np.linalg.norm(density.R_vec) * 1.201 # Cu1 - Cu2 vector scaled to 1.201 Angstrom^-1
+        center_LK = (0.0, 0.0, 0.0)
+
+        fft_perform_cut_planes_oblique(axis=R_k, u_axis=R_h, center=center_HL, seedname_perp_cut='HL_CuCu')
+        fft_perform_cut_planes_oblique(axis=R_l, u_axis=R_h, center=center_HK, seedname_perp_cut='HK_CuOx4')
+        fft_perform_cut_planes_oblique(axis=R_h, u_axis=R_l, center=center_LK, seedname_perp_cut='LK_CuOx2CuOx2')
 
     # test_shift()
     # exit()
@@ -3016,7 +3029,36 @@ def workflow_wannier(base_folders=['.', '.'], xsf_name='Cu2AC4_00001.xsf', spins
         # calculate the energy
         E_overlap = np.sum(rho_overlap.array) * rho_overlap.unit_cell_volume / a0**3
 
+def exchange_integral(rho1, rho2, r1, r2):
+    """Calculate the exchange integral between two orbitals.
 
+    Args:
+        rho1 (np.ndarray): Wavefunction of the first orbital.
+        rho2 (np.ndarray): Wavefunction of the second orbital. Same shape as rho1.
+        r1 (np.ndarray): Position vector of the first orbital. It has the shape of (rho1.shape[0], 3) with x,y and z coordinates in dedicated columns.
+        r2 (np.ndarray): Position vector of the second orbital. It has the shape of (rho2.shape[0], 3) with x,y and z coordinates in dedicated columns.
+    """
+
+    # calculate the exchange integral
+    # This is a placeholder for the actual implementation
+    # The actual implementation would involve calculating the integral over the product of the wavefunctions
+    # at positions r1 and r2, taking into account the exchange symmetry.
+    
+
+
+
+def workflow_exchange_integrals(rho1, rho2):
+    """Calculate the exchange integral between two orbitals.
+
+    Args:
+        rho1 (Density object): With leave_as_wavefunction=True.
+        rho2 (Density object): With leave_as_wavefunction=True.
+    """
+    if rho1.leave_as_wavefunction is False or rho2.leave_as_wavefunction is False:
+        raise ValueError("Both Density objects must have leave_as_wavefunction=True to calculate overlap integrals.")
+
+    # calculate the exchange integral
+    
     
 if __name__ == '__main__':
 
@@ -3047,16 +3089,16 @@ if __name__ == '__main__':
 
     # ===== RUN selected cases among the predefined ones =====
 
-    run_cases = [33] #None #[5] #[0, 3, 5, 23] #, 3, 5, 23] #, 3, 5] # None
+    run_cases = [5] #[33] #None #[5] #[0, 3, 5, 23] #, 3, 5, 23] #, 3, 5] # None
 
-    case = 29
-    scale_R_array = [1.0] #[1.00]
-    workflow_autocorrelation_term(parameters_model_all[case], 
-                                    scale_R_array=scale_R_array, 
-                                    output_folder=base_path+'masked_model_Cu0_and_oxygens_purely_bonding_spx_correct_overlap_map', 
-                                    site_idx=site_idx_all[case],
-                                    write_cube_files=False)
-    exit()                                                                                                
+    # case = 29
+    # scale_R_array = [1.0] #[1.00]
+    # workflow_autocorrelation_term(parameters_model_all[case], 
+    #                                 scale_R_array=scale_R_array, 
+    #                                 output_folder=base_path+'masked_model_Cu0_and_oxygens_purely_bonding_spx_correct_overlap_map', 
+    #                                 site_idx=site_idx_all[case],
+    #                                 write_cube_files=False)
+    # exit()                                                                                                
 
     # scale_R_array = [0.01, 0.03, 0.05, 0.08, 0.1, 0.3, 0.5, 1.0, 1.5, 2.0] #np.arange(0.5, 1.5, 0.05)
     # workflow_autocorrelation_term(parameters_model_all[case], 
