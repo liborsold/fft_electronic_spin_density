@@ -37,7 +37,7 @@ r_mt_Cu = 1.1 #Angstrom
 r_mt_O = 0.9 #Angstrom
 
 base_path = './outputs/Cu2AC4/512/'
-scale_factor = 4.0 # 5.0
+scale_factor = 1.5 # 4.0
 
 R1 = np.array((4.85991, 5.28091, 3.56158)) # np.array(list(self.metadata['atoms'][R_idx1][1])[1:])*physical_constants['Bohr radius'][0]*1e10
 R2 = np.array((3.01571, 6.45289, 4.99992)) #np.array(list(self.metadata['atoms'][R_idx2][1])[1:])*physical_constants['Bohr radius'][0]*1e10
@@ -49,7 +49,12 @@ R_O34 = np.array((3.97804, 5.77690, 6.54433))
 R_O9 = np.array((3.64655, 3.70753, 3.52220))
 R_O1 = np.array((2.10020, 4.69340, 4.79607))
 
-
+def windows_long_path(path):
+    if os.name == 'nt':
+        path = os.path.abspath(path)
+        if not path.startswith('\\\\?\\'):
+            path = '\\\\?\\' + path
+    return path
 
 class Density:
     """Read, visualize and fourier transform (spin) density from gaussian .cube files.
@@ -1338,18 +1343,14 @@ _sq = (x**2 + y**2 + z**2)
             print(k1, k2)
             print(self.array.shape)
 
-        # 2D grid with correct units but no dimensionality
-        i_vals = (np.arange(n1)-n1//2) / n1
-        j_vals = (np.arange(n2)-n2//2) / n2
-        I, J = np.meshgrid(i_vals, j_vals, indexing='ij')
-
         # Compute the actual coordinates in 2D space - only if they have not been provided
         if X is None and Y is None:
+            # 2D grid with correct units but no dimensionality
+            i_vals = (np.arange(n1)-n1//2) / n1
+            j_vals = (np.arange(n2)-n2//2) / n2
+            I, J = np.meshgrid(i_vals, j_vals, indexing='ij')
             X = I * k1[0] + J * k2[0]
             Y = I * k1[1] + J * k2[1]
-        else:
-            X = X
-            Y = Y
 
         if data_to_plot is None:
             plot_array = np.abs(F_abs_sq_cut)
@@ -1454,7 +1455,7 @@ _sq = (x**2 + y**2 + z**2)
             # add appendix to name (while keeping original file format)
             fsplit = fout_name.split('.')
             fout_name = '.'.join(fsplit[:-1]) + '_fix-scale.' + fsplit[-1]
-        plt.savefig(fout_name, dpi=dpi)
+        plt.savefig(windows_long_path(fout_name), dpi=dpi)
 
         if show_plot:
             plt.show()
@@ -1679,9 +1680,9 @@ _sq = (x**2 + y**2 + z**2)
         return r_along_R_vec, density_1D
 
     
-def get_XY_meshgrid_in_space(axis=(0,0,1), u=(1,0,0), origin=(0,0,0), x_lim=1, y_lim=1, N_points=101):
+def get_XY_meshgrid_in_space(u=(1,0,0), v=(0,1,0), origin=(0,0,0), x_lim=1, y_lim=1, N_points=101):
     """
-    Generate a meshgrid of points in the XY plane, rotated to be perpendicular to a given axis.
+    Generate a meshgrid of points in the uv plane shifted to origin.
 
     Parameters:
     axis (tuple): The axis around which to rotate the XY plane (default is z-axis).
@@ -1694,22 +1695,29 @@ def get_XY_meshgrid_in_space(axis=(0,0,1), u=(1,0,0), origin=(0,0,0), x_lim=1, y
     tuple: A tuple containing the X,Y,Z 2D arrays of coordinates and the lattice vectors of the meshgrid.
     """
 
-    axis = np.array(axis) / np.linalg.norm(axis)  # Normalize the axis vector
-    u = np.array(u) / np.linalg.norm(u)  # Normalize the u vector
+    print('orthogonality before norm check u and v', np.dot(u, v))
 
-    v = np.cross(u, axis)  # Create a perpendicular vector 
-    
+    print('u', u)
+    print('v', v)
+
+    u_norm = np.array(u) / np.linalg.norm(u)  # Normalize the u vector
+    v_norm = np.array(v) / np.linalg.norm(v)  # Normalize the axis vector
+
+    print('u_norm', u_norm)
+    print('v_norm', v_norm)
+    print('orthonormality check u and v', np.dot(u_norm, v_norm))
+
     # the direct meshgrid coordinates 
     i_u = np.linspace(-x_lim, x_lim, N_points)
     i_v = np.linspace(-y_lim, y_lim, N_points)
     X_direct, Y_direct = np.meshgrid(i_u, i_v, indexing='ij')
 
     # the cartesian meshgrid coordinates
-    X_cart = X_direct * u[0] + Y_direct * v[0] + origin[0]
-    Y_cart = X_direct * u[1] + Y_direct * v[1] + origin[1]
-    Z_cart = X_direct * u[2] + Y_direct * v[2] + origin[2]
+    X_cart = X_direct * u_norm[0] + Y_direct * v_norm[0] + origin[0]
+    Y_cart = X_direct * u_norm[1] + Y_direct * v_norm[1] + origin[1]
+    Z_cart = X_direct * u_norm[2] + Y_direct * v_norm[2] + origin[2]
 
-    return X_cart, Y_cart, Z_cart, X_direct, Y_direct, u, v
+    return X_cart, Y_cart, Z_cart, X_direct, Y_direct, u_norm, v_norm
 
 
 def test_shift():
@@ -1978,12 +1986,12 @@ def workflow(output_folder, site_idx, site_radii, replace_DFT_by_model, paramete
                                 cut_along=cut_along)
                     np.savetxt(os.path.join(density.output_folder, 'cut_1D_both.txt'), np.array([kx_arr_along, ky_arr_along, F_abs_sq_interp_along, kx_arr_perp, ky_arr_perp, F_abs_sq_interp_perp, kx_arr_along_opposite, ky_arr_along_opposite, F_abs_sq_interp_along_opposite]).T, delimiter='\t', fmt='%.8e', header='kx_along\tky_along\tF_abs_sq_along\tkx_perp\tky_perp\tF_abs_sq_perp\tkx_along_opposite\tky_along_opposite\tF_abs_sq_along_opposite')
 
-    def fft_perform_cut_planes_oblique(axis, center=(0.0, 0.0, 0.0), seedname_perp_cut='perp_to_axis', u_axis=(1,0,0)):
+    def fft_perform_cut_planes_oblique(u_axis, v_axis, center=(0.0, 0.0, 0.0), seedname_perp_cut='perp_to_axis'):
 
         # create the interpolator
         #   kx_cart_mesh etc. are 3D arrays of kx coordinates etc.
 
-        xy_lim = 10.0 # Angstrom^-1
+        xy_lim = 6.0 # Angstrom^-1
 
         kx_flat = density.kx_cart_mesh_centered.flatten()
         ky_flat = density.ky_cart_mesh_centered.flatten()
@@ -1996,7 +2004,7 @@ def workflow(output_folder, site_idx, site_radii, replace_DFT_by_model, paramete
         # axis = density.R_vec #(0,0,1) #
         # center = -density.R_vec/np.linalg.norm(density.R_vec)*1.201 #(0.0, 0.0, 0.0) #
 
-        interpolator_name = f'interpolator_512_scale-factor_{scale_factor:.1f}_xy-lim_{xy_lim:.2f}_invA_center_{center[0]:.2f}_{center[1]:.2f}_{center[2]:.2f}_invA.pickle'
+        interpolator_name = os.path.join(output_folder, f'interpolator_512_scale-factor_{scale_factor:.1f}_xy-lim_{xy_lim:.2f}_invA_center_{center[0]:.2f}_{center[1]:.2f}_{center[2]:.2f}_invA.pickle')
 
         interpolator_cutoff = xy_lim*np.sqrt(3) # Angstrom^-1
         include_points = np.where(np.sqrt((kx_flat-center[0])**2 + (ky_flat-center[1])**2 + (kz_flat-center[2])**2) < interpolator_cutoff)
@@ -2017,15 +2025,15 @@ def workflow(output_folder, site_idx, site_radii, replace_DFT_by_model, paramete
         zlims = (0.0, 1.0)
         fft_as_log = False
 
-        title = f'FFT in plane perpendicular to ({axis[0]:.2f}, {axis[1]:.2f}, {axis[2]:.2f})'+r'$\mathrm{\AA}^{-1}$' +f'\ncentered at ({center[0]:.2f}, {center[1]:.2f}, {center[2]:.2f})'+r'$\mathrm{\AA}^{-1}$'
+        title = f'FFT centered at ({center[0]:.2f}, {center[1]:.2f}, {center[2]:.2f})'+r'$\mathrm{\AA}^{-1}$'
         cax_saturation_str = f'{cax_saturation:.1f}' if cax_saturation else 'None'
-        fout_name = f'fft_2D_scale-factor_{scale_factor:.1f}_{seedname_perp_cut}_{axis[0]:.2f}_{axis[1]:.2f}_{axis[2]:.2f}_center_{center[0]:.2f}_{center[1]:.2f}_{center[2]:.2f}_Nk_{N_points}_caxsat_{cax_saturation_str}_normalized_{normalized}_log-{fft_as_log}.png'
+        fout_name = f'fft_2D_scale-factor_{scale_factor:.1f}_{seedname_perp_cut}_{v_axis[0]:.2f}_{v_axis[1]:.2f}_{v_axis[2]:.2f}_center_{center[0]:.2f}_{center[1]:.2f}_{center[2]:.2f}_Nk_{N_points}_caxsat_{cax_saturation_str}_normalized_{normalized}_log-{fft_as_log}.png'
 
         # X_cart, Y_cart, Z_cart, X_direct, Y_direct are all 2D arrays of coordinates
-        X_cart, Y_cart, Z_cart, X_direct, Y_direct, u, v = get_XY_meshgrid_in_space(axis=axis, u=u_axis, origin=center, x_lim=xy_lim, y_lim=xy_lim, N_points=N_points)
+        X_cart, Y_cart, Z_cart, X_direct, Y_direct, u, v = get_XY_meshgrid_in_space(u=u_axis, v=v_axis, origin=center, x_lim=xy_lim, y_lim=xy_lim, N_points=N_points)
 
         # check if the interpolation has been done already
-        interp_data_fout_pickle_name = f'fft_2D_DATA_scale-factor_{scale_factor:.1f}_{seedname_perp_cut}_{axis[0]:.2f}_{axis[1]:.2f}_{axis[2]:.2f}_center_{center[0]:.2f}_{center[1]:.2f}_{center[2]:.2f}_Nk_{N_points}.pickle'
+        interp_data_fout_pickle_name = f'fft_2D_DATA_scale-factor_{scale_factor:.1f}_{seedname_perp_cut}_{v_axis[0]:.2f}_{v_axis[1]:.2f}_{v_axis[2]:.2f}_center_{center[0]:.2f}_{center[1]:.2f}_{center[2]:.2f}_Nk_{N_points}.pickle'
         interp_data_fout_pickle_name = os.path.join(density.output_folder, interp_data_fout_pickle_name)
 
         if use_saved_interpolated_data and os.path.exists(interp_data_fout_pickle_name):
@@ -2038,7 +2046,7 @@ def workflow(output_folder, site_idx, site_radii, replace_DFT_by_model, paramete
         else:
             # need to perform the interpolation (takes time)
             #   get 2D array of the FFT values:
-            print('interpolating')
+            print('interpolating in 2D plane')
             fft_XYZ = interpolator(X_cart, Y_cart, Z_cart)
 
             if save_interpolated_data:
@@ -2062,8 +2070,8 @@ def workflow(output_folder, site_idx, site_radii, replace_DFT_by_model, paramete
                             ylabel=ylabel,
                             title=title,
                             cax_saturation=cax_saturation,
-                            xlims=(-xy_lim, xy_lim),
-                            ylims=(-xy_lim, xy_lim),
+                            xlims=None, #(-xy_lim, xy_lim),
+                            ylims=None, #(-xy_lim, xy_lim),
                             zlims=zlims,
                             normalized=normalized,
                             plot_rec_latt_vectors=False,
@@ -2072,24 +2080,35 @@ def workflow(output_folder, site_idx, site_radii, replace_DFT_by_model, paramete
 
 
     if fft_cut_planes_oblique:
-        r_Cu1 = np.array([4.85991, 5.28091, 3.56158])
-        r_Cu2 = np.array([3.01571, 6.45289, 4.99992])
-        r_Ox2 = np.array([5.77542, 7.04040, 3.76543])
         r_Ox9 = np.array([3.64655, 3.70753, 3.52220])
+        r_Ox2 = np.array([5.77542, 7.04040, 3.76543])
+        r_Ox1 = np.array([2.10020, 4.69340, 4.79607])
+        r_Ox10 = np.array([4.22907, 8.02627, 5.03930])
+
         r_Ox33 = np.array([3.89759, 5.95690, 2.01717])
         r_Ox18 = np.array([5.54428, 4.75066, 5.31609])
-
+        r_Ox34 = np.array([3.97804, 5.77690, 6.54433])
+        r_Ox17 = np.array([2.33134, 6.98314, 3.24541])
+        
+        r_Cu1 = np.array([4.85991, 5.28091, 3.56158])
+        r_Cu2 = np.array([3.01571, 6.45289, 4.99992])
+        
+        # right-handed system m-n-l, where m is along Ox-Ox (y-axis), n is along Ox-Ox (x-axis) and l is along Cu-Cu (z-axis)  
+        R_m = ( (r_Ox18 - r_Ox33) + (r_Ox34 - r_Ox17) ) / 2 # average the equivalent Ox-Ox connections on the two copper sites
+        R_n = ( (r_Ox9 - r_Ox2) + (r_Ox1 - r_Ox10) ) / 2   # average the equivalent Ox-Ox connections on the two copper sites
         R_l = r_Cu2 - r_Cu1 # Cu1 - Cu2 vector
-        R_h = r_Ox2 - r_Ox9
-        R_k = r_Ox33 - r_Ox18
+        
+        print('orthogonality check R_m R_n', np.dot(R_m, R_n) / (np.linalg.norm(R_m) * np.linalg.norm(R_n)))
+        print('orthogonality check R_m R_l', np.dot(R_m, R_l) / (np.linalg.norm(R_m) * np.linalg.norm(R_l)))
+        print('orthogonality check R_n R_l', np.dot(R_n, R_l) / (np.linalg.norm(R_n) * np.linalg.norm(R_l)))
 
-        center_HL = (0.0, 0.0, 0.0)
-        center_HK = density.R_vec / np.linalg.norm(density.R_vec) * 1.201 # Cu1 - Cu2 vector scaled to 1.201 Angstrom^-1
-        center_LK = (0.0, 0.0, 0.0)
+        center_nl = (0.0, 0.0, 0.0)
+        center_nm = (0.0, 0.0, 0.0) #density.R_vec / np.linalg.norm(density.R_vec) * 1.201 # Cu1 - Cu2 vector scaled to 1.201 Angstrom^-1
+        center_lm = (0.0, 0.0, 0.0)
 
-        fft_perform_cut_planes_oblique(axis=R_k, u_axis=R_h, center=center_HL, seedname_perp_cut='HL_CuCu')
-        fft_perform_cut_planes_oblique(axis=R_l, u_axis=R_h, center=center_HK, seedname_perp_cut='HK_CuOx4')
-        fft_perform_cut_planes_oblique(axis=R_h, u_axis=R_l, center=center_LK, seedname_perp_cut='LK_CuOx2CuOx2')
+        fft_perform_cut_planes_oblique(u_axis=R_n, v_axis=R_l, center=center_nl, seedname_perp_cut='CuCu')
+        fft_perform_cut_planes_oblique(u_axis=R_n, v_axis=R_m, center=center_nm, seedname_perp_cut='CuOx4')
+        fft_perform_cut_planes_oblique(u_axis=R_l, v_axis=R_m, center=center_lm, seedname_perp_cut='CuOx2CuOx2')
 
     # test_shift()
     # exit()
@@ -3069,7 +3088,6 @@ if __name__ == '__main__':
     common_folder = '/home/vojace_l/Documents/Cu(II)_acetate/from_daint_alps/Wannierization/singlet_spin_polarized/nscf_kpoints2x2x2/joint_case_07_case_08'
 
     xsf_name='Cu2AC4_00001.xsf'
-    scale_factor = 1.0 #
     # workflow_wannier(base_folders=base_folders, spins=spins, xsf_name=xsf_name, common_folder=common_folder, scale_factor=scale_factor)
     # exit()
 
